@@ -19,6 +19,7 @@ import TableRowActions from '../../components/admin/TableRowActions'
 import { useContratos } from '../../hooks/useContratos'
 import { useInquilinos } from '../../hooks/useInquilinos'
 import { usePropiedades } from '../../hooks/usePropiedades'
+import { periodicidadLabelPorMeses, TIPO_AJUSTE_LABELS } from '../../utils/contratoAumentosPreview'
 
 const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
 
@@ -128,6 +129,8 @@ export default function AdminContratos() {
               <AdminTableHeaderCell>Propiedad</AdminTableHeaderCell>
               <AdminTableHeaderCell>Monto</AdminTableHeaderCell>
               <AdminTableHeaderCell>Vigencia</AdminTableHeaderCell>
+              <AdminTableHeaderCell>Ajuste</AdminTableHeaderCell>
+              <AdminTableHeaderCell>Próx. aumento</AdminTableHeaderCell>
               <AdminTableHeaderCell>Estado</AdminTableHeaderCell>
               <AdminTableActionsHeaderCell />
             </AdminTableRow>
@@ -135,13 +138,13 @@ export default function AdminContratos() {
           <AdminTableBody>
             {loading && (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={6}>Cargando contratos...</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={8}>Cargando contratos...</AdminTableEmptyCell>
               </AdminTableRow>
             )}
 
             {!loading && !error && contratos.length === 0 && (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={6}>No hay contratos cargados</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={8}>No hay contratos cargados</AdminTableEmptyCell>
               </AdminTableRow>
             )}
 
@@ -155,6 +158,15 @@ export default function AdminContratos() {
                   <AdminTableCell className="tabular-nums">{formatMonto(c.monto_alquiler)}</AdminTableCell>
                   <AdminTableCell className="text-slate-600">
                     {formatVigencia(c.fecha_inicio, c.fecha_fin)}
+                  </AdminTableCell>
+                  <AdminTableCell className="text-slate-600 text-xs">
+                    <span className="block">{TIPO_AJUSTE_LABELS[c.tipo_ajuste] ?? c.tipo_ajuste ?? '—'}</span>
+                    <span className="text-slate-400">
+                      {periodicidadLabelPorMeses(c.periodicidad_meses)}
+                    </span>
+                  </AdminTableCell>
+                  <AdminTableCell className="text-slate-600 tabular-nums">
+                    {formatFecha(c.fecha_proximo_aumento)}
                   </AdminTableCell>
                   <AdminTableCell>
                     <Badge color={c.activo ? 'emerald' : 'gray'}>
@@ -186,6 +198,7 @@ export default function AdminContratos() {
         inquilinosLoading={inquilinosLoading}
         propiedades={propiedades}
         propiedadesLoading={propiedadesLoading}
+        contratos={contratos}
       />
 
       <AdminConfirmModal

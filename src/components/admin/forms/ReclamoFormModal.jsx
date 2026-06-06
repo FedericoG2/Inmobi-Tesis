@@ -8,6 +8,16 @@ import {
 const estados = ['Pendiente', 'En Proceso', 'Resuelto']
 const prioridades = ['Baja', 'Media', 'Alta', 'Urgente']
 
+const categorias = [
+  'Plomeria',
+  'Electricidad',
+  'Albañilería',
+  'Cerrajeria',
+  'Pintura',
+  'Estructural',
+  'Gas'
+]
+
 const formInicial = {
   inquilino_id: '',
   propiedad_id: '',
@@ -15,6 +25,7 @@ const formInicial = {
   descripcion: '',
   estado: 'Pendiente',
   prioridad: 'Media',
+  categoria: 'Plomeria', 
 }
 
 const inputClass =
@@ -31,6 +42,7 @@ function formDesdeReclamo(reclamo) {
     descripcion: reclamo.descripcion ?? '',
     estado: reclamo.estado ?? 'Pendiente',
     prioridad: reclamo.prioridad ?? 'Media',
+    categoria: reclamo.categoria ?? 'Plomeria', 
   }
 }
 
@@ -109,11 +121,12 @@ export default function ReclamoFormModal({
         </h2>
         <p className="mt-1 text-sm text-slate-500">
           {esEdicion
-            ? 'El inquilino y la propiedad no se modifican. Podés cambiar título, descripción, prioridad y estado.'
+            ? 'El inquilino y la propiedad no se modifican. Podés cambiar título, descripción, prioridad, categoría y estado.'
             : 'Se vincula al contrato activo del inquilino. El reclamo inicia en Pendiente.'}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          {/* INQUILINO */}
           <div>
             <label htmlFor="inquilino_id" className="mb-1 block text-sm font-medium text-slate-700">
               Inquilino
@@ -151,6 +164,7 @@ export default function ReclamoFormModal({
             )}
           </div>
 
+          {/* PROPIEDAD VINCULADA */}
           <div>
             <label htmlFor="propiedad_vinculada" className="mb-1 block text-sm font-medium text-slate-700">
               Propiedad vinculada
@@ -190,6 +204,7 @@ export default function ReclamoFormModal({
             )}
           </div>
 
+          {/* TÍTULO */}
           <div>
             <label htmlFor="titulo" className="mb-1 block text-sm font-medium text-slate-700">
               Título
@@ -206,6 +221,7 @@ export default function ReclamoFormModal({
             />
           </div>
 
+          {/* DESCRIPCIÓN */}
           <div>
             <label htmlFor="descripcion" className="mb-1 block text-sm font-medium text-slate-700">
               Descripción
@@ -222,6 +238,28 @@ export default function ReclamoFormModal({
             />
           </div>
 
+          {/* CATEGORÍA */}
+          <div>
+            <label htmlFor="categoria" className="mb-1 block text-sm font-medium text-slate-700">
+              Categoría
+            </label>
+            <select
+              id="categoria"
+              required
+              value={form.categoria}
+              onChange={handleChange('categoria')}
+              className={inputClass}
+              disabled={formDeshabilitado}
+            >
+              {categorias.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* PRIORIDAD */}
           <div>
             <label htmlFor="prioridad" className="mb-1 block text-sm font-medium text-slate-700">
               Prioridad
@@ -242,6 +280,7 @@ export default function ReclamoFormModal({
             </select>
           </div>
 
+          {/* ESTADO */}
           <div>
             <label htmlFor="estado" className="mb-1 block text-sm font-medium text-slate-700">
               Estado

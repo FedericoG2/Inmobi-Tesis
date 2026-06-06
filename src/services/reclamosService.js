@@ -13,6 +13,7 @@ export async function listarReclamos() {
       descripcion,
       estado,
       prioridad,
+      categoria,
       fecha_creacion,
       propiedad_id,
       inquilino_id,
@@ -37,6 +38,7 @@ export async function crearReclamo(reclamo) {
       descripcion: reclamo.descripcion,
       estado: reclamo.estado,
       prioridad: reclamo.prioridad ?? 'Media',
+      categoria: reclamo.categoria,
       
     })
     .select(`
@@ -66,6 +68,7 @@ export async function actualizarReclamo(id, datos) {
       descripcion: datos.descripcion,
       estado: datos.estado,
       prioridad: datos.prioridad,
+      categoria: datos.categoria,
     })
     .eq('id', id)
     .select(`

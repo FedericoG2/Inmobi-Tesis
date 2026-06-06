@@ -41,6 +41,7 @@ export function useReclamos() {
         titulo: datos.titulo,
         descripcion: datos.descripcion,
         estado: 'Pendiente',
+        prioridad: datos.prioridad,
       })
 
       if (createError) {
@@ -65,6 +66,7 @@ export function useReclamos() {
         titulo: datos.titulo,
         descripcion: datos.descripcion,
         estado: datos.estado,
+        prioridad: datos.prioridad,
       })
 
       if (updateError) {

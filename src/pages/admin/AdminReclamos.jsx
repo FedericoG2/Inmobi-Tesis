@@ -100,6 +100,14 @@ export default function AdminReclamos() {
     }
   }
 
+  const prioridadColor = {
+    Urgente: 'red',
+    Alta: 'rose',
+    Media: 'orange',
+    Baja: 'sky',
+  }
+
+
   const esResuelto = reclamoAEliminar?.estado === 'Resuelto'
   const mensajeConfirmacion = esResuelto
     ? `Este reclamo ya está marcado como Resuelto. Si lo eliminás, se pierde el registro de esa gestión. ¿Eliminar "${reclamoAEliminar?.titulo}" igualmente?`
@@ -127,53 +135,90 @@ export default function AdminReclamos() {
           </>
         }
       >
-        <AdminTable>
-          <AdminTableHead>
-            <AdminTableRow>
-              <AdminTableHeaderCell>Inquilino</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Propiedad</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Reclamo</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Estado</AdminTableHeaderCell>
-              <AdminTableActionsHeaderCell />
-            </AdminTableRow>
-          </AdminTableHead>
-          <AdminTableBody>
-            {loading && (
-              <AdminTableRow>
-                <AdminTableEmptyCell colSpan={5}>Cargando reclamos...</AdminTableEmptyCell>
-              </AdminTableRow>
-            )}
+       <AdminTable>
+  <AdminTableHead>
+    <AdminTableRow>
+      <AdminTableHeaderCell>Inquilino</AdminTableHeaderCell>
+      <AdminTableHeaderCell>Propiedad</AdminTableHeaderCell>
+      <AdminTableHeaderCell>Categoria</AdminTableHeaderCell>
+      <AdminTableHeaderCell>Descripción</AdminTableHeaderCell>
+      {/* NUEVOS ENCABEZADOS */}
+      <AdminTableHeaderCell>Fecha de Creación</AdminTableHeaderCell>
+      <AdminTableHeaderCell>Prioridad</AdminTableHeaderCell>
+      
+      <AdminTableHeaderCell>Estado</AdminTableHeaderCell>
+      <AdminTableActionsHeaderCell />
+    </AdminTableRow>
+  </AdminTableHead>
+  
+  <AdminTableBody>
+    {loading && (
+      <AdminTableRow>
+        {/* SE CAMBIA colSpan DE 5 A 7 */}
+        <AdminTableEmptyCell colSpan={8}>Cargando reclamos...</AdminTableEmptyCell>
+      </AdminTableRow>
+    )}
 
-            {!loading && !error && reclamos.length === 0 && (
-              <AdminTableRow>
-                <AdminTableEmptyCell colSpan={5}>No hay reclamos cargados</AdminTableEmptyCell>
-              </AdminTableRow>
-            )}
+    {!loading && !error && reclamos.length === 0 && (
+      <AdminTableRow>
+        {/* SE CAMBIA colSpan DE 5 A 7 */}
+        <AdminTableEmptyCell colSpan={8}>No hay reclamos cargados</AdminTableEmptyCell>
+      </AdminTableRow>
+    )}
 
-            {!loading &&
-              reclamos.map((r) => (
-                <AdminTableRow key={r.id}>
-                  <AdminTableCell>{r.inquilinos?.nombre_completo ?? '—'}</AdminTableCell>
-                  <AdminTableCell className="max-w-xs">{r.propiedades?.direccion ?? '—'}</AdminTableCell>
-                  <AdminTableCell className="max-w-sm">
-                    <p className="font-medium text-slate-900">{r.titulo}</p>
-                    {r.descripcion && (
-                      <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{r.descripcion}</p>
-                    )}
-                  </AdminTableCell>
-                  <AdminTableCell>
-                    <Badge color={estadoColor[r.estado] ?? 'slate'}>{r.estado}</Badge>
-                  </AdminTableCell>
-                  <AdminTableActionsCell>
-                    <TableRowActions
-                      onEdit={() => abrirModalEditar(r)}
-                      onDelete={() => handleEliminar(r)}
-                    />
-                  </AdminTableActionsCell>
-                </AdminTableRow>
-              ))}
-          </AdminTableBody>
-        </AdminTable>
+    {!loading &&
+      reclamos.map((r) => (
+        <AdminTableRow key={r.id}>
+          <AdminTableCell>{r.inquilinos?.nombre_completo ?? '—'}</AdminTableCell>
+          <AdminTableCell className="max-w-xs">{r.propiedades?.direccion ?? '—'}</AdminTableCell>
+          <AdminTableCell>
+  {r.categoria ? (
+    <Badge color="slate" variant="secondary">
+      {r.categoria}
+    </Badge>
+  ) : (
+    <span className="text-slate-400 italic">Sin categoría</span>
+  )}
+</AdminTableCell>
+          <AdminTableCell className="max-w-sm">
+            <p className="font-medium text-slate-900">{r.titulo}</p>
+            {r.descripcion && (
+              <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{r.descripcion}</p>
+            )}
+          </AdminTableCell>
+
+          {/* NUEVA CELDA: Fecha de Creación */}
+          <AdminTableCell>
+            {r.fecha_creacion
+              ? new Date(r.fecha_creacion).toLocaleDateString('es-AR', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric'
+                })
+              : '—'}
+          </AdminTableCell>
+
+          {/* NUEVA CELDA: Prioridad (con Badge de Tremor) */}
+          <AdminTableCell>
+            <Badge color={prioridadColor[r.prioridad] ?? 'slate'}>
+              {r.prioridad ?? 'No asignada'}
+            </Badge>
+          </AdminTableCell>
+
+          <AdminTableCell>
+            <Badge color={estadoColor[r.estado] ?? 'slate'}>{r.estado}</Badge>
+          </AdminTableCell>
+          
+          <AdminTableActionsCell>
+            <TableRowActions
+              onEdit={() => abrirModalEditar(r)}
+              onDelete={() => handleEliminar(r)}
+            />
+          </AdminTableActionsCell>
+        </AdminTableRow>
+      ))}
+  </AdminTableBody>
+</AdminTable>
       </AdminListLayout>
 
       <ReclamoFormModal

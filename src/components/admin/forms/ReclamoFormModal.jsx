@@ -6,6 +6,7 @@ import {
 } from '../../../utils/contratoActivo'
 
 const estados = ['Pendiente', 'En Proceso', 'Resuelto']
+const prioridades = ['Baja', 'Media', 'Alta', 'Urgente']
 
 const formInicial = {
   inquilino_id: '',
@@ -13,6 +14,7 @@ const formInicial = {
   titulo: '',
   descripcion: '',
   estado: 'Pendiente',
+  prioridad: 'Media',
 }
 
 const inputClass =
@@ -28,6 +30,7 @@ function formDesdeReclamo(reclamo) {
     titulo: reclamo.titulo ?? '',
     descripcion: reclamo.descripcion ?? '',
     estado: reclamo.estado ?? 'Pendiente',
+    prioridad: reclamo.prioridad ?? 'Media',
   }
 }
 
@@ -106,7 +109,7 @@ export default function ReclamoFormModal({
         </h2>
         <p className="mt-1 text-sm text-slate-500">
           {esEdicion
-            ? 'El inquilino y la propiedad no se modifican. Podés cambiar título, descripción y estado.'
+            ? 'El inquilino y la propiedad no se modifican. Podés cambiar título, descripción, prioridad y estado.'
             : 'Se vincula al contrato activo del inquilino. El reclamo inicia en Pendiente.'}
         </p>
 
@@ -217,6 +220,26 @@ export default function ReclamoFormModal({
               placeholder="Desde hace dos días sale un hilo de agua..."
               disabled={formDeshabilitado}
             />
+          </div>
+
+          <div>
+            <label htmlFor="prioridad" className="mb-1 block text-sm font-medium text-slate-700">
+              Prioridad
+            </label>
+            <select
+              id="prioridad"
+              required
+              value={form.prioridad}
+              onChange={handleChange('prioridad')}
+              className={inputClass}
+              disabled={formDeshabilitado}
+            >
+              {prioridades.map((prioridad) => (
+                <option key={prioridad} value={prioridad}>
+                  {prioridad}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

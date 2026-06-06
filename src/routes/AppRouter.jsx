@@ -14,6 +14,7 @@ const AdminPropiedades = lazy(() => import('../pages/admin/AdminPropiedades'))
 const AdminInquilinos = lazy(() => import('../pages/admin/AdminInquilinos'))
 const AdminContratos = lazy(() => import('../pages/admin/AdminContratos'))
 const AdminReclamos = lazy(() => import('../pages/admin/AdminReclamos'))
+const AdminAumentos = lazy(() => import('../pages/admin/AdminAumentos'))
 const InquilinoDashboard = lazy(() => import('../pages/inquilino/InquilinoDashboard'))
 const InquilinoReclamos = lazy(() => import('../pages/inquilino/InquilinoReclamos'))
 const InquilinoDocumentos = lazy(() => import('../pages/inquilino/InquilinoDocumentos'))
@@ -62,6 +63,7 @@ export default function AppRouter() {
                 <Route path="propiedades" element={<AdminPropiedades />} />
                 <Route path="inquilinos" element={<AdminInquilinos />} />
                 <Route path="contratos" element={<AdminContratos />} />
+                <Route path="aumentos" element={<AdminAumentos />} />
                 <Route path="reclamos" element={<AdminReclamos />} />
               </Route>
             </Route>

@@ -3,6 +3,7 @@ import {
   IconBuilding,
   IconClipboard,
   IconHome,
+  IconTrendingUp,
   IconUserGroup,
   IconUsers,
   IconWrench,
@@ -14,6 +15,7 @@ const navItems = [
   { to: '/admin/propiedades', label: 'Propiedades', icon: IconBuilding },
   { to: '/admin/inquilinos', label: 'Inquilinos', icon: IconUsers },
   { to: '/admin/contratos', label: 'Contratos', icon: IconClipboard },
+  { to: '/admin/aumentos', label: 'Aumentos', icon: IconTrendingUp },
   { to: '/admin/reclamos', label: 'Reclamos', icon: IconWrench },
 ]
 

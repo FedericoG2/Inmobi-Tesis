@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card } from '@tremor/react'
+import AdminAlertModal from '../../components/admin/AdminAlertModal'
 import AdminListLayout from '../../components/admin/AdminListLayout'
 import {
   AdminTable,
@@ -16,9 +17,12 @@ import PropietarioFormModal from '../../components/admin/forms/PropietarioFormMo
 import TableRowActions from '../../components/admin/TableRowActions'
 import { usePropietarios } from '../../hooks/usePropietarios'
 
+const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
+
 export default function AdminPropietarios() {
   const [modalOpen, setModalOpen] = useState(false)
   const [propietarioEditando, setPropietarioEditando] = useState(null)
+  const [alerta, setAlerta] = useState(alertaInicial)
   const {
     propietarios,
     loading,
@@ -26,12 +30,24 @@ export default function AdminPropietarios() {
     crear,
     actualizar,
     eliminar,
+    contarPropiedadesPorPropietario,
     submitting,
     submitError,
     limpiarSubmitError,
     actionError,
     limpiarActionError,
+    mensajePropiedadesAsociadas,
   } = usePropietarios()
+
+  useEffect(() => {
+    if (!actionError) return
+    setAlerta({
+      open: true,
+      titulo: 'No se puede eliminar',
+      mensaje: actionError,
+    })
+    limpiarActionError()
+  }, [actionError, limpiarActionError])
 
   const cerrarModal = () => {
     if (!submitting) {
@@ -61,13 +77,38 @@ export default function AdminPropietarios() {
     return crear(form)
   }
 
+  const cerrarAlerta = () => {
+    setAlerta(alertaInicial)
+  }
+
   const handleEliminar = async (propietario) => {
+    limpiarActionError()
+
+    const dependencias = await contarPropiedadesPorPropietario(propietario.id)
+
+    if (dependencias.error) {
+      setAlerta({
+        open: true,
+        titulo: 'Error',
+        mensaje: dependencias.error.message,
+      })
+      return
+    }
+
+    if (dependencias.propiedades > 0) {
+      setAlerta({
+        open: true,
+        titulo: 'No se puede eliminar',
+        mensaje: mensajePropiedadesAsociadas,
+      })
+      return
+    }
+
     const confirmar = window.confirm(
-      `¿Eliminar el propietario "${propietario.nombre_completo}"? Sus propiedades seguirán cargadas y quedarán sin propietario asignado.`
+      `¿Eliminar el propietario "${propietario.nombre_completo}"?`
     )
     if (!confirmar) return
 
-    limpiarActionError()
     await eliminar(propietario.id)
   }
 
@@ -78,18 +119,11 @@ export default function AdminPropietarios() {
         actionLabel="Nuevo propietario"
         onAction={abrirModalCrear}
         alerts={
-          <>
-            {error && (
-              <Card className="border border-red-200 bg-red-50">
-                <p className="text-sm text-red-700">Error al cargar propietarios: {error}</p>
-              </Card>
-            )}
-            {actionError && (
-              <Card className="border border-red-200 bg-red-50">
-                <p className="text-sm text-red-700">{actionError}</p>
-              </Card>
-            )}
-          </>
+          error ? (
+            <Card className="border border-red-200 bg-red-50">
+              <p className="text-sm text-red-700">Error al cargar propietarios: {error}</p>
+            </Card>
+          ) : null
         }
       >
         <AdminTable>
@@ -143,6 +177,13 @@ export default function AdminPropietarios() {
         submitting={submitting}
         submitError={submitError}
         propietario={propietarioEditando}
+      />
+
+      <AdminAlertModal
+        open={alerta.open}
+        title={alerta.titulo}
+        message={alerta.mensaje}
+        onClose={cerrarAlerta}
       />
     </>
   )

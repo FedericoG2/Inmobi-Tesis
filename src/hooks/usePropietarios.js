@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   actualizarPropietario,
+  contarPropiedadesPorPropietario,
   crearPropietario,
   eliminarPropietario,
   listarPropietarios,
 } from '../services/propietariosService'
+import { esErrorPropiedadesAsociadas } from '../utils/esErrorPropiedadesAsociadas'
+
+const MENSAJE_PROPIEDADES_ASOCIADAS =
+  'No se puede eliminar el propietario porque tiene propiedades asociadas'
 
 export function usePropietarios() {
   const [propietarios, setPropietarios] = useState([])
@@ -82,7 +87,11 @@ export function usePropietarios() {
       const { error: deleteError } = await eliminarPropietario(id)
 
       if (deleteError) {
-        setActionError(deleteError.message)
+        setActionError(
+          esErrorPropiedadesAsociadas(deleteError)
+            ? MENSAJE_PROPIEDADES_ASOCIADAS
+            : deleteError.message
+        )
         return false
       }
 
@@ -112,10 +121,12 @@ export function usePropietarios() {
     crear,
     actualizar,
     eliminar,
+    contarPropiedadesPorPropietario,
     submitting,
     submitError,
     limpiarSubmitError,
     actionError,
     limpiarActionError,
+    mensajePropiedadesAsociadas: MENSAJE_PROPIEDADES_ASOCIADAS,
   }
 }

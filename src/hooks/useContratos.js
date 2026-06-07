@@ -1,5 +1,20 @@
 import { useCallback, useEffect, useState } from 'react'
-import { crearContrato, finalizarContrato, listarContratos } from '../services/contratosService'
+import {
+  anularContrato,
+  contarMovimientosContrato,
+  crearContrato,
+  finalizarContrato,
+  listarContratos,
+} from '../services/contratosService'
+import {
+  esErrorContratoActivoAnular,
+  esErrorMovimientosContrato,
+} from '../utils/esErrorMovimientosContrato'
+
+const MENSAJE_SOLO_INACTIVO =
+  'Solo se pueden anular contratos inactivos. Finalizá el contrato antes de anularlo.'
+const MENSAJE_MOVIMIENTOS =
+  'No se puede anular el contrato porque tiene aumentos confirmados o reclamos registrados para ese inquilino y propiedad.'
 
 export function useContratos() {
   const [contratos, setContratos] = useState([])
@@ -8,6 +23,7 @@ export function useContratos() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
   const [finalizando, setFinalizando] = useState(false)
+  const [anulando, setAnulando] = useState(false)
   const [actionError, setActionError] = useState(null)
 
   const refetch = useCallback(async () => {
@@ -82,6 +98,58 @@ export function useContratos() {
     [refetch]
   )
 
+  const anular = useCallback(
+    async (contrato) => {
+      setAnulando(true)
+      setActionError(null)
+
+      if (contrato.activo) {
+        setActionError(MENSAJE_SOLO_INACTIVO)
+        setAnulando(false)
+        return false
+      }
+
+      const movimientos = await contarMovimientosContrato(
+        contrato.id,
+        contrato.inquilino_id,
+        contrato.propiedad_id
+      )
+
+      if (movimientos.error) {
+        setActionError(movimientos.error.message)
+        setAnulando(false)
+        return false
+      }
+
+      const total = (movimientos.aumentos ?? 0) + (movimientos.reclamos ?? 0)
+
+      if (total > 0) {
+        setActionError(MENSAJE_MOVIMIENTOS)
+        setAnulando(false)
+        return false
+      }
+
+      const { error: deleteError } = await anularContrato(contrato.id)
+
+      if (deleteError) {
+        setActionError(
+          esErrorContratoActivoAnular(deleteError)
+            ? MENSAJE_SOLO_INACTIVO
+            : esErrorMovimientosContrato(deleteError)
+              ? MENSAJE_MOVIMIENTOS
+              : deleteError.message
+        )
+        setAnulando(false)
+        return false
+      }
+
+      await refetch()
+      setAnulando(false)
+      return true
+    },
+    [refetch]
+  )
+
   const limpiarSubmitError = useCallback(() => {
     setSubmitError(null)
   }, [])
@@ -101,11 +169,16 @@ export function useContratos() {
     refetch,
     crear,
     finalizar,
+    anular,
+    contarMovimientosContrato,
     submitting,
     submitError,
     limpiarSubmitError,
     finalizando,
+    anulando,
     actionError,
     limpiarActionError,
+    mensajeMovimientos: MENSAJE_MOVIMIENTOS,
+    mensajeSoloInactivo: MENSAJE_SOLO_INACTIVO,
   }
 }

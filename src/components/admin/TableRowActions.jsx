@@ -58,6 +58,8 @@ export default function TableRowActions({
   onDelete,
   deleteLabel = 'Eliminar',
   deleteVariant = 'danger',
+  onSecondaryDelete,
+  secondaryDeleteLabel = 'Anular',
 }) {
   const DeleteIcon = deleteVariant === 'finalize' ? IconCheckCircle : IconTrash
 
@@ -79,6 +81,15 @@ export default function TableRowActions({
           onClick={onDelete}
         >
           <DeleteIcon />
+        </ActionButton>
+      )}
+      {onSecondaryDelete && (
+        <ActionButton
+          label={secondaryDeleteLabel}
+          className={deleteStyles.danger}
+          onClick={onSecondaryDelete}
+        >
+          <IconTrash />
         </ActionButton>
       )}
     </div>

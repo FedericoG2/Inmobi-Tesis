@@ -52,6 +52,21 @@ export async function actualizarPropietario(id, datos) {
   return { data, error }
 }
 
+export async function contarPropiedadesPorPropietario(propietarioId) {
+  if (!supabase) {
+    return { error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
+  }
+
+  const { count, error } = await supabase
+    .from('propiedades')
+    .select('id', { count: 'exact', head: true })
+    .eq('propietario_id', propietarioId)
+
+  if (error) return { error }
+
+  return { propiedades: count ?? 0 }
+}
+
 export async function eliminarPropietario(id) {
   if (!supabase) {
     return { error: { message: 'Supabase no configurado. Revisá el archivo .env' } }

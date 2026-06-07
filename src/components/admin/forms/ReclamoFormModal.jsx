@@ -8,14 +8,15 @@ import {
 const estados = ['Pendiente', 'En Proceso', 'Resuelto']
 const prioridades = ['Baja', 'Media', 'Alta', 'Urgente']
 
-const categorias = [
-  'Plomeria',
-  'Electricidad',
-  'Albañilería',
-  'Cerrajeria',
-  'Pintura',
-  'Estructural',
-  'Gas'
+// Mapeo estético para mantener tus strings exactos de categoría pero con íconos visuales
+const CATEGORIAS_OPTIONS = [
+  { id: 'Plomeria', label: 'Plomería', icon: '🚰' },
+  { id: 'Electricidad', label: 'Electricidad', icon: '⚡' },
+  { id: 'Albañilería', label: 'Albañilería', icon: '🧱' },
+  { id: 'Cerrajeria', label: 'Cerrajería', icon: '🔑' },
+  { id: 'Pintura', label: 'Pintura', icon: '🖌️' },
+  { id: 'Estructural', label: 'Estructural', icon: '🏠' },
+  { id: 'Gas', label: 'Gas', icon: '🔥' },
 ]
 
 const formInicial = {
@@ -29,10 +30,10 @@ const formInicial = {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200'
+  'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
 
 const readOnlyClass =
-  'w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700'
+  'w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500 outline-none cursor-not-allowed'
 
 function formDesdeReclamo(reclamo) {
   return {
@@ -80,6 +81,11 @@ export default function ReclamoFormModal({
     setForm((prev) => ({ ...prev, [field]: e.target.value }))
   }
 
+  // Modificado sutilmente para aceptar cambios directos de estado de botones customizados
+  const handleDirectChange = (field, value) => {
+    setForm((prev) => ({ ...prev, [field]: value }))
+  }
+
   const handleInquilinoChange = (e) => {
     const inquilinoId = e.target.value
     const contrato = buscarContratoActivoPorInquilino(contratos, inquilinoId)
@@ -107,221 +113,265 @@ export default function ReclamoFormModal({
   const formDeshabilitado = esEdicion ? false : formDeshabilitadoCrear
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+      {/* Backdrop de cierre */}
       <button
         type="button"
         aria-label="Cerrar modal"
-        className="absolute inset-0 bg-slate-900/50"
+        className="absolute inset-0 bg-transparent cursor-default"
         onClick={onClose}
       />
 
-      <div className="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="text-lg font-semibold text-slate-900">
-          {esEdicion ? 'Editar reclamo' : 'Agregar reclamo'}
-        </h2>
-        <p className="mt-1 text-sm text-slate-500">
-          {esEdicion
-            ? 'El inquilino y la propiedad no se modifican. Podés cambiar título, descripción, prioridad, categoría y estado.'
-            : 'Se vincula al contrato activo del inquilino. El reclamo inicia en Pendiente.'}
-        </p>
+      {/* Contenedor principal del modal */}
+      <div className="relative z-10 w-full max-w-2xl rounded-2xl bg-white shadow-xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden">
+        
+        {/* Cabecera */}
+        <div className="border-b border-slate-100 px-6 py-4">
+          <h2 className="text-lg font-bold text-slate-900">
+            {esEdicion ? 'Editar reclamo' : 'Agregar reclamo'}
+          </h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {esEdicion
+              ? 'El inquilino y la propiedad no se modifican. Podés cambiar título, descripción, prioridad, categoría y estado.'
+              : 'Se vincula al contrato activo del inquilino. El reclamo inicia en Pendiente.'}
+          </p>
+        </div>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          {/* INQUILINO */}
-          <div>
-            <label htmlFor="inquilino_id" className="mb-1 block text-sm font-medium text-slate-700">
-              Inquilino
-            </label>
-            {esEdicion ? (
+        {/* Formulario con Scroll Interno */}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          
+          <div className="p-6 flex-1 overflow-y-auto space-y-5 custom-scrollbar">
+            
+            {/* SECCIÓN: INQUILINO Y PROPIEDAD VINCULADA */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
+              {/* INQUILINO */}
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="inquilino_id" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  Inquilino
+                </label>
+                {esEdicion ? (
+                  <input
+                    id="inquilino_id"
+                    type="text"
+                    readOnly
+                    value={reclamo.inquilinos?.nombre_completo ?? '—'}
+                    className={readOnlyClass}
+                  />
+                ) : inquilinosLoading || contratosLoading ? (
+                  <p className="text-sm text-slate-400 py-2">Cargando inquilinos...</p>
+                ) : sinInquilinosElegibles ? (
+                  <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 border border-amber-200">
+                    No hay inquilinos con contrato activo.
+                  </p>
+                ) : (
+                  <select
+                    id="inquilino_id"
+                    required
+                    value={form.inquilino_id}
+                    onChange={handleInquilinoChange}
+                    className={inputClass}
+                  >
+                    <option value="">Seleccioná un inquilino</option>
+                    {inquilinosElegibles.map((i) => (
+                      <option key={i.id} value={i.id}>
+                        {i.nombre_completo}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* PROPIEDAD VINCULADA */}
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="propiedad_vinculada" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  Propiedad vinculada
+                </label>
+                {esEdicion ? (
+                  <input
+                    id="propiedad_vinculada"
+                    type="text"
+                    readOnly
+                    value={reclamo.propiedades?.direccion ?? '—'}
+                    className={readOnlyClass}
+                  />
+                ) : contratosLoading ? (
+                  <p className="text-sm text-slate-400 py-2">Buscando contrato activo...</p>
+                ) : !form.inquilino_id ? (
+                  <input
+                    id="propiedad_vinculada"
+                    type="text"
+                    readOnly
+                    value=""
+                    placeholder="Seleccioná un inquilino primero"
+                    className={readOnlyClass}
+                  />
+                ) : sinContratoActivo ? (
+                  <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 border border-amber-200">
+                    Este inquilino no tiene un contrato activo.
+                  </p>
+                ) : (
+                  <input
+                    id="propiedad_vinculada"
+                    type="text"
+                    readOnly
+                    value={contratoVinculado?.propiedades?.direccion ?? '—'}
+                    className={readOnlyClass}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* TÍTULO */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="titulo" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Título del Reclamo
+              </label>
               <input
-                id="inquilino_id"
+                id="titulo"
                 type="text"
-                readOnly
-                value={reclamo.inquilinos?.nombre_completo ?? '—'}
-                className={readOnlyClass}
-              />
-            ) : inquilinosLoading || contratosLoading ? (
-              <p className="text-sm text-slate-500">Cargando inquilinos...</p>
-            ) : sinInquilinosElegibles ? (
-              <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                No hay inquilinos con contrato activo. Creá un contrato vigente antes de registrar
-                un reclamo.
-              </p>
-            ) : (
-              <select
-                id="inquilino_id"
                 required
-                value={form.inquilino_id}
-                onChange={handleInquilinoChange}
+                value={form.titulo}
+                onChange={handleChange('titulo')}
                 className={inputClass}
-              >
-                <option value="">Seleccioná un inquilino</option>
-                {inquilinosElegibles.map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.nombre_completo}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          {/* PROPIEDAD VINCULADA */}
-          <div>
-            <label htmlFor="propiedad_vinculada" className="mb-1 block text-sm font-medium text-slate-700">
-              Propiedad vinculada
-            </label>
-            {esEdicion ? (
-              <input
-                id="propiedad_vinculada"
-                type="text"
-                readOnly
-                value={reclamo.propiedades?.direccion ?? '—'}
-                className={readOnlyClass}
+                placeholder="Ej: Pérdida de presión de agua"
+                disabled={formDeshabilitado}
               />
-            ) : contratosLoading ? (
-              <p className="text-sm text-slate-500">Buscando contrato activo...</p>
-            ) : !form.inquilino_id ? (
-              <input
-                id="propiedad_vinculada"
-                type="text"
-                readOnly
-                value=""
-                placeholder="Seleccioná un inquilino primero"
-                className={readOnlyClass}
-              />
-            ) : sinContratoActivo ? (
-              <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                Este inquilino no tiene un contrato activo. Creá un contrato vigente o reactivá la
-                gestión antes de registrar el reclamo.
-              </p>
-            ) : (
-              <input
-                id="propiedad_vinculada"
-                type="text"
-                readOnly
-                value={contratoVinculado.propiedades?.direccion ?? '—'}
-                className={readOnlyClass}
-              />
-            )}
-          </div>
+            </div>
 
-          {/* TÍTULO */}
-          <div>
-            <label htmlFor="titulo" className="mb-1 block text-sm font-medium text-slate-700">
-              Título
-            </label>
-            <input
-              id="titulo"
-              type="text"
-              required
-              value={form.titulo}
-              onChange={handleChange('titulo')}
-              className={inputClass}
-              placeholder="Falta de presión de agua"
-              disabled={formDeshabilitado}
-            />
-          </div>
-
-          {/* DESCRIPCIÓN */}
-          <div>
-            <label htmlFor="descripcion" className="mb-1 block text-sm font-medium text-slate-700">
-              Descripción
-            </label>
-            <textarea
-              id="descripcion"
-              required
-              rows={3}
-              value={form.descripcion}
-              onChange={handleChange('descripcion')}
-              className={inputClass}
-              placeholder="Desde hace dos días sale un hilo de agua..."
-              disabled={formDeshabilitado}
-            />
-          </div>
-
-          {/* CATEGORÍA */}
-          <div>
-            <label htmlFor="categoria" className="mb-1 block text-sm font-medium text-slate-700">
-              Categoría
-            </label>
-            <select
-              id="categoria"
-              required
-              value={form.categoria}
-              onChange={handleChange('categoria')}
-              className={inputClass}
-              disabled={formDeshabilitado}
-            >
-              {categorias.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* PRIORIDAD */}
-          <div>
-            <label htmlFor="prioridad" className="mb-1 block text-sm font-medium text-slate-700">
-              Prioridad
-            </label>
-            <select
-              id="prioridad"
-              required
-              value={form.prioridad}
-              onChange={handleChange('prioridad')}
-              className={inputClass}
-              disabled={formDeshabilitado}
-            >
-              {prioridades.map((prioridad) => (
-                <option key={prioridad} value={prioridad}>
-                  {prioridad}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* ESTADO */}
-          <div>
-            <label htmlFor="estado" className="mb-1 block text-sm font-medium text-slate-700">
-              Estado
-            </label>
-            {esEdicion ? (
-              <select
-                id="estado"
+            {/* DESCRIPCIÓN */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="descripcion" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Descripción detallada
+              </label>
+              <textarea
+                id="descripcion"
                 required
-                value={form.estado}
-                onChange={handleChange('estado')}
-                className={inputClass}
-              >
-                {estados.map((estado) => (
-                  <option key={estado} value={estado}>
-                    {estado}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                id="estado"
-                type="text"
-                readOnly
-                value="Pendiente"
-                className={readOnlyClass}
+                rows={3}
+                value={form.descripcion}
+                onChange={handleChange('descripcion')}
+                className={`${inputClass} resize-none`}
+                placeholder="Describí el problema con precisión..."
+                disabled={formDeshabilitado}
               />
+            </div>
+
+            {/* REDISEÑO: GRID DE CATEGORÍAS */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Categoría del Incidente
+              </label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {CATEGORIAS_OPTIONS.map((cat) => {
+                  const esSeleccionado = form.categoria === cat.id
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      disabled={formDeshabilitado}
+                      onClick={() => handleDirectChange('categoria', cat.id)}
+                      className={`flex items-center gap-2 rounded-xl border p-2.5 text-left text-sm transition-all duration-150 ${
+                        esSeleccionado
+                          ? 'border-indigo-600 bg-indigo-50 text-indigo-700 font-semibold ring-2 ring-indigo-100'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50'
+                      }`}
+                    >
+                      <span className="text-base">{cat.icon}</span>
+                      <span className="truncate">{cat.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* REDISEÑO: SWITCH SEGMENTADO DE PRIORIDAD */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Prioridad asignada
+              </label>
+              <div className="flex rounded-xl bg-slate-100 p-1 border border-slate-200">
+                {prioridades.map((prio) => {
+                  const esSeleccionado = form.prioridad === prio
+                  let estiloActivo = 'bg-white text-slate-900 shadow-sm font-semibold'
+                  
+                  if (esSeleccionado && prio === 'Urgente') estiloActivo = 'bg-red-500 text-white shadow-sm font-semibold'
+                  if (esSeleccionado && prio === 'Alta') estiloActivo = 'bg-amber-500 text-white shadow-sm font-semibold'
+
+                  return (
+                    <button
+                      key={prio}
+                      type="button"
+                      disabled={formDeshabilitado}
+                      onClick={() => handleDirectChange('prioridad', prio)}
+                      className={`flex-1 rounded-lg py-1.5 text-center text-xs transition-all duration-150 ${
+                        esSeleccionado ? estiloActivo : 'text-slate-600 hover:text-slate-900 disabled:opacity-50'
+                      }`}
+                    >
+                      {prio}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* ESTADO (Solo editable si es edición de reclamo) */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="estado" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Estado del Reclamo
+              </label>
+              {esEdicion ? (
+                <select
+                  id="estado"
+                  required
+                  value={form.estado}
+                  onChange={handleChange('estado')}
+                  className={inputClass}
+                >
+                  {estados.map((estado) => (
+                    <option key={estado} value={estado}>
+                      {estado}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  id="estado"
+                  type="text"
+                  readOnly
+                  value="Pendiente"
+                  className={readOnlyClass}
+                />
+              )}
+            </div>
+
+            {/* ERRORES DE SUBMIT */}
+            {submitError && (
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 border border-red-100">
+                {submitError}
+              </p>
             )}
           </div>
 
-          {submitError && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{submitError}</p>
-          )}
-
-          <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={onClose} disabled={submitting}>
+          {/* BOTONERA INFERIOR (Tremor UI Buttons) */}
+          <div className="border-t border-slate-100 px-6 py-4 bg-slate-50 flex items-center justify-end gap-3">
+            <Button 
+              type="button" 
+              variant="secondary" 
+              onClick={onClose} 
+              disabled={submitting}
+              className="rounded-xl"
+            >
               Cancelar
             </Button>
-            <Button type="submit" loading={submitting} disabled={submitting || formDeshabilitado}>
+            <Button 
+              type="submit" 
+              loading={submitting} 
+              disabled={submitting || formDeshabilitado}
+              className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-sm shadow-indigo-100"
+            >
               {esEdicion ? 'Guardar cambios' : 'Guardar'}
             </Button>
           </div>
+
         </form>
       </div>
     </div>

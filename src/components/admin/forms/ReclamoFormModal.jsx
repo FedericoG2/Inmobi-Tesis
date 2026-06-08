@@ -255,7 +255,7 @@ export default function ReclamoFormModal({
               />
             </div>
 
-            {/* REDISEÑO: GRID DE CATEGORÍAS */}
+           
             <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
                 Categoría del Incidente
@@ -283,7 +283,7 @@ export default function ReclamoFormModal({
               </div>
             </div>
 
-            {/* REDISEÑO: SWITCH SEGMENTADO DE PRIORIDAD */}
+            
             <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
                 Prioridad asignada

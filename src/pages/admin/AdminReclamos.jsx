@@ -20,13 +20,24 @@ import { useContratos } from '../../hooks/useContratos'
 import { useReclamos } from '../../hooks/useReclamos'
 
 const estadoColor = {
-  Pendiente: 'amber',
-  'En Proceso': 'blue',
-  Resuelto: 'emerald',
+  Pendiente: '',
+  'En Proceso': '',
+  Resuelto: '',
 }
 
 const estados = ['Pendiente', 'En Proceso', 'Revision', 'Resuelto']
 const prioridades = ['Baja', 'Media', 'Alta', 'Urgente']
+
+// Opciones consistentes con el formulario
+const CATEGORIAS = [
+  { id: 'Plomeria', label: 'Plomería' },
+  { id: 'Electricidad', label: 'Electricidad' },
+  { id: 'Albañilería', label: 'Albañilería' },
+  { id: 'Cerrajeria', label: 'Cerrajería' },
+  { id: 'Pintura', label: 'Pintura' },  
+  { id: 'Estructural', label: 'Estructural' },
+  { id: 'Gas', label: 'Gas' },
+]
 
 export default function AdminReclamos() {
   const [modalOpen, setModalOpen] = useState(false)
@@ -39,6 +50,7 @@ export default function AdminReclamos() {
   const [filtroEstado, setFiltroEstado] = useState('')
   const [filtroPrioridad, setFiltroPrioridad] = useState('')
   const [filtroFecha, setFiltroFecha] = useState('') 
+  const [filtroCategoria, setFiltroCategoria] = useState('') 
 
   const {
     reclamos,
@@ -57,7 +69,6 @@ export default function AdminReclamos() {
   const { inquilinos, loading: inquilinosLoading } = useInquilinos()
   const { contratos, loading: contratosLoading } = useContratos()
 
-  // CORRECCIÓN: El cálculo va adentro de la función para tener acceso a la variable 'reclamos'
   const cantidadUrgentes = (reclamos || []).filter(
     r => r.prioridad === 'Urgente' && r.estado !== 'Resuelto'
   ).length
@@ -115,10 +126,10 @@ export default function AdminReclamos() {
   }
 
   const prioridadColor = {
-    Urgente: 'red',
-    Alta: 'rose',
-    Media: 'orange',
-    Baja: 'sky',
+    Urgente: '',
+    Alta: '',
+    Media: '',
+    Baja: '',
   }
 
   const esResuelto = reclamoAEliminar?.estado === 'Resuelto'
@@ -126,7 +137,8 @@ export default function AdminReclamos() {
     ? `Este reclamo ya está marcado como Resuelto. Si lo eliminás, se pierde el registro de esa gestión. ¿Eliminar "${reclamoAEliminar?.titulo}" igualmente?`
     : `¿Eliminar el reclamo "${reclamoAEliminar?.titulo}"? Esta acción no se puede deshacer.`
 
-  const reclamosFiltrados = (reclamos || []).filter((r) => {
+  // 1. Primero filtramos el array original
+  const reclamosProcesados = (reclamos || []).filter((r) => {
     const busqueda = filtroTexto.toLowerCase()
     const cumpleTexto =
       !busqueda ||
@@ -137,23 +149,17 @@ export default function AdminReclamos() {
 
     const cumpleEstado = !filtroEstado || r.estado === filtroEstado
     const cumplePrioridad = !filtroPrioridad || r.prioridad === filtroPrioridad
+    const cumpleCategoria = !filtroCategoria || r.categoria === filtroCategoria
 
-    let cumpleFecha = true
-    if (filtroFecha && r.fecha_creacion) {
-      const fechaReclamo = new Date(r.fecha_creacion)
-      const hoy = new Date()
 
-      if (filtroFecha === 'hoy') {
-        const haceUnaSemana = new Date()
-        haceUnaSemana.setDate(hoy.getDate() - 7)
-        cumpleFecha = fechaReclamo >= haceUnaSemana
-      } else if (filtroFecha === 'mes') {
-        const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
-        cumpleFecha = fechaReclamo >= inicioMes
-      }
-    }
+    return cumpleTexto && cumpleEstado && cumplePrioridad && cumpleCategoria
+  })
 
-    return cumpleTexto && cumpleEstado && cumplePrioridad && cumpleFecha
+  // 2. Ordenamos cronológicamente: los más antiguos (primeros creados) van arriba
+  const reclamosFiltrados = reclamosProcesados.sort((a, b) => {
+    const fechaA = a.fecha_creacion ? new Date(a.fecha_creacion).getTime() : 0
+    const fechaB = b.fecha_creacion ? new Date(b.fecha_creacion).getTime() : 0
+    return fechaA - fechaB
   })
 
   return (
@@ -237,18 +243,21 @@ export default function AdminReclamos() {
             </select>
           </div>
 
-          {/* Filtro por Fecha */}
+          {/* Filtro por Categoría */}
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="search-fecha" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Fecha de creación</label>
+            <label htmlFor="search-categoria" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">CATEGORIAS</label>
             <select
-              id="search-fecha"
-              value={filtroFecha}
-              onChange={(e) => setFiltroFecha(e.target.value)}
+              id="search-categoria"
+              value={filtroCategoria}
+              onChange={(e) => setFiltroCategoria(e.target.value)}
               className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-all cursor-pointer focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
             >
-              <option value="">Cualquier fecha</option>
-              <option value="hoy">Creados esta semana</option>
-              <option value="mes">Creados este mes</option>
+              <option value="">Todas las categorías</option>
+              {CATEGORIAS.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>

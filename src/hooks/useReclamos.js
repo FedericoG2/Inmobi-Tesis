@@ -40,7 +40,9 @@ export function useReclamos() {
         propiedad_id: Number(datos.propiedad_id),
         titulo: datos.titulo,
         descripcion: datos.descripcion,
+        categoria: datos.categoria,
         estado: 'Pendiente',
+        prioridad: datos.prioridad,
       })
 
       if (createError) {
@@ -65,6 +67,8 @@ export function useReclamos() {
         titulo: datos.titulo,
         descripcion: datos.descripcion,
         estado: datos.estado,
+        prioridad: datos.prioridad,
+        categoria: datos.categoria,
       })
 
       if (updateError) {

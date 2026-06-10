@@ -3,14 +3,18 @@ import { esErrorContratosActivos } from '../utils/esErrorContratosActivos'
 
 export { esErrorContratosActivos as esErrorContratosAsociados }
 
+// String reutilizable con todas las columnas para mantener el código limpio y mantenible
+const COLUMNAS_INQUILINO = 'id, perfil_id, tipo_persona, nombre_completo, dni_cuit, telefono, email, fecha_nacimiento, estado_civil, ocupacion, tipo_garantia, emergencia_nombre, emergencia_telefono, observaciones'
+
 export async function listarInquilinos() {
   if (!supabase) {
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
 
+  // Agregamos todas las nuevas columnas al select para que se vean en la grilla
   const { data, error } = await supabase
     .from('inquilinos')
-    .select('id, perfil_id, nombre_completo, dni_cuit, telefono')
+    .select(COLUMNAS_INQUILINO)
     .order('nombre_completo')
 
   return { data, error }
@@ -21,14 +25,11 @@ export async function crearInquilino(inquilino) {
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
 
+  // Pasamos el objeto 'inquilino' completo tal cual viene del hook (ya procesado con sus nulls correspondientes)
   const { data, error } = await supabase
     .from('inquilinos')
-    .insert({
-      nombre_completo: inquilino.nombre_completo,
-      dni_cuit: inquilino.dni_cuit,
-      telefono: inquilino.telefono,
-    })
-    .select('id, perfil_id, nombre_completo, dni_cuit, telefono')
+    .insert(inquilino)
+    .select(COLUMNAS_INQUILINO)
     .single()
 
   return { data, error }
@@ -39,15 +40,12 @@ export async function actualizarInquilino(id, datos) {
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
 
+  // Pasamos el objeto 'datos' completo para actualizar todas las columnas modificadas en el modal
   const { data, error } = await supabase
     .from('inquilinos')
-    .update({
-      nombre_completo: datos.nombre_completo,
-      dni_cuit: datos.dni_cuit,
-      telefono: datos.telefono,
-    })
+    .update(datos)
     .eq('id', id)
-    .select('id, perfil_id, nombre_completo, dni_cuit, telefono')
+    .select(COLUMNAS_INQUILINO)
     .single()
 
   return { data, error }

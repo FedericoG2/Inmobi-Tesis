@@ -45,12 +45,12 @@ export default function AdminReclamos() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [reclamoAEliminar, setReclamoAEliminar] = useState(null)
   const [eliminando, setEliminando] = useState(false)
-  
+ 
   const [filtroTexto, setFiltroTexto] = useState('')
   const [filtroEstado, setFiltroEstado] = useState('')
   const [filtroPrioridad, setFiltroPrioridad] = useState('')
-  const [filtroFecha, setFiltroFecha] = useState('') 
-  const [filtroCategoria, setFiltroCategoria] = useState('') 
+  const [filtroFecha, setFiltroFecha] = useState('')
+  const [filtroCategoria, setFiltroCategoria] = useState('')
 
   const {
     reclamos,
@@ -65,7 +65,7 @@ export default function AdminReclamos() {
     actionError,
     limpiarActionError,
   } = useReclamos()
-  
+ 
   const { inquilinos, loading: inquilinosLoading } = useInquilinos()
   const { contratos, loading: contratosLoading } = useContratos()
 
@@ -115,11 +115,9 @@ export default function AdminReclamos() {
 
   const confirmarEliminar = async () => {
     if (!reclamoAEliminar) return
-
     setEliminando(true)
     const ok = await eliminar(reclamoAEliminar.id)
     setEliminando(false)
-
     if (ok) {
       cancelarEliminar()
     }
@@ -145,12 +143,11 @@ export default function AdminReclamos() {
       (r.inquilinos?.nombre_completo ?? '').toLowerCase().includes(busqueda) ||
       (r.propiedades?.direccion ?? '').toLowerCase().includes(busqueda) ||
       (r.titulo ?? '').toLowerCase().includes(busqueda) ||
-      (r.categoria ?? '').toLowerCase().includes(busqueda) 
+      (r.categoria ?? '').toLowerCase().includes(busqueda)
 
     const cumpleEstado = !filtroEstado || r.estado === filtroEstado
     const cumplePrioridad = !filtroPrioridad || r.prioridad === filtroPrioridad
     const cumpleCategoria = !filtroCategoria || r.categoria === filtroCategoria
-
 
     return cumpleTexto && cumpleEstado && cumplePrioridad && cumpleCategoria
   })
@@ -311,7 +308,6 @@ export default function AdminReclamos() {
                       <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{r.descripcion}</p>
                     )}
                   </AdminTableCell>
-
                   <AdminTableCell>
                     {r.fecha_creacion
                       ? new Date(r.fecha_creacion).toLocaleDateString('es-AR', {
@@ -321,17 +317,14 @@ export default function AdminReclamos() {
                         })
                       : '—'}
                   </AdminTableCell>
-
                   <AdminTableCell>
                     <Badge color={prioridadColor[r.prioridad] ?? 'slate'}>
                       {r.prioridad ?? 'No asignada'}
                     </Badge>
                   </AdminTableCell>
-
                   <AdminTableCell>
                     <Badge color={estadoColor[r.estado] ?? 'slate'}>{r.estado}</Badge>
                   </AdminTableCell>
-
                   <AdminTableActionsCell>
                     <TableRowActions
                       onEdit={() => abrirModalEditar(r)}

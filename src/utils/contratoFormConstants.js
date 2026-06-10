@@ -16,6 +16,5 @@ export const formContratoInicial = {
   dia_vencimiento: '',
   periodicidad_key: 'anual',
   tipo_ajuste: 'ipc',
-  porcentaje_ajuste: '',
   observaciones: '',
 }

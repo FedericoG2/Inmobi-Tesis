@@ -47,9 +47,6 @@ export function useContratos() {
       setSubmitting(true)
       setSubmitError(null)
 
-      const porcentaje =
-        datos.tipo_ajuste === 'porcentaje_fijo' ? Number(datos.porcentaje_ajuste) : null
-
       const { error: createError } = await crearContrato({
         inquilino_id: Number(datos.inquilino_id),
         propiedad_id: Number(datos.propiedad_id),
@@ -59,7 +56,6 @@ export function useContratos() {
         monto_inicial: Number(datos.monto_inicial ?? datos.monto_alquiler),
         periodicidad_meses: datos.periodicidad_meses,
         tipo_ajuste: datos.tipo_ajuste,
-        porcentaje_ajuste: porcentaje,
         fecha_proximo_aumento: datos.fecha_proximo_aumento,
         dia_vencimiento: datos.dia_vencimiento || null,
         observaciones: datos.observaciones,

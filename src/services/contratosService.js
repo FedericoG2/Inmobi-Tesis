@@ -77,13 +77,9 @@ export async function crearContrato(contrato) {
     monto_alquiler: contrato.monto_alquiler,
     monto_inicial: contrato.monto_inicial ?? contrato.monto_alquiler,
     periodicidad_meses: contrato.periodicidad_meses ?? 12,
-    tipo_ajuste: contrato.tipo_ajuste ?? 'manual',
+    tipo_ajuste: contrato.tipo_ajuste ?? 'ipc',
     fecha_proximo_aumento: contrato.fecha_proximo_aumento ?? null,
     fecha_ultimo_aumento: null,
-  }
-
-  if (contrato.tipo_ajuste === 'porcentaje_fijo') {
-    payload.porcentaje_ajuste = contrato.porcentaje_ajuste
   }
 
   if (contrato.dia_vencimiento) {

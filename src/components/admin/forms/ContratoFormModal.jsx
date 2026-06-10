@@ -190,9 +190,7 @@ export default function ContratoFormModal({
         fechaInicio: form.fecha_inicio,
         fechaFin: form.fecha_fin,
         periodicidadMeses,
-        montoAlquiler: form.monto_alquiler,
         tipoAjuste: form.tipo_ajuste,
-        porcentajeAjuste: form.porcentaje_ajuste,
       }),
     [form, periodicidadMeses]
   )
@@ -233,12 +231,6 @@ export default function ContratoFormModal({
       return null
     }
     if (indice === 2) {
-      if (form.tipo_ajuste === 'porcentaje_fijo') {
-        const pct = Number(form.porcentaje_ajuste)
-        if (form.porcentaje_ajuste === '' || Number.isNaN(pct) || pct < 0 || pct > 100) {
-          return 'Ingresá un porcentaje entre 0 y 100.'
-        }
-      }
       if (!fechaProximoAumento) return 'No se pudo calcular el próximo aumento. Revisá las fechas.'
       return null
     }
@@ -294,11 +286,6 @@ export default function ContratoFormModal({
   const esUltimaSeccion = seccionActiva === SECCIONES_CONTRATO.length - 1
   const esSeccionAjustes = seccionActiva === 2
   const mostrarPanelLateral = esSeccionAjustes
-
-  const pctResumen =
-    form.tipo_ajuste === 'porcentaje_fijo' && form.porcentaje_ajuste !== ''
-      ? `${form.porcentaje_ajuste}%`
-      : '—'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -510,15 +497,7 @@ export default function ContratoFormModal({
                     <select
                       id="tipo_ajuste"
                       value={form.tipo_ajuste}
-                      onChange={(e) => {
-                        setErrorPaso(null)
-                        const tipo = e.target.value
-                        setForm((prev) => ({
-                          ...prev,
-                          tipo_ajuste: tipo,
-                          porcentaje_ajuste: tipo === 'porcentaje_fijo' ? prev.porcentaje_ajuste : '',
-                        }))
-                      }}
+                      onChange={handleChange('tipo_ajuste')}
                       className={inputClass}
                     >
                       {TIPO_AJUSTE_OPCIONES.map((o) => (
@@ -528,26 +507,6 @@ export default function ContratoFormModal({
                       ))}
                     </select>
                   </div>
-
-                  {form.tipo_ajuste === 'porcentaje_fijo' && (
-                    <div>
-                      <label htmlFor="porcentaje_ajuste" className="mb-1 block text-sm font-medium text-slate-700">
-                        Porcentaje acordado (%)
-                      </label>
-                      <input
-                        id="porcentaje_ajuste"
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        required
-                        value={form.porcentaje_ajuste}
-                        onChange={handleChange('porcentaje_ajuste')}
-                        className={inputClass}
-                        placeholder="8.5"
-                      />
-                    </div>
-                  )}
 
                   <div>
                     <label htmlFor="observaciones" className="mb-1 block text-sm font-medium text-slate-700">
@@ -596,9 +555,6 @@ export default function ContratoFormModal({
                       value={TIPO_AJUSTE_LABELS[form.tipo_ajuste] ?? form.tipo_ajuste}
                     />
                   </div>
-                  {form.tipo_ajuste === 'porcentaje_fijo' && (
-                    <CampoResumen label="Porcentaje acordado" value={pctResumen} />
-                  )}
                   <CampoResumen
                     label="Próximo aumento"
                     value={fechaProximoAumento ? formatFecha(fechaProximoAumento) : '—'}

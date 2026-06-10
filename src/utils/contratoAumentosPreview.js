@@ -9,13 +9,17 @@ export const PERIODICIDAD_OPCIONES = [
 export const TIPO_AJUSTE_OPCIONES = [
   { value: 'ipc', label: 'IPC (vivienda)' },
   { value: 'icl', label: 'ICL (comercial)' },
-  { value: 'porcentaje_fijo', label: 'Porcentaje fijo acordado' },
-  { value: 'manual', label: 'Manual' },
 ]
 
-export const TIPO_AJUSTE_LABELS = Object.fromEntries(
-  TIPO_AJUSTE_OPCIONES.map((o) => [o.value, o.label])
-)
+const TIPO_AJUSTE_LEGACY_LABELS = {
+  porcentaje_fijo: 'Porcentaje fijo acordado',
+  manual: 'Manual',
+}
+
+export const TIPO_AJUSTE_LABELS = {
+  ...Object.fromEntries(TIPO_AJUSTE_OPCIONES.map((o) => [o.value, o.label])),
+  ...TIPO_AJUSTE_LEGACY_LABELS,
+}
 
 export function periodicidadMesesPorKey(key) {
   return PERIODICIDAD_OPCIONES.find((o) => o.key === key)?.meses ?? 12
@@ -41,12 +45,7 @@ export function fechasValidas(fechaInicio, fechaFin) {
   return fechaFin > fechaInicio
 }
 
-function montoEstimadoTexto(tipoAjuste, montoNumero, porcentajeAjuste, numeroAumento) {
-  if (tipoAjuste === 'porcentaje_fijo' && porcentajeAjuste != null && montoNumero > 0) {
-    const factor = 1 + porcentajeAjuste / 100
-    const estimado = montoNumero * factor ** numeroAumento
-    return estimado
-  }
+function montoEstimadoTexto(tipoAjuste) {
   if (tipoAjuste === 'ipc' || tipoAjuste === 'icl') return 'Según índice'
   return 'A definir'
 }
@@ -59,27 +58,19 @@ export function calcularPreviewAumentos({
   fechaInicio,
   fechaFin,
   periodicidadMeses,
-  montoAlquiler,
   tipoAjuste,
-  porcentajeAjuste,
   maxFilas = 6,
 }) {
   if (!fechaInicio || !fechaFin || !fechasValidas(fechaInicio, fechaFin) || !periodicidadMeses) {
     return []
   }
 
-  const montoBase = Number(montoAlquiler)
-  const pct =
-    tipoAjuste === 'porcentaje_fijo' && porcentajeAjuste !== '' && porcentajeAjuste != null
-      ? Number(porcentajeAjuste)
-      : null
-
   const filas = []
   let fecha = sumarMeses(fechaInicio, periodicidadMeses)
   let n = 1
 
   while (fecha && fecha <= fechaFin && filas.length < maxFilas) {
-    const montoEst = montoEstimadoTexto(tipoAjuste, montoBase, pct, n)
+    const montoEst = montoEstimadoTexto(tipoAjuste)
     filas.push({
       numero: n,
       fecha,

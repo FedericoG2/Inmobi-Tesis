@@ -1,6 +1,13 @@
 import { Button } from '@tremor/react'
 
-export default function AdminAlertModal({ open, title = 'Atención', message, onClose }) {
+export default function AdminAlertModal({
+  open,
+  title = 'Atención',
+  message,
+  children,
+  onClose,
+  compact = false,
+}) {
   if (!open) return null
 
   return (
@@ -16,10 +23,12 @@ export default function AdminAlertModal({ open, title = 'Atención', message, on
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="admin-alert-title"
-        className="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+        className={`relative z-10 w-full rounded-2xl bg-white p-5 shadow-xl ${
+          compact ? 'max-w-sm' : 'max-w-md'
+        }`}
       >
         <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path
                 strokeLinecap="round"
@@ -29,14 +38,16 @@ export default function AdminAlertModal({ open, title = 'Atención', message, on
             </svg>
           </span>
           <div className="min-w-0 flex-1">
-            <h2 id="admin-alert-title" className="text-lg font-semibold text-slate-900">
+            <h2 id="admin-alert-title" className="text-base font-semibold text-slate-900">
               {title}
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">{message}</p>
+            {children ?? (
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">{message}</p>
+            )}
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end">
+        <div className="mt-5 flex justify-end">
           <Button onClick={onClose}>Entendido</Button>
         </div>
       </div>

@@ -35,7 +35,7 @@ export function useAumentos() {
     cargarCola()
   }, [cargarCola])
 
-  const calcularPendientes = useCallback(async ({ incluirProximos = false, diasProximos = 30 } = {}) => {
+  const calcularPendientes = useCallback(async ({ incluirProximos = false, diasProximos = 30, contratoIds = null } = {}) => {
     setCalculando(true)
     setError(null)
     setSyncWarning(null)
@@ -61,9 +61,15 @@ export function useAumentos() {
       return false
     }
 
-    const lista = data?.propuestas ?? []
-    setPropuestas(Array.isArray(lista) ? lista : [])
-    setMeta({ total: data?.total ?? lista.length, fecha_calculo: data?.fecha_calculo })
+    let lista = Array.isArray(data?.propuestas) ? data.propuestas : []
+
+    if (contratoIds?.length) {
+      const ids = new Set(contratoIds)
+      lista = lista.filter((p) => ids.has(p.contrato_id))
+    }
+
+    setPropuestas(lista)
+    setMeta({ total: lista.length, fecha_calculo: data?.fecha_calculo })
     setCalculando(false)
     return true
   }, [])

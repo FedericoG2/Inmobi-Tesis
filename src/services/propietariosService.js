@@ -1,5 +1,31 @@
 import { supabase } from '../supabaseClient'
 
+const SELECT_PROPIETARIO = 'id, nombre_completo, dni_cuit, telefono, email'
+
+function sanitizarPropietario(datos) {
+  return {
+    nombre_completo: (datos.nombre_completo ?? '').trim(),
+    dni_cuit: (datos.dni_cuit ?? '').trim(),
+    telefono: (datos.telefono ?? '').trim(),
+    email: (datos.email ?? '').trim().toLowerCase(),
+  }
+}
+
+async function verificarDniCuitUnico(dniCuit, excluirId = null) {
+  let query = supabase
+    .from('propietarios')
+    .select('id', { count: 'exact', head: true })
+    .eq('dni_cuit', dniCuit)
+
+  if (excluirId !== null) {
+    query = query.neq('id', excluirId)
+  }
+
+  const { count, error } = await query
+  if (error) return { error }
+  return { existe: (count ?? 0) > 0 }
+}
+
 export async function listarPropietarios() {
   if (!supabase) {
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
@@ -7,7 +33,7 @@ export async function listarPropietarios() {
 
   const { data, error } = await supabase
     .from('propietarios')
-    .select('id, nombre_completo, dni_cuit, telefono, email')
+    .select(SELECT_PROPIETARIO)
     .order('nombre_completo')
 
   return { data, error }
@@ -18,15 +44,21 @@ export async function crearPropietario(propietario) {
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
 
+  const datos = sanitizarPropietario(propietario)
+
+  const { existe, error: errVerif } = await verificarDniCuitUnico(datos.dni_cuit)
+  if (errVerif) return { data: null, error: errVerif }
+  if (existe) {
+    return {
+      data: null,
+      error: { message: `Ya existe un propietario registrado con el DNI/CUIT ${datos.dni_cuit}` },
+    }
+  }
+
   const { data, error } = await supabase
     .from('propietarios')
-    .insert({
-      nombre_completo: propietario.nombre_completo,
-      dni_cuit: propietario.dni_cuit,
-      telefono: propietario.telefono,
-      email: propietario.email,
-    })
-    .select('id, nombre_completo, dni_cuit, telefono, email')
+    .insert(datos)
+    .select(SELECT_PROPIETARIO)
     .single()
 
   return { data, error }
@@ -37,16 +69,22 @@ export async function actualizarPropietario(id, datos) {
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
 
+  const sanitizados = sanitizarPropietario(datos)
+
+  const { existe, error: errVerif } = await verificarDniCuitUnico(sanitizados.dni_cuit, id)
+  if (errVerif) return { data: null, error: errVerif }
+  if (existe) {
+    return {
+      data: null,
+      error: { message: `Ya existe otro propietario con el DNI/CUIT ${sanitizados.dni_cuit}` },
+    }
+  }
+
   const { data, error } = await supabase
     .from('propietarios')
-    .update({
-      nombre_completo: datos.nombre_completo,
-      dni_cuit: datos.dni_cuit,
-      telefono: datos.telefono,
-      email: datos.email,
-    })
+    .update(sanitizados)
     .eq('id', id)
-    .select('id, nombre_completo, dni_cuit, telefono, email')
+    .select(SELECT_PROPIETARIO)
     .single()
 
   return { data, error }

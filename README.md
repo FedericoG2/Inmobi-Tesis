@@ -2,6 +2,8 @@
 
 Plataforma de gestión inmobiliaria con React, React Router v6, Tailwind CSS, Tremor v3 y Supabase.
 
+> **Contexto completo para IA / onboarding:** ver [`docs/CONTEXTO_PROYECTO.md`](docs/CONTEXTO_PROYECTO.md) (arquitectura, capas, rutas, schema, reglas de negocio, qué está mock y qué está en Supabase).
+
 ## Requisitos
 
 - Node.js 18+

@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Badge, Button, Card } from '@tremor/react'
 import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
+import AdminAlertModal from '../../components/admin/AdminAlertModal'
 import AdminListLayout from '../../components/admin/AdminListLayout'
 import {
   AdminTable,
   AdminTableBody,
+  AdminTableActionsCell,
+  AdminTableActionsHeaderCell,
   AdminTableCell,
   AdminTableEmptyCell,
   AdminTableHead,
@@ -25,57 +28,81 @@ const formatFecha = (fecha) => {
   return `${day}/${month}/${year}`
 }
 
-const estadoBadge = {
-  ok: { color: 'emerald', label: 'OK' },
-  falta_indice: { color: 'amber', label: 'Falta índice' },
+const formatFechaCorta = (fecha) => {
+  if (!fecha) return '—'
+  const [year, month, day] = fecha.split('-')
+  return `${day}/${month}/${year.slice(2)}`
 }
 
-function formatMesAnio(ym) {
-  if (!ym) return '—'
-  const [year, month] = ym.split('-')
-  return `${month}/${year}`
+function observacionesPropuesta(propuesta) {
+  if (propuesta.es_aproximado) {
+    const detalle =
+      propuesta.ipc_meses != null && propuesta.ipc_meses_esperados != null
+        ? `: ${propuesta.ipc_meses}/${propuesta.ipc_meses_esperados} meses IPC publicados`
+        : ': faltan variaciones IPC del período'
+    return (
+      <span className="text-xs leading-snug text-slate-600">
+        <span className="font-medium underline decoration-red-500 underline-offset-2 text-red-600">
+          Aproximado
+        </span>
+        {detalle}
+      </span>
+    )
+  }
+  if (propuesta.estado === 'falta_indice') {
+    return (
+      <span className="text-xs leading-snug text-slate-600">
+        <span className="font-medium underline decoration-red-500 underline-offset-2 text-red-600">
+          Falta índice
+        </span>
+        : no hay datos suficientes para calcular
+      </span>
+    )
+  }
+  if (propuesta.estado === 'ok') {
+    if (propuesta.confirmable) {
+      const detalle =
+        propuesta.indice_tipo === 'ipc' &&
+        propuesta.ipc_meses != null &&
+        propuesta.ipc_meses_esperados != null
+          ? `: ${propuesta.ipc_meses}/${propuesta.ipc_meses_esperados} meses IPC`
+          : ': índice del período disponible'
+      return (
+        <span className="text-xs leading-snug text-slate-600">
+          <span className="font-medium underline decoration-emerald-600 underline-offset-2 text-emerald-700">
+            Definitivo
+          </span>
+          {detalle}
+        </span>
+      )
+    }
+    return (
+      <span className="text-xs leading-snug text-slate-600">
+        <span className="font-medium underline decoration-slate-500 underline-offset-2 text-slate-700">
+          Estimación
+        </span>
+        : índices disponibles; confirmar al vencer la fecha
+      </span>
+    )
+  }
+  return <span className="text-sm text-slate-400">—</span>
 }
 
 function detalleIndice(propuesta) {
   if (propuesta.indice_tipo === 'ipc') {
+    if (propuesta.ipc_meses != null && propuesta.ipc_meses_esperados != null) {
+      const base = `${propuesta.ipc_meses}/${propuesta.ipc_meses_esperados} meses IPC`
+      return propuesta.es_aproximado ? `${base} (aprox.)` : base
+    }
     if (propuesta.ipc_meses != null) {
       return `${propuesta.ipc_meses} meses IPC`
     }
     return 'IPC'
   }
   if (propuesta.indice_valor_inicio != null && propuesta.indice_valor_fin != null) {
-    return `${propuesta.indice_valor_inicio} → ${propuesta.indice_valor_fin}`
+    return `ICL ${propuesta.indice_valor_inicio} → ${propuesta.indice_valor_fin}`
   }
-  return '—'
-}
-
-function resumenSync(syncInfo) {
-  if (!syncInfo) return null
-  const partes = []
-
-  if (syncInfo.icl?.filas > 0) {
-    partes.push(
-      `ICL: ${syncInfo.icl.filas} días (${formatFecha(syncInfo.icl.desde)} → ${formatFecha(syncInfo.icl.hasta)})`
-    )
-  } else if (syncInfo.icl?.mensaje) {
-    partes.push(`ICL: ${syncInfo.icl.mensaje}`)
-  }
-
-  if (syncInfo.ipc?.filas > 0) {
-    partes.push(
-      `IPC: ${syncInfo.ipc.filas} meses (${formatMesAnio(syncInfo.ipc.desde)} → ${formatMesAnio(syncInfo.ipc.hasta)})`
-    )
-  } else if (syncInfo.ipc?.mensaje) {
-    partes.push(`IPC: ${syncInfo.ipc.mensaje}`)
-  }
-
-  if (partes.length === 0 && syncInfo.filas > 0 && syncInfo.desde) {
-    partes.push(
-      `ICL: ${syncInfo.filas} días (${formatFecha(syncInfo.desde)} → ${formatFecha(syncInfo.hasta)})`
-    )
-  }
-
-  return partes.length ? partes.join(' · ') : null
+  return null
 }
 
 function etiquetaCola(item) {
@@ -95,19 +122,58 @@ const FILTRO_COLA = [
   { value: 'proximos', label: 'Próximos 30 d' },
 ]
 
+function IconoAdvertencia({ className = 'h-5 w-5' }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
+      />
+    </svg>
+  )
+}
+
+function LeyendaIndicesModal({ open, onClose }) {
+  return (
+    <AdminAlertModal open={open} title="Cálculo de índices" onClose={onClose} compact>
+      <div className="mt-2 space-y-3 text-sm leading-relaxed text-slate-600">
+        <p>
+          <span className="font-semibold text-slate-900">ICL</span>
+          <br />
+          Si no hay índice para la fecha exacta, se usa el último valor publicado anterior. Los
+          aumentos próximos a vencer son{' '}
+          <span className="font-semibold text-red-600 underline decoration-red-500 underline-offset-2">
+            estimaciones
+          </span>{' '}
+          que pueden variar al confirmarse.
+        </p>
+        <p>
+          <span className="font-semibold text-slate-900">IPC</span>
+          <br />
+          Si faltan meses al final del período (aún no publicados), se muestra un monto{' '}
+          <span className="font-semibold text-red-600 underline decoration-red-500 underline-offset-2">
+            aproximado
+          </span>{' '}
+          con los meses disponibles; la confirmación requiere el período completo.
+        </p>
+      </div>
+    </AdminAlertModal>
+  )
+}
+
 export default function AdminAumentos() {
   const [filtroCola, setFiltroCola] = useState('todos')
-  const [incluirProximos, setIncluirProximos] = useState(false)
-  const [selectedIds, setSelectedIds] = useState(new Set())
+  const [seleccionCola, setSeleccionCola] = useState(new Set())
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmTarget, setConfirmTarget] = useState([])
+  const [leyendaOpen, setLeyendaOpen] = useState(false)
 
   const {
     cola,
     colaLoading,
     propuestas,
     meta,
-    syncInfo,
     syncWarning,
     calculando,
     confirmando,
@@ -118,10 +184,14 @@ export default function AdminAumentos() {
     setPropuestas,
   } = useAumentos()
 
-  const confirmables = useMemo(
-    () => propuestas.filter((p) => p.confirmable),
-    [propuestas]
-  )
+  const tituloConfirmar = (propuesta) => {
+    if (propuesta.confirmable) return 'Confirmar aumento'
+    if (propuesta.estado === 'falta_indice') return 'No se puede confirmar: falta índice'
+    if (propuesta.es_aproximado) {
+      return 'Aproximado: confirme cuando se publiquen todos los meses IPC del período'
+    }
+    return 'Solo se confirman aumentos vencidos con índice completo'
+  }
 
   const contratosListado = useMemo(() => {
     const items = cola?.items ?? []
@@ -149,18 +219,17 @@ export default function AdminAumentos() {
     return 'Sin contratos para mostrar'
   }, [colaLoading, cola?.items.length, filtroCola])
 
-  const todosConfirmablesSeleccionados =
-    confirmables.length > 0 && confirmables.every((p) => selectedIds.has(p.contrato_id))
+  const totalCola = cola?.items?.length ?? 0
 
-  const handleCalcular = async () => {
-    limpiarError()
-    setSelectedIds(new Set())
-    await calcularPendientes({ incluirProximos, diasProximos: 30 })
-  }
+  const esSeleccionParcial =
+    seleccionCola.size > 0 && seleccionCola.size < totalCola
 
-  const toggleSeleccion = (contratoId, confirmable) => {
-    if (!confirmable) return
-    setSelectedIds((prev) => {
+  const todosColaSeleccionados =
+    contratosListado.length > 0 &&
+    contratosListado.every((i) => seleccionCola.has(i.contrato_id))
+
+  const toggleSeleccionCola = (contratoId) => {
+    setSeleccionCola((prev) => {
       const next = new Set(prev)
       if (next.has(contratoId)) next.delete(contratoId)
       else next.add(contratoId)
@@ -168,12 +237,18 @@ export default function AdminAumentos() {
     })
   }
 
-  const toggleSeleccionarTodos = () => {
-    if (todosConfirmablesSeleccionados) {
-      setSelectedIds(new Set())
+  const toggleSeleccionarTodaCola = () => {
+    if (todosColaSeleccionados) {
+      setSeleccionCola(new Set())
     } else {
-      setSelectedIds(new Set(confirmables.map((p) => p.contrato_id)))
+      setSeleccionCola(new Set(contratosListado.map((i) => i.contrato_id)))
     }
+  }
+
+  const handleCalcular = async () => {
+    limpiarError()
+    const contratoIds = esSeleccionParcial ? [...seleccionCola] : null
+    await calcularPendientes({ incluirProximos: true, diasProximos: 30, contratoIds })
   }
 
   const abrirConfirm = (lista) => {
@@ -194,11 +269,18 @@ export default function AdminAumentos() {
 
     const confirmadosIds = new Set(confirmTarget.map((p) => p.contrato_id))
     setPropuestas((prev) => prev.filter((p) => !confirmadosIds.has(p.contrato_id)))
-    setSelectedIds(new Set())
+    setSeleccionCola((prev) => {
+      const next = new Set(prev)
+      confirmadosIds.forEach((id) => next.delete(id))
+      return next
+    })
     cerrarConfirm()
   }
 
-  const seleccionados = propuestas.filter((p) => selectedIds.has(p.contrato_id))
+  const mensajeConfirm =
+    confirmTarget.length === 1
+      ? `¿Confirmar el aumento de ${confirmTarget[0].inquilino_nombre ?? 'este contrato'}? Se actualizará el monto del contrato y quedará registro en el historial.`
+      : `¿Confirmar ${confirmTarget.length} aumento(s)? Se actualizará el monto del contrato y quedará registro en el historial.`
 
   return (
     <>
@@ -214,11 +296,6 @@ export default function AdminAumentos() {
             {syncWarning && !error && (
               <Card className="border border-amber-200 bg-amber-50">
                 <p className="text-sm text-amber-800">{syncWarning}</p>
-              </Card>
-            )}
-            {resumenSync(syncInfo) && !error && (
-              <Card className="border border-emerald-200 bg-emerald-50">
-                <p className="text-sm text-emerald-800">Índices sincronizados: {resumenSync(syncInfo)}</p>
               </Card>
             )}
           </>
@@ -256,6 +333,16 @@ export default function AdminAumentos() {
         <AdminTable>
           <AdminTableHead>
             <AdminTableRow>
+              <AdminTableHeaderCell className="w-10">
+                <input
+                  type="checkbox"
+                  aria-label="Seleccionar todos los contratos visibles"
+                  checked={todosColaSeleccionados}
+                  onChange={toggleSeleccionarTodaCola}
+                  disabled={colaLoading || contratosListado.length === 0 || calculando || confirmando}
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+              </AdminTableHeaderCell>
               <AdminTableHeaderCell>Tipo</AdminTableHeaderCell>
               <AdminTableHeaderCell>Inquilino</AdminTableHeaderCell>
               <AdminTableHeaderCell>Propiedad</AdminTableHeaderCell>
@@ -268,15 +355,25 @@ export default function AdminAumentos() {
           <AdminTableBody>
             {colaLoading ? (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={7}>Cargando…</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={8}>Cargando…</AdminTableEmptyCell>
               </AdminTableRow>
             ) : contratosListado.length === 0 ? (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={7}>{mensajeListadoVacio}</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={8}>{mensajeListadoVacio}</AdminTableEmptyCell>
               </AdminTableRow>
             ) : (
               contratosListado.map((item) => (
                 <AdminTableRow key={item.contrato_id}>
+                  <AdminTableCell>
+                    <input
+                      type="checkbox"
+                      aria-label={`Seleccionar contrato de ${item.inquilino_nombre ?? 'inquilino'}`}
+                      checked={seleccionCola.has(item.contrato_id)}
+                      onChange={() => toggleSeleccionCola(item.contrato_id)}
+                      disabled={calculando || confirmando}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                  </AdminTableCell>
                   <AdminTableCell>
                     <Badge color={item.tipo_ajuste === 'ipc' ? 'violet' : 'slate'} size="xs">
                       {item.tipo_ajuste?.toUpperCase() ?? '—'}
@@ -292,7 +389,13 @@ export default function AdminAumentos() {
                     {periodicidadLabelPorMeses(item.periodicidad_meses)}
                   </AdminTableCell>
                   <AdminTableCell>
-                    <Badge color={item.es_vencido ? 'red' : 'blue'}>{etiquetaCola(item)}</Badge>
+                    <span
+                      className={`inline-flex items-center whitespace-nowrap rounded border border-slate-300 bg-transparent px-2 py-0.5 text-xs font-medium ${
+                        item.es_vencido ? 'text-red-700' : 'text-slate-700'
+                      }`}
+                    >
+                      {etiquetaCola(item)}
+                    </span>
                   </AdminTableCell>
                 </AdminTableRow>
               ))
@@ -301,8 +404,24 @@ export default function AdminAumentos() {
         </AdminTable>
 
         <div className="mt-8 border-t border-slate-200 bg-white">
-          <div className="px-4 pb-5 pt-8">
-            <h2 className="text-sm font-semibold text-slate-900">Cálculo de aumentos</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-3 pt-8">
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-sm font-semibold text-slate-900">Cálculo de aumentos</h2>
+              <button
+                type="button"
+                onClick={() => setLeyendaOpen(true)}
+                title="Cómo se calculan ICL e IPC"
+                aria-label="Ver advertencia sobre cálculo de índices"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full text-amber-600 transition-colors hover:bg-amber-50"
+              >
+                <IconoAdvertencia className="h-4 w-4" />
+              </button>
+            </div>
+            {meta && (
+              <span className="text-xs text-slate-500">
+                {meta.total} contrato(s) calculado(s) al {formatFecha(meta.fecha_calculo)}
+              </span>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3">
@@ -312,72 +431,34 @@ export default function AdminAumentos() {
             onClick={handleCalcular}
             className="!border-indigo-500 !bg-indigo-600 !text-white hover:!bg-indigo-700"
           >
-            Calcular montos
+            {esSeleccionParcial
+              ? `Calcular seleccionados (${seleccionCola.size})`
+              : 'Calcular montos'}
           </Button>
 
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={incluirProximos}
-              onChange={(e) => setIncluirProximos(e.target.checked)}
-              disabled={calculando || confirmando}
-              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-            />
-            Incluir próximos 30 días (preview)
-          </label>
-
-          <div className="ml-auto flex flex-wrap gap-2">
-            <Button
-              variant="secondary"
-              disabled={calculando || confirmando || seleccionados.length === 0}
-              onClick={() => abrirConfirm(seleccionados)}
-            >
-              Confirmar seleccionados ({seleccionados.length})
-            </Button>
-            <Button
-              disabled={calculando || confirmando || confirmables.length === 0}
-              onClick={() => abrirConfirm(confirmables)}
-              className="!border-indigo-500 !bg-indigo-600 !text-white hover:!bg-indigo-700"
-            >
-              Confirmar todos vencidos ({confirmables.length})
-            </Button>
+          <p className="text-sm text-slate-500">
+            {esSeleccionParcial
+              ? 'Calcula solo los contratos seleccionados en el listado'
+              : 'Calcula todos: los vencidos y estima los de los próximos 30 días'}
+          </p>
           </div>
-          </div>
-
-          {meta && (
-            <p className="border-b border-slate-100 px-4 py-2 text-xs text-slate-500">
-              {meta.total} contrato(s) con montos calculados — al {formatFecha(meta.fecha_calculo)}
-            </p>
-          )}
 
           <AdminTable>
           <AdminTableHead>
             <AdminTableRow>
-              <AdminTableHeaderCell className="w-10">
-                <input
-                  type="checkbox"
-                  aria-label="Seleccionar todos los confirmables"
-                  checked={todosConfirmablesSeleccionados}
-                  onChange={toggleSeleccionarTodos}
-                  disabled={confirmables.length === 0 || calculando || confirmando}
-                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                />
-              </AdminTableHeaderCell>
-              <AdminTableHeaderCell>Tipo</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Inquilino</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Propiedad</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Monto actual</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Monto propuesto</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Variación</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Período</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Índice</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Estado</AdminTableHeaderCell>
+              <AdminTableHeaderCell className="w-[22%]">Inquilino</AdminTableHeaderCell>
+              <AdminTableHeaderCell className="w-[8%] !text-center">Tipo</AdminTableHeaderCell>
+              <AdminTableHeaderCell className="w-[16%] !text-right">Monto actual</AdminTableHeaderCell>
+              <AdminTableHeaderCell className="w-[14%] !text-right">Monto propuesto</AdminTableHeaderCell>
+              <AdminTableHeaderCell className="w-[18%]">Período</AdminTableHeaderCell>
+              <AdminTableHeaderCell className="w-[18%]">Observaciones</AdminTableHeaderCell>
+              <AdminTableActionsHeaderCell className="w-[12%]">Acciones</AdminTableActionsHeaderCell>
             </AdminTableRow>
           </AdminTableHead>
           <AdminTableBody>
             {propuestas.length === 0 ? (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={10}>
+                <AdminTableEmptyCell colSpan={7}>
                   {calculando
                     ? 'Calculando montos…'
                     : 'Apretá «Calcular montos» para ver índices y montos propuestos'}
@@ -385,44 +466,53 @@ export default function AdminAumentos() {
               </AdminTableRow>
             ) : (
               propuestas.map((p) => {
-                const badge = estadoBadge[p.estado] ?? { color: 'slate', label: p.estado }
+                const indiceDetalle = detalleIndice(p)
+                const periodoTitle = indiceDetalle
+                  ? `${formatFecha(p.fecha_desde)} → ${formatFecha(p.fecha_hasta)} · ${indiceDetalle}`
+                  : `${formatFecha(p.fecha_desde)} → ${formatFecha(p.fecha_hasta)}`
+
                 return (
                   <AdminTableRow key={p.contrato_id}>
-                    <AdminTableCell>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(p.contrato_id)}
-                        onChange={() => toggleSeleccion(p.contrato_id, p.confirmable)}
-                        disabled={!p.confirmable || calculando || confirmando}
-                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-40"
-                      />
+                    <AdminTableCell className="truncate" title={p.inquilino_nombre ?? undefined}>
+                      {p.inquilino_nombre ?? '—'}
                     </AdminTableCell>
-                    <AdminTableCell>
+                    <AdminTableCell className="!text-center">
                       <Badge color={p.indice_tipo === 'ipc' ? 'violet' : 'slate'} size="xs">
                         {p.tipo_ajuste?.toUpperCase() ?? p.indice_tipo?.toUpperCase() ?? '—'}
                       </Badge>
                     </AdminTableCell>
-                    <AdminTableCell>{p.inquilino_nombre ?? '—'}</AdminTableCell>
-                    <AdminTableCell>{p.propiedad_direccion ?? '—'}</AdminTableCell>
-                    <AdminTableCell>{formatMonto(p.monto_actual)}</AdminTableCell>
-                    <AdminTableCell className="font-medium text-slate-900">
-                      {formatMonto(p.monto_propuesto)}
+                    <AdminTableCell className="!text-right whitespace-nowrap">
+                      {formatMonto(p.monto_actual)}
                     </AdminTableCell>
-                    <AdminTableCell>
-                      {p.variacion_pct != null ? `${p.variacion_pct}%` : '—'}
-                    </AdminTableCell>
-                    <AdminTableCell className="whitespace-nowrap text-sm">
-                      {formatFecha(p.fecha_desde)} → {formatFecha(p.fecha_hasta)}
-                      {!p.es_vencido && (
-                        <Badge color="blue" size="xs" className="ml-1">
-                          Próximo
-                        </Badge>
+                    <AdminTableCell className="!text-right whitespace-nowrap">
+                      {p.estado === 'falta_indice' ? (
+                        <span className="text-slate-400">—</span>
+                      ) : (
+                        <span className="font-medium text-slate-900">
+                          {formatMonto(p.monto_propuesto)}
+                          {p.variacion_pct != null && (
+                            <span className="ml-1 text-xs font-normal text-slate-500">
+                              ({p.variacion_pct}%)
+                            </span>
+                          )}
+                        </span>
                       )}
                     </AdminTableCell>
-                    <AdminTableCell className="text-sm">{detalleIndice(p)}</AdminTableCell>
-                    <AdminTableCell>
-                      <Badge color={badge.color}>{badge.label}</Badge>
+                    <AdminTableCell className="text-sm whitespace-nowrap" title={periodoTitle}>
+                      {formatFechaCorta(p.fecha_desde)} → {formatFechaCorta(p.fecha_hasta)}
                     </AdminTableCell>
+                    <AdminTableCell>{observacionesPropuesta(p)}</AdminTableCell>
+                    <AdminTableActionsCell>
+                      <button
+                        type="button"
+                        disabled={!p.confirmable || calculando || confirmando}
+                        title={tituloConfirmar(p)}
+                        onClick={() => abrirConfirm([p])}
+                        className="whitespace-nowrap rounded-md border border-indigo-500 bg-indigo-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-400 disabled:hover:bg-slate-100"
+                      >
+                        Confirmar
+                      </button>
+                    </AdminTableActionsCell>
                   </AdminTableRow>
                 )
               })
@@ -432,10 +522,12 @@ export default function AdminAumentos() {
         </div>
       </AdminListLayout>
 
+      <LeyendaIndicesModal open={leyendaOpen} onClose={() => setLeyendaOpen(false)} />
+
       <AdminConfirmModal
         open={confirmOpen}
         title="Confirmar aumentos"
-        message={`¿Confirmar ${confirmTarget.length} aumento(s)? Se actualizará el monto del contrato y quedará registro en el historial.`}
+        message={mensajeConfirm}
         confirmLabel="Confirmar"
         confirmVariant="primary"
         loading={confirmando}

@@ -9,6 +9,12 @@ import {
   TIPO_AJUSTE_OPCIONES,
 } from '../../../utils/contratoAumentosPreview'
 import { formContratoInicial, PERIODICIDAD_OPCIONES, SECCIONES_CONTRATO } from '../../../utils/contratoFormConstants'
+import {
+  etiquetaPropiedadParaContrato,
+  MENSAJE_PROPIEDAD_CONTRATO_ACTIVO,
+  MENSAJE_PROPIEDAD_NO_DISPONIBLE,
+  propiedadElegibleParaContrato,
+} from '../../../utils/propiedadElegibleContrato'
 import AdminSearchSelect from '../AdminSearchSelect'
 
 const inputClass =
@@ -167,6 +173,16 @@ export default function ContratoFormModal({
   const propiedadSeleccionada = propiedades.find((p) => String(p.id) === String(form.propiedad_id))
   const propiedadOcupada =
     Boolean(form.propiedad_id) && propiedadesConActivo.has(String(form.propiedad_id))
+  const propiedadNoDisponible =
+    Boolean(propiedadSeleccionada) && propiedadSeleccionada.estado !== 'Disponible'
+  const propiedadSeleccionadaNoElegible =
+    Boolean(propiedadSeleccionada) &&
+    !propiedadElegibleParaContrato(propiedadSeleccionada, propiedadesConActivo)
+
+  const propiedadesElegibles = useMemo(
+    () => propiedades.filter((p) => propiedadElegibleParaContrato(p, propiedadesConActivo)),
+    [propiedades, propiedadesConActivo]
+  )
 
   const preview = useMemo(
     () =>
@@ -174,9 +190,7 @@ export default function ContratoFormModal({
         fechaInicio: form.fecha_inicio,
         fechaFin: form.fecha_fin,
         periodicidadMeses,
-        montoAlquiler: form.monto_alquiler,
         tipoAjuste: form.tipo_ajuste,
-        porcentajeAjuste: form.porcentaje_ajuste,
       }),
     [form, periodicidadMeses]
   )
@@ -192,12 +206,14 @@ export default function ContratoFormModal({
 
   const sinInquilinos = !inquilinosLoading && inquilinos.length === 0
   const sinPropiedades = !propiedadesLoading && propiedades.length === 0
-  const formDeshabilitado = sinInquilinos || sinPropiedades
+  const sinPropiedadesElegibles = !propiedadesLoading && propiedadesElegibles.length === 0
+  const formDeshabilitado = sinInquilinos || sinPropiedadesElegibles
 
   const validarPaso = (indice) => {
     if (indice === 0) {
       if (!form.inquilino_id || !form.propiedad_id) return 'Seleccioná inquilino y propiedad.'
-      if (propiedadOcupada) return 'Esta propiedad ya tiene un contrato activo.'
+      if (propiedadOcupada) return MENSAJE_PROPIEDAD_CONTRATO_ACTIVO
+      if (propiedadNoDisponible) return MENSAJE_PROPIEDAD_NO_DISPONIBLE
       return null
     }
     if (indice === 1) {
@@ -215,12 +231,6 @@ export default function ContratoFormModal({
       return null
     }
     if (indice === 2) {
-      if (form.tipo_ajuste === 'porcentaje_fijo') {
-        const pct = Number(form.porcentaje_ajuste)
-        if (form.porcentaje_ajuste === '' || Number.isNaN(pct) || pct < 0 || pct > 100) {
-          return 'Ingresá un porcentaje entre 0 y 100.'
-        }
-      }
       if (!fechaProximoAumento) return 'No se pudo calcular el próximo aumento. Revisá las fechas.'
       return null
     }
@@ -276,11 +286,6 @@ export default function ContratoFormModal({
   const esUltimaSeccion = seccionActiva === SECCIONES_CONTRATO.length - 1
   const esSeccionAjustes = seccionActiva === 2
   const mostrarPanelLateral = esSeccionAjustes
-
-  const pctResumen =
-    form.tipo_ajuste === 'porcentaje_fijo' && form.porcentaje_ajuste !== ''
-      ? `${form.porcentaje_ajuste}%`
-      : '—'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -343,6 +348,11 @@ export default function ContratoFormModal({
                       <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
                         No hay propiedades cargadas. Creá una antes de agregar un contrato.
                       </p>
+                    ) : sinPropiedadesElegibles ? (
+                      <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                        No hay propiedades disponibles. Solo podés contratar unidades en estado
+                        Disponible y sin contrato activo.
+                      </p>
                     ) : (
                       <>
                         <AdminSearchSelect
@@ -355,11 +365,11 @@ export default function ContratoFormModal({
                             setForm((prev) => ({ ...prev, propiedad_id: id }))
                           }}
                           options={propiedades.map((p) => {
-                            const ocupada = propiedadesConActivo.has(String(p.id))
+                            const elegible = propiedadElegibleParaContrato(p, propiedadesConActivo)
                             return {
                               value: p.id,
-                              label: ocupada ? `${p.direccion} (contrato activo)` : p.direccion,
-                              disabled: ocupada,
+                              label: etiquetaPropiedadParaContrato(p, propiedadesConActivo),
+                              disabled: !elegible,
                             }
                           })}
                           emptySelectionLabel="Sin propiedad seleccionada"
@@ -368,7 +378,12 @@ export default function ContratoFormModal({
                         />
                         {propiedadOcupada && (
                           <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                            Esta propiedad ya tiene un contrato activo. Finalizalo antes de crear otro.
+                            {MENSAJE_PROPIEDAD_CONTRATO_ACTIVO}
+                          </p>
+                        )}
+                        {propiedadNoDisponible && !propiedadOcupada && (
+                          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                            {MENSAJE_PROPIEDAD_NO_DISPONIBLE}
                           </p>
                         )}
                       </>
@@ -482,15 +497,7 @@ export default function ContratoFormModal({
                     <select
                       id="tipo_ajuste"
                       value={form.tipo_ajuste}
-                      onChange={(e) => {
-                        setErrorPaso(null)
-                        const tipo = e.target.value
-                        setForm((prev) => ({
-                          ...prev,
-                          tipo_ajuste: tipo,
-                          porcentaje_ajuste: tipo === 'porcentaje_fijo' ? prev.porcentaje_ajuste : '',
-                        }))
-                      }}
+                      onChange={handleChange('tipo_ajuste')}
                       className={inputClass}
                     >
                       {TIPO_AJUSTE_OPCIONES.map((o) => (
@@ -500,26 +507,6 @@ export default function ContratoFormModal({
                       ))}
                     </select>
                   </div>
-
-                  {form.tipo_ajuste === 'porcentaje_fijo' && (
-                    <div>
-                      <label htmlFor="porcentaje_ajuste" className="mb-1 block text-sm font-medium text-slate-700">
-                        Porcentaje acordado (%)
-                      </label>
-                      <input
-                        id="porcentaje_ajuste"
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        required
-                        value={form.porcentaje_ajuste}
-                        onChange={handleChange('porcentaje_ajuste')}
-                        className={inputClass}
-                        placeholder="8.5"
-                      />
-                    </div>
-                  )}
 
                   <div>
                     <label htmlFor="observaciones" className="mb-1 block text-sm font-medium text-slate-700">
@@ -568,9 +555,6 @@ export default function ContratoFormModal({
                       value={TIPO_AJUSTE_LABELS[form.tipo_ajuste] ?? form.tipo_ajuste}
                     />
                   </div>
-                  {form.tipo_ajuste === 'porcentaje_fijo' && (
-                    <CampoResumen label="Porcentaje acordado" value={pctResumen} />
-                  )}
                   <CampoResumen
                     label="Próximo aumento"
                     value={fechaProximoAumento ? formatFecha(fechaProximoAumento) : '—'}
@@ -620,7 +604,7 @@ export default function ContratoFormModal({
                     e.preventDefault()
                     irSiguiente()
                   }}
-                  disabled={submitting || formDeshabilitado || (seccionActiva === 0 && propiedadOcupada)}
+                  disabled={submitting || formDeshabilitado || (seccionActiva === 0 && propiedadSeleccionadaNoElegible)}
                 >
                   {seccionActiva === SECCIONES_CONTRATO.length - 2 ? 'Ver resumen' : 'Siguiente'}
                 </Button>

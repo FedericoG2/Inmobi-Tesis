@@ -31,3 +31,6 @@ documento.md
 *.njsproj
 *.sln
 *.sw?
+
+# Documentación del proyecto (tesis)
+documentación/

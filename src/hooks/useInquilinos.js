@@ -35,12 +35,31 @@ export function useInquilinos() {
     setLoading(false)
   }, [])
 
+  // Helper interno para limpiar strings vacíos y pasarlos como NULL a Supabase
+  const prepararPayload = (datos) => {
+    return {
+      tipo_persona: datos.tipo_persona || 'Física',
+      nombre_completo: datos.nombre_completo,
+      dni_cuit: datos.dni_cuit,
+      telefono: datos.telefono,
+      email: datos.email?.trim() || null, // 🚨 Solución al problema del email
+      fecha_nacimiento: datos.fecha_nacimiento || null,
+      estado_civil: datos.estado_civil || null,
+      ocupacion: datos.ocupacion || null,
+      tipo_garantia: datos.tipo_garantia,
+      emergencia_nombre: datos.emergencia_nombre || null,
+      emergencia_telefono: datos.emergencia_telefono || null,
+      observaciones: datos.observaciones || null,
+    }
+  }
+
   const crear = useCallback(
     async (datos) => {
       setSubmitting(true)
       setSubmitError(null)
 
-      const { error: createError } = await crearInquilino(datos)
+      const payload = prepararPayload(datos)
+      const { error: createError } = await crearInquilino(payload)
 
       if (createError) {
         setSubmitError(createError.message)
@@ -60,11 +79,9 @@ export function useInquilinos() {
       setSubmitting(true)
       setSubmitError(null)
 
-      const { error: updateError } = await actualizarInquilino(id, {
-        nombre_completo: datos.nombre_completo,
-        dni_cuit: datos.dni_cuit,
-        telefono: datos.telefono,
-      })
+      // Mapeamos explícitamente TODOS los campos para la edición
+      const payload = prepararPayload(datos)
+      const { error: updateError } = await actualizarInquilino(id, payload)
 
       if (updateError) {
         setSubmitError(updateError.message)

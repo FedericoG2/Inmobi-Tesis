@@ -95,6 +95,27 @@ export async function actualizarPropiedad(id, datos) {
   return { data, error }
 }
 
+/** Deriva Disponible / Alquilada según contratos activos de la propiedad. */
+export async function sincronizarEstadoPropiedadPorContratos(propiedadId) {
+  if (!supabase) {
+    return { error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
+  }
+
+  const { count, error: countError } = await supabase
+    .from('contratos')
+    .select('id', { count: 'exact', head: true })
+    .eq('propiedad_id', propiedadId)
+    .eq('activo', true)
+
+  if (countError) return { error: countError }
+
+  const estado = (count ?? 0) > 0 ? 'Alquilada' : 'Disponible'
+
+  const { error } = await supabase.from('propiedades').update({ estado }).eq('id', propiedadId)
+
+  return { error }
+}
+
 /**
  * Devuelve la cantidad de contratos activos, contratos históricos y reclamos
  * asociados a una propiedad. Usado para bloquear o advertir antes de eliminar.

@@ -27,15 +27,37 @@ const estadoColor = {
 }
 
 const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
+const dependenciasIniciales = { contratos_activos: 0, contratos_historicos: 0, reclamos: 0 }
+
+function buildMensajeConfirmacionDelete(propiedad, deps) {
+  const partes = []
+  if (deps.contratos_historicos > 0) {
+    const n = deps.contratos_historicos
+    partes.push(`${n} contrato${n > 1 ? 's' : ''} histórico${n > 1 ? 's' : ''}`)
+  }
+  if (deps.reclamos > 0) {
+    const n = deps.reclamos
+    partes.push(`${n} reclamo${n > 1 ? 's' : ''}`)
+  }
+
+  if (partes.length > 0) {
+    return `¡Atención! La propiedad "${propiedad.direccion}" tiene ${partes.join(' y ')} asociados. Si la eliminás, se borrará todo ese historial. ¿Querés continuar?`
+  }
+
+  return `¿Eliminar la propiedad "${propiedad.direccion}"? Esta acción no se puede deshacer.`
+}
 
 export default function AdminPropiedades() {
   const [modalOpen, setModalOpen] = useState(false)
   const [propiedadEditando, setPropiedadEditando] = useState(null)
+  const [tieneContratoActivo, setTieneContratoActivo] = useState(false)
   const [alerta, setAlerta] = useState(alertaInicial)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [propiedadAEliminar, setPropiedadAEliminar] = useState(null)
-  const [confirmReclamos, setConfirmReclamos] = useState(false)
+  const [dependenciasEliminar, setDependenciasEliminar] = useState(dependenciasIniciales)
   const [eliminando, setEliminando] = useState(false)
+  const [confirmCambioPropietario, setConfirmCambioPropietario] = useState(false)
+  const [pendingForm, setPendingForm] = useState(null)
 
   const {
     propiedades,
@@ -68,26 +90,56 @@ export default function AdminPropiedades() {
     if (!submitting) {
       setModalOpen(false)
       setPropiedadEditando(null)
+      setTieneContratoActivo(false)
     }
   }
 
   const abrirModalCrear = () => {
     limpiarSubmitError()
     setPropiedadEditando(null)
+    setTieneContratoActivo(false)
     setModalOpen(true)
   }
 
-  const abrirModalEditar = (propiedad) => {
+  const abrirModalEditar = async (propiedad) => {
     limpiarSubmitError()
+
+    const deps = await contarDependenciasPropiedad(propiedad.id)
+
     setPropiedadEditando(propiedad)
+    setTieneContratoActivo(!deps.error && deps.contratos_activos > 0)
     setModalOpen(true)
   }
 
   const handleSubmit = async (form) => {
     if (propiedadEditando) {
+      const propietarioCambio =
+        tieneContratoActivo &&
+        String(form.propietario_id) !== String(propiedadEditando.propietario_id)
+
+      if (propietarioCambio) {
+        setPendingForm(form)
+        setConfirmCambioPropietario(true)
+        return false
+      }
+
       return actualizar(propiedadEditando.id, form)
     }
     return crear(form)
+  }
+
+  const confirmarCambioPropietario = async () => {
+    if (!pendingForm || !propiedadEditando) return
+    const ok = await actualizar(propiedadEditando.id, pendingForm)
+    setConfirmCambioPropietario(false)
+    setPendingForm(null)
+    if (ok) cerrarModal()
+  }
+
+  const cancelarCambioPropietario = () => {
+    if (submitting) return
+    setConfirmCambioPropietario(false)
+    setPendingForm(null)
   }
 
   const cerrarAlerta = () => {
@@ -108,13 +160,13 @@ export default function AdminPropiedades() {
       return
     }
 
-    if (dependencias.contratos > 0) {
+    if (dependencias.contratos_activos > 0) {
       mostrarAlerta('No se puede eliminar', mensajeContratosActivos)
       return
     }
 
     setPropiedadAEliminar(propiedad)
-    setConfirmReclamos(dependencias.reclamos > 0)
+    setDependenciasEliminar(dependencias)
     setConfirmOpen(true)
   }
 
@@ -122,7 +174,7 @@ export default function AdminPropiedades() {
     if (eliminando) return
     setConfirmOpen(false)
     setPropiedadAEliminar(null)
-    setConfirmReclamos(false)
+    setDependenciasEliminar(dependenciasIniciales)
   }
 
   const confirmarEliminar = async () => {
@@ -137,9 +189,16 @@ export default function AdminPropiedades() {
     }
   }
 
-  const mensajeConfirmacion = confirmReclamos
-    ? '¡Atención! Si eliminás esta propiedad, también se borrarán todos sus reclamos asociados. ¿Querés continuar?'
-    : `¿Eliminar la propiedad "${propiedadAEliminar?.direccion}"? Esta acción no se puede deshacer.`
+  const tieneHistorial =
+    dependenciasEliminar.contratos_historicos > 0 || dependenciasEliminar.reclamos > 0
+
+  const tituloConfirmDelete = tieneHistorial
+    ? 'Eliminar propiedad con historial'
+    : 'Eliminar propiedad'
+
+  const mensajeConfirmacion = propiedadAEliminar
+    ? buildMensajeConfirmacionDelete(propiedadAEliminar, dependenciasEliminar)
+    : ''
 
   return (
     <>
@@ -212,6 +271,7 @@ export default function AdminPropiedades() {
         propiedad={propiedadEditando}
         propietarios={propietarios}
         propietariosLoading={propietariosLoading}
+        tieneContratoActivo={tieneContratoActivo}
       />
 
       <AdminAlertModal
@@ -223,12 +283,23 @@ export default function AdminPropiedades() {
 
       <AdminConfirmModal
         open={confirmOpen}
-        title={confirmReclamos ? 'Eliminar propiedad y reclamos' : 'Eliminar propiedad'}
+        title={tituloConfirmDelete}
         message={mensajeConfirmacion}
         confirmLabel="Eliminar"
         onConfirm={confirmarEliminar}
         onCancel={cancelarEliminar}
         loading={eliminando}
+      />
+
+      <AdminConfirmModal
+        open={confirmCambioPropietario}
+        title="Cambiar propietario con contrato activo"
+        message="Esta propiedad tiene un contrato activo. Estás cambiando el propietario asignado. ¿Querés continuar de todas formas?"
+        confirmLabel="Sí, cambiar propietario"
+        confirmVariant="primary"
+        onConfirm={confirmarCambioPropietario}
+        onCancel={cancelarCambioPropietario}
+        loading={submitting}
       />
     </>
   )

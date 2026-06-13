@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Card } from '@tremor/react'
 import AdminAlertModal from '../../components/admin/AdminAlertModal'
+import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
 import AdminListLayout from '../../components/admin/AdminListLayout'
 import {
   AdminTable,
@@ -23,6 +24,10 @@ export default function AdminPropietarios() {
   const [modalOpen, setModalOpen] = useState(false)
   const [propietarioEditando, setPropietarioEditando] = useState(null)
   const [alerta, setAlerta] = useState(alertaInicial)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [propietarioAEliminar, setPropietarioAEliminar] = useState(null)
+  const [eliminando, setEliminando] = useState(false)
+
   const {
     propietarios,
     loading,
@@ -104,12 +109,26 @@ export default function AdminPropietarios() {
       return
     }
 
-    const confirmar = window.confirm(
-      `¿Eliminar el propietario "${propietario.nombre_completo}"?`
-    )
-    if (!confirmar) return
+    setPropietarioAEliminar(propietario)
+    setConfirmOpen(true)
+  }
 
-    await eliminar(propietario.id)
+  const cancelarEliminar = () => {
+    if (eliminando) return
+    setConfirmOpen(false)
+    setPropietarioAEliminar(null)
+  }
+
+  const confirmarEliminar = async () => {
+    if (!propietarioAEliminar) return
+
+    setEliminando(true)
+    const ok = await eliminar(propietarioAEliminar.id)
+    setEliminando(false)
+
+    if (ok) {
+      cancelarEliminar()
+    }
   }
 
   return (
@@ -184,6 +203,16 @@ export default function AdminPropietarios() {
         title={alerta.titulo}
         message={alerta.mensaje}
         onClose={cerrarAlerta}
+      />
+
+      <AdminConfirmModal
+        open={confirmOpen}
+        title="Eliminar propietario"
+        message={`¿Eliminar al propietario "${propietarioAEliminar?.nombre_completo}"? Esta acción no se puede deshacer.`}
+        confirmLabel="Eliminar"
+        onConfirm={confirmarEliminar}
+        onCancel={cancelarEliminar}
+        loading={eliminando}
       />
     </>
   )

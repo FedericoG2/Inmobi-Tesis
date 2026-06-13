@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@tremor/react'
+import {
+  validarNombreCompleto,
+  validarDniCuit,
+  validarTelefono,
+  validarEmail,
+} from '../../../utils/validaciones'
 
 const formInicial = {
   nombre_completo: '',
@@ -11,12 +17,24 @@ const formInicial = {
 const inputClass =
   'w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200'
 
+const inputErrorClass =
+  'w-full rounded-lg border border-red-400 px-4 py-2.5 text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200'
+
 function formDesdePropietario(propietario) {
   return {
     nombre_completo: propietario.nombre_completo ?? '',
     dni_cuit: propietario.dni_cuit ?? '',
     telefono: propietario.telefono ?? '',
     email: propietario.email ?? '',
+  }
+}
+
+function validarForm(form) {
+  return {
+    nombre_completo: validarNombreCompleto(form.nombre_completo),
+    dni_cuit: validarDniCuit(form.dni_cuit),
+    telefono: validarTelefono(form.telefono),
+    email: validarEmail(form.email),
   }
 }
 
@@ -29,25 +47,44 @@ export default function PropietarioFormModal({
   propietario = null,
 }) {
   const [form, setForm] = useState(formInicial)
+  const [erroresCampo, setErroresCampo] = useState({})
   const esEdicion = Boolean(propietario)
 
   useEffect(() => {
     if (!open) {
       setForm(formInicial)
+      setErroresCampo({})
       return
     }
     setForm(esEdicion ? formDesdePropietario(propietario) : formInicial)
+    setErroresCampo({})
   }, [open, propietario, esEdicion])
 
   if (!open) return null
 
   const handleChange = (field) => (e) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }))
+    if (erroresCampo[field]) {
+      setErroresCampo((prev) => ({ ...prev, [field]: null }))
+    }
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    const ok = await onSubmit(form)
+
+    const errores = validarForm(form)
+    const hayErrores = Object.values(errores).some(Boolean)
+    if (hayErrores) {
+      setErroresCampo(errores)
+      return
+    }
+
+    const ok = await onSubmit({
+      nombre_completo: form.nombre_completo.trim(),
+      dni_cuit: form.dni_cuit.trim(),
+      telefono: form.telefono.trim(),
+      email: form.email.trim().toLowerCase(),
+    })
     if (ok) onClose()
   }
 
@@ -79,11 +116,15 @@ export default function PropietarioFormModal({
               id="nombre_completo"
               type="text"
               required
+              maxLength={100}
               value={form.nombre_completo}
               onChange={handleChange('nombre_completo')}
-              className={inputClass}
+              className={erroresCampo.nombre_completo ? inputErrorClass : inputClass}
               placeholder="Juan Carlos Zitelli"
             />
+            {erroresCampo.nombre_completo && (
+              <p className="mt-1 text-xs text-red-600">{erroresCampo.nombre_completo}</p>
+            )}
           </div>
 
           <div>
@@ -94,11 +135,15 @@ export default function PropietarioFormModal({
               id="dni_cuit"
               type="text"
               required
+              maxLength={14}
               value={form.dni_cuit}
               onChange={handleChange('dni_cuit')}
-              className={inputClass}
+              className={erroresCampo.dni_cuit ? inputErrorClass : inputClass}
               placeholder="20-12345678-9"
             />
+            {erroresCampo.dni_cuit && (
+              <p className="mt-1 text-xs text-red-600">{erroresCampo.dni_cuit}</p>
+            )}
           </div>
 
           <div>
@@ -109,11 +154,15 @@ export default function PropietarioFormModal({
               id="telefono"
               type="text"
               required
+              maxLength={20}
               value={form.telefono}
               onChange={handleChange('telefono')}
-              className={inputClass}
+              className={erroresCampo.telefono ? inputErrorClass : inputClass}
               placeholder="3516554433"
             />
+            {erroresCampo.telefono && (
+              <p className="mt-1 text-xs text-red-600">{erroresCampo.telefono}</p>
+            )}
           </div>
 
           <div>
@@ -122,13 +171,17 @@ export default function PropietarioFormModal({
             </label>
             <input
               id="email"
-              type="email"
+              type="text"
               required
+              maxLength={100}
               value={form.email}
               onChange={handleChange('email')}
-              className={inputClass}
+              className={erroresCampo.email ? inputErrorClass : inputClass}
               placeholder="nombre@email.com"
             />
+            {erroresCampo.email && (
+              <p className="mt-1 text-xs text-red-600">{erroresCampo.email}</p>
+            )}
           </div>
 
           {submitError && (

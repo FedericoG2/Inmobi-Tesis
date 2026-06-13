@@ -132,11 +132,11 @@ export default function AdminInquilinos() {
     return cumpleTexto && cumpleGarantia && cumpleTipo
   })
 
-  // 🟢 ORDENAMIENTO EN MILISEGUNDOS PURAS (Resuelve la inversión visual)
+  
   const inquilinosFiltrados = inquilinosProcesados.sort((a, b) => {
     const fechaA = a.created_at ? new Date(a.created_at).getTime() : 0
     const fechaB = b.created_at ? new Date(b.created_at).getTime() : 0
-    return fechaA - fechaB
+    return fechaB - fechaA // <-- Cambiado de (fechaA - fechaB) a (fechaB - fechaA)
   })
 
   return (

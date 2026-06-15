@@ -1,13 +1,20 @@
 import { supabase } from '../supabaseClient'
+import {
+  normalizarNombreCompleto,
+  normalizarSoloDigitos,
+} from '../utils/normalizarContacto'
 
-const SELECT_PROPIETARIO = 'id, nombre_completo, dni_cuit, telefono, email'
+const SELECT_PROPIETARIO =
+  'id, tipo_persona, nombre_completo, dni_cuit, telefono, email, domicilio'
 
 function sanitizarPropietario(datos) {
   return {
-    nombre_completo: (datos.nombre_completo ?? '').trim(),
-    dni_cuit: (datos.dni_cuit ?? '').trim(),
-    telefono: (datos.telefono ?? '').trim(),
+    tipo_persona: datos.tipo_persona === 'Jurídica' ? 'Jurídica' : 'Física',
+    nombre_completo: normalizarNombreCompleto(datos.nombre_completo),
+    dni_cuit: normalizarSoloDigitos(datos.dni_cuit),
+    telefono: normalizarSoloDigitos(datos.telefono),
     email: (datos.email ?? '').trim().toLowerCase(),
+    domicilio: (datos.domicilio ?? '').trim() || null,
   }
 }
 

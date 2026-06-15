@@ -60,12 +60,7 @@ export function usePropietarios() {
       setSubmitting(true)
       setSubmitError(null)
 
-      const { error: updateError } = await actualizarPropietario(id, {
-        nombre_completo: datos.nombre_completo,
-        dni_cuit: datos.dni_cuit,
-        telefono: datos.telefono,
-        email: datos.email,
-      })
+      const { error: updateError } = await actualizarPropietario(id, datos)
 
       if (updateError) {
         setSubmitError(updateError.message)

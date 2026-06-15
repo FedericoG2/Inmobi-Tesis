@@ -2,7 +2,18 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 const inputClass =
-  'w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200'
+  'w-full rounded-lg border border-slate-300 py-2.5 pl-4 pr-9 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200'
+
+function IconX({ className = 'h-4 w-4' }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+    </svg>
+  )
+}
+
+const btnLimpiar =
+  'absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600'
 
 function normalizar(texto) {
   return (texto ?? '')
@@ -94,6 +105,18 @@ export default function AdminSearchSelect({
     setOpen(true)
   }
 
+  const limpiarBusqueda = () => {
+    setQuery('')
+    setOpen(false)
+    searchRef.current?.focus()
+  }
+
+  const limpiarSeleccion = () => {
+    onChange('')
+    setQuery('')
+    setOpen(false)
+  }
+
   const listaDesplegable =
     open && !disabled && menuRect
       ? createPortal(
@@ -151,12 +174,22 @@ export default function AdminSearchSelect({
 
       <div className="flex flex-col gap-2 sm:flex-row">
         <div
-          className={`flex min-h-[42px] min-w-0 flex-1 items-center rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm ${
-            seleccionado ? 'text-slate-900' : 'text-slate-400'
+          className={`relative flex min-h-[42px] min-w-0 flex-1 items-center rounded-lg border border-slate-300 bg-slate-50 py-2.5 pl-4 text-sm ${
+            seleccionado ? 'pr-9 text-slate-900' : 'pr-4 text-slate-400'
           } ${disabled ? 'opacity-60' : ''}`}
           aria-live="polite"
         >
           <span className="truncate">{seleccionado?.label ?? emptySelectionLabel}</span>
+          {seleccionado && !disabled && (
+            <button
+              type="button"
+              aria-label="Quitar selección"
+              className={btnLimpiar}
+              onClick={limpiarSeleccion}
+            >
+              <IconX className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
 
         <div className="relative min-w-0 flex-1">
@@ -179,6 +212,16 @@ export default function AdminSearchSelect({
             aria-controls={listboxId}
             aria-autocomplete="list"
           />
+          {query && !disabled && (
+            <button
+              type="button"
+              aria-label="Borrar búsqueda"
+              className={btnLimpiar}
+              onClick={limpiarBusqueda}
+            >
+              <IconX className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </div>
 

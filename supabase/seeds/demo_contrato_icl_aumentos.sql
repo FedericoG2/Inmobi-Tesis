@@ -1,5 +1,5 @@
 -- Seed demo: contrato ICL vencido para probar módulo Aumentos
--- Propiedad: Av Colo 4500 (id 9) | Inquilino: Federico Gonzalez (id 6)
+-- Propiedad: Av. Colón 4500, Córdoba (id 9) | Inquilino: Federico Gonzalez (id 6)
 -- Monto esperado al calcular: round(150000 * 25.16 / 10.80) = 349444
 
 BEGIN;

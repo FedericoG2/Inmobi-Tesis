@@ -45,7 +45,11 @@ export function usePropiedades() {
       })
 
       if (createError) {
-        setSubmitError(createError.message)
+        setSubmitError(
+          typeof createError === 'string'
+            ? createError
+            : createError?.message ?? 'No se pudo guardar la propiedad'
+        )
         setSubmitting(false)
         return false
       }
@@ -63,14 +67,22 @@ export function usePropiedades() {
       setSubmitError(null)
 
       const { error: updateError } = await actualizarPropiedad(id, {
-        propietario_id: datos.propietario_id,
-        direccion: datos.direccion,
+        propietario_id: Number(datos.propietario_id),
+        calle: datos.calle,
+        altura: datos.altura,
+        piso: datos.piso,
+        unidad: datos.unidad,
+        ciudad: datos.ciudad,
         tipo: datos.tipo,
         estado: datos.estado,
       })
 
       if (updateError) {
-        setSubmitError(updateError.message)
+        setSubmitError(
+          typeof updateError === 'string'
+            ? updateError
+            : updateError?.message ?? 'No se pudo guardar la propiedad'
+        )
         setSubmitting(false)
         return false
       }

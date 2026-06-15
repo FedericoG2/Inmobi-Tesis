@@ -1,5 +1,5 @@
 -- Seed demo: contrato IPC vencido para probar módulo Aumentos vs ARquiler
--- Propiedad: Fabrisio E Carrascull 621 (id 8) | Inquilino: Federico Gonzalez (id 6)
+-- Propiedad: Av. Fabricio E. Carrascull 621, Córdoba (id 8) | Inquilino: Federico Gonzalez (id 6)
 -- Período IPC: jun/2024 .. may/2025 (12 meses) sobre monto $150.000
 -- Monto esperado aprox (Argly): round(150000 * factor compuesto) ≈ $215.225
 

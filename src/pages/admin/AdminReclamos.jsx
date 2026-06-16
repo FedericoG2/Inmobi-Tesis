@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Badge, Card } from '@tremor/react'
+import { Card } from '@tremor/react'
 import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
 import AdminListLayout from '../../components/admin/AdminListLayout'
+import AdminNuevoButton from '../../components/admin/AdminNuevoButton'
 import {
   AdminTable,
   AdminTableBody,
@@ -18,15 +19,29 @@ import TableRowActions from '../../components/admin/TableRowActions'
 import { useInquilinos } from '../../hooks/useInquilinos'
 import { useContratos } from '../../hooks/useContratos'
 import { useReclamos } from '../../hooks/useReclamos'
+import {
+  badgeCategoria,
+  badgeEstado,
+  badgePrioridad,
+  PILL_SOLID_CLASS,
+} from '../../utils/reclamosUi'
 
-const estadoColor = {
-  Pendiente: '',
-  'En Proceso': '',
-  Resuelto: '',
+function ReclamoPill({ badge }) {
+  if (!badge) return <span className="text-slate-400">—</span>
+  return (
+    <span className={`${PILL_SOLID_CLASS} ${badge.className}`}>
+      {badge.label}
+    </span>
+  )
 }
 
 const estados = ['Pendiente', 'En Proceso', 'Revision', 'Resuelto']
 const prioridades = ['Baja', 'Media', 'Alta', 'Urgente']
+
+const COL_CATEGORIA = 'w-[8.5rem]'
+const COL_FECHA = 'w-[7.5rem]'
+const COL_PRIORIDAD = 'w-[6.75rem]'
+const COL_ESTADO = 'w-[8.75rem]'
 
 // Opciones consistentes con el formulario
 const CATEGORIAS = [
@@ -34,10 +49,25 @@ const CATEGORIAS = [
   { id: 'Electricidad', label: 'Electricidad' },
   { id: 'Albañilería', label: 'Albañilería' },
   { id: 'Cerrajeria', label: 'Cerrajería' },
-  { id: 'Pintura', label: 'Pintura' },  
+  { id: 'Pintura', label: 'Pintura' },
   { id: 'Estructural', label: 'Estructural' },
   { id: 'Gas', label: 'Gas' },
 ]
+
+const inputToolbarClass =
+  'h-10 w-full rounded-lg border border-slate-300 bg-white text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
+
+function IconSearch({ className = 'h-4 w-4' }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+      />
+    </svg>
+  )
+}
 
 export default function AdminReclamos() {
   const [modalOpen, setModalOpen] = useState(false)
@@ -49,7 +79,6 @@ export default function AdminReclamos() {
   const [filtroTexto, setFiltroTexto] = useState('')
   const [filtroEstado, setFiltroEstado] = useState('')
   const [filtroPrioridad, setFiltroPrioridad] = useState('')
-  const [filtroFecha, setFiltroFecha] = useState('')
   const [filtroCategoria, setFiltroCategoria] = useState('')
 
   const {
@@ -123,13 +152,6 @@ export default function AdminReclamos() {
     }
   }
 
-  const prioridadColor = {
-    Urgente: '',
-    Alta: '',
-    Media: '',
-    Baja: '',
-  }
-
   const esResuelto = reclamoAEliminar?.estado === 'Resuelto'
   const mensajeConfirmacion = esResuelto
     ? `Este reclamo ya está marcado como Resuelto. Si lo eliminás, se pierde el registro de esa gestión. ¿Eliminar "${reclamoAEliminar?.titulo}" igualmente?`
@@ -164,10 +186,18 @@ export default function AdminReclamos() {
       <AdminListLayout
         title="Reclamos"
         subtitle="Tickets de mantenimiento por inquilino y propiedad (contrato activo al crear)"
-        actionLabel="Nuevo reclamo"
-        onAction={abrirModalCrear}
         alerts={
           <>
+            {cantidadUrgentes > 0 && (
+              <Card className="flex items-center gap-2 border border-red-200 bg-red-50 px-4 py-2.5">
+                <span className="flex h-2 w-2 shrink-0 rounded-full bg-red-600 animate-pulse" />
+                <p className="text-sm font-medium text-red-800">
+                  Atención: hay <span className="font-bold underline">{cantidadUrgentes}</span>{' '}
+                  {cantidadUrgentes === 1 ? 'reclamo urgente' : 'reclamos urgentes'} pendientes de
+                  resolución.
+                </p>
+              </Card>
+            )}
             {error && (
               <Card className="border border-red-200 bg-red-50">
                 <p className="text-sm text-red-700">Error al cargar reclamos: {error}</p>
@@ -181,94 +211,85 @@ export default function AdminReclamos() {
           </>
         }
       >
-        {/* Banner de reclamos urgentes en cola */}
-        {cantidadUrgentes > 0 && (
-          <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-100 bg-red-50/60 px-4 py-2.5 text-sm text-red-800 shadow-sm animate-pulse">
-            <span className="flex h-2 w-2 rounded-full bg-red-600" />
-            <p className="font-medium">
-              Atención: Hay <span className="font-bold underline">{cantidadUrgentes}</span> {cantidadUrgentes === 1 ? 'reclamo urgente' : 'reclamos urgentes'} pendientes de resolución.
-            </p>
-          </div>
-        )}
-
-        {/* BARRA DE BÚSQUEDA Y FILTROS */}
-        <div className="mb-6 grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2 md:grid-cols-4 shadow-sm">
-          {/* Búsqueda por Texto */}
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="search-texto" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Buscar</label>
-            <div className="relative">
-              <input
-                id="search-texto"
-                type="text"
-                placeholder="Inquilino, propiedad, título..."
-                value={filtroTexto}
-                onChange={(e) => setFiltroTexto(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-slate-50/50 px-3 py-2 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100"
-              />
-            </div>
+        <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 lg:px-6">
+          <div className="relative min-w-0 flex-1 sm:min-w-[12rem]">
+            <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              id="buscar-reclamo"
+              type="search"
+              value={filtroTexto}
+              onChange={(e) => setFiltroTexto(e.target.value)}
+              placeholder="Buscar por inquilino, propiedad o título..."
+              className={`${inputToolbarClass} pl-9`}
+            />
           </div>
 
-          {/* Filtro por Estado */}
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="search-estado" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</label>
-            <select
-              id="search-estado"
-              value={filtroEstado}
-              onChange={(e) => setFiltroEstado(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-all cursor-pointer focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-            >
-              <option value="">Todos los estados</option>
-              {estados.map((e) => (
-                <option key={e} value={e}>{e}</option>
-              ))}
-            </select>
-          </div>
+          <select
+            id="filtro-estado-reclamo"
+            value={filtroEstado}
+            onChange={(e) => setFiltroEstado(e.target.value)}
+            className={`${inputToolbarClass} sm:w-44 shrink-0 cursor-pointer`}
+            aria-label="Filtrar por estado"
+          >
+            <option value="">Estado: Todos</option>
+            {estados.map((e) => (
+              <option key={e} value={e}>{e}</option>
+            ))}
+          </select>
 
-          {/* Filtro por Prioridad */}
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="search-prioridad" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Prioridad</label>
-            <select
-              id="search-prioridad"
-              value={filtroPrioridad}
-              onChange={(e) => setFiltroPrioridad(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-all cursor-pointer focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-            >
-              <option value="">Todas las prioridades</option>
-              {prioridades.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-          </div>
+          <select
+            id="filtro-prioridad-reclamo"
+            value={filtroPrioridad}
+            onChange={(e) => setFiltroPrioridad(e.target.value)}
+            className={`${inputToolbarClass} sm:w-44 shrink-0 cursor-pointer`}
+            aria-label="Filtrar por prioridad"
+          >
+            <option value="">Prioridad: Todas</option>
+            {prioridades.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
 
-          {/* Filtro por Categoría */}
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="search-categoria" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">CATEGORIAS</label>
-            <select
-              id="search-categoria"
-              value={filtroCategoria}
-              onChange={(e) => setFiltroCategoria(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-all cursor-pointer focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-            >
-              <option value="">Todas las categorías</option>
-              {CATEGORIAS.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.label}
-                </option>
-              ))}
-            </select>
+          <select
+            id="filtro-categoria-reclamo"
+            value={filtroCategoria}
+            onChange={(e) => setFiltroCategoria(e.target.value)}
+            className={`${inputToolbarClass} sm:w-44 shrink-0 cursor-pointer`}
+            aria-label="Filtrar por categoría"
+          >
+            <option value="">Categoría: Todas</option>
+            {CATEGORIAS.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.label}
+              </option>
+            ))}
+          </select>
+
+          <div className="shrink-0 sm:ml-auto">
+            <AdminNuevoButton
+              label="Nuevo reclamo"
+              onClick={abrirModalCrear}
+              className="!h-10 w-full !px-4 !py-0 sm:w-auto"
+            />
           </div>
         </div>
 
         <AdminTable>
-          <AdminTableHead>
+          <AdminTableHead className="!bg-slate-100/90">
             <AdminTableRow>
               <AdminTableHeaderCell>Inquilino</AdminTableHeaderCell>
               <AdminTableHeaderCell>Propiedad</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Categoria</AdminTableHeaderCell>
+              <AdminTableHeaderCell className={`${COL_CATEGORIA} !text-center`}>
+                Categoría
+              </AdminTableHeaderCell>
               <AdminTableHeaderCell>Descripción</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Fecha de Creación</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Prioridad</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Estado</AdminTableHeaderCell>
+              <AdminTableHeaderCell className={COL_FECHA}>Fecha de Creación</AdminTableHeaderCell>
+              <AdminTableHeaderCell className={`${COL_PRIORIDAD} !text-center`}>
+                Prioridad
+              </AdminTableHeaderCell>
+              <AdminTableHeaderCell className={`${COL_ESTADO} !text-center`}>
+                Estado
+              </AdminTableHeaderCell>
               <AdminTableActionsHeaderCell />
             </AdminTableRow>
           </AdminTableHead>
@@ -293,14 +314,8 @@ export default function AdminReclamos() {
                 <AdminTableRow key={r.id}>
                   <AdminTableCell>{r.inquilinos?.nombre_completo ?? '—'}</AdminTableCell>
                   <AdminTableCell className="max-w-xs">{r.propiedades?.direccion ?? '—'}</AdminTableCell>
-                  <AdminTableCell>
-                    {r.categoria ? (
-                      <Badge color="slate" variant="secondary">
-                        {r.categoria}
-                      </Badge>
-                    ) : (
-                      <span className="text-slate-400 italic">Sin categoría</span>
-                    )}
+                  <AdminTableCell className={`${COL_CATEGORIA} !text-center`}>
+                    <ReclamoPill badge={badgeCategoria(r.categoria)} />
                   </AdminTableCell>
                   <AdminTableCell className="max-w-sm">
                     <p className="font-medium text-slate-900">{r.titulo}</p>
@@ -308,7 +323,7 @@ export default function AdminReclamos() {
                       <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{r.descripcion}</p>
                     )}
                   </AdminTableCell>
-                  <AdminTableCell>
+                  <AdminTableCell className={`${COL_FECHA} tabular-nums`}>
                     {r.fecha_creacion
                       ? new Date(r.fecha_creacion).toLocaleDateString('es-AR', {
                           day: '2-digit',
@@ -317,13 +332,11 @@ export default function AdminReclamos() {
                         })
                       : '—'}
                   </AdminTableCell>
-                  <AdminTableCell>
-                    <Badge color={prioridadColor[r.prioridad] ?? 'slate'}>
-                      {r.prioridad ?? 'No asignada'}
-                    </Badge>
+                  <AdminTableCell className={`${COL_PRIORIDAD} !text-center`}>
+                    <ReclamoPill badge={badgePrioridad(r.prioridad)} />
                   </AdminTableCell>
-                  <AdminTableCell>
-                    <Badge color={estadoColor[r.estado] ?? 'slate'}>{r.estado}</Badge>
+                  <AdminTableCell className={`${COL_ESTADO} !text-center`}>
+                    <ReclamoPill badge={badgeEstado(r.estado)} />
                   </AdminTableCell>
                   <AdminTableActionsCell>
                     <TableRowActions

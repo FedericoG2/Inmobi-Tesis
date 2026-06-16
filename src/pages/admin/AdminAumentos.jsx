@@ -1,8 +1,13 @@
-import { useMemo, useState } from 'react'
-import { Badge, Button, Card } from '@tremor/react'
-import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
+import { useEffect, useMemo, useState } from 'react'
+import { Card } from '@tremor/react'
 import AdminAlertModal from '../../components/admin/AdminAlertModal'
+import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
 import AdminListLayout from '../../components/admin/AdminListLayout'
+import AdminTablePagination from '../../components/admin/AdminTablePagination'
+import AdminNuevoButton from '../../components/admin/AdminNuevoButton'
+import StatCard from '../../components/admin/StatCard'
+import AumentoDetalleModal from '../../components/admin/AumentoDetalleModal'
+import AumentoRowActions from '../../components/admin/AumentoRowActions'
 import {
   AdminTable,
   AdminTableBody,
@@ -15,241 +20,162 @@ import {
   AdminTableRow,
 } from '../../components/admin/AdminDataTable'
 import { useAumentos } from '../../hooks/useAumentos'
-import { periodicidadLabelPorMeses } from '../../utils/contratoAumentosPreview'
+import {
+  badgeIndicador,
+  etiquetaFechaAumento,
+  formatFechaAumento,
+  formatPeriodoIpc,
+  formatValorIcl,
+  formatValorIpc,
+  hoyIsoLocal,
+  interpretarPropuestaAumento,
+  mensajeConfirmarDeshabilitado,
+  TONO_SITUACION,
+} from '../../utils/aumentosUi'
+
+const DIAS_VENTANA = 30
+const FILAS_POR_PAGINA = 4
+
+const COL_INQUILINO = 'w-[10.5rem]'
+const COL_FECHA = 'w-[7.25rem]'
+const COL_MONTO_ACTUAL = 'w-[9rem]'
+const COL_MONTO_AJUSTADO = 'w-[10rem]'
+const COL_INDICE = 'w-[5.25rem]'
+const COL_ESTADO = 'w-[7.75rem]'
+
+const FILTRO_AUMENTOS = [
+  { value: 'todos', label: 'Todos' },
+  { value: 'listos', label: 'Listos para confirmar' },
+  { value: 'proximos', label: 'Próximos' },
+  { value: 'pendientes', label: 'Pendientes' },
+]
+
+const inputToolbarClass =
+  'h-10 rounded-lg border border-slate-300 bg-white text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:opacity-50'
 
 const formatMonto = (monto) => {
   if (monto == null) return '—'
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(monto)
 }
 
-const formatFecha = (fecha) => {
-  if (!fecha) return '—'
-  const [year, month, day] = fecha.split('-')
-  return `${day}/${month}/${year}`
-}
-
-const formatFechaCorta = (fecha) => {
-  if (!fecha) return '—'
-  const [year, month, day] = fecha.split('-')
-  return `${day}/${month}/${year.slice(2)}`
-}
-
-function observacionesPropuesta(propuesta) {
-  if (propuesta.es_aproximado) {
-    const detalle =
-      propuesta.ipc_meses != null && propuesta.ipc_meses_esperados != null
-        ? `: ${propuesta.ipc_meses}/${propuesta.ipc_meses_esperados} meses IPC publicados`
-        : ': faltan variaciones IPC del período'
-    return (
-      <span className="text-xs leading-snug text-slate-600">
-        <span className="font-medium underline decoration-red-500 underline-offset-2 text-red-600">
-          Aproximado
-        </span>
-        {detalle}
-      </span>
-    )
-  }
-  if (propuesta.estado === 'falta_indice') {
-    return (
-      <span className="text-xs leading-snug text-slate-600">
-        <span className="font-medium underline decoration-red-500 underline-offset-2 text-red-600">
-          Falta índice
-        </span>
-        : no hay datos suficientes para calcular
-      </span>
-    )
-  }
-  if (propuesta.estado === 'ok') {
-    if (propuesta.confirmable) {
-      const detalle =
-        propuesta.indice_tipo === 'ipc' &&
-        propuesta.ipc_meses != null &&
-        propuesta.ipc_meses_esperados != null
-          ? `: ${propuesta.ipc_meses}/${propuesta.ipc_meses_esperados} meses IPC`
-          : ': índice del período disponible'
-      return (
-        <span className="text-xs leading-snug text-slate-600">
-          <span className="font-medium underline decoration-emerald-600 underline-offset-2 text-emerald-700">
-            Definitivo
-          </span>
-          {detalle}
-        </span>
-      )
-    }
-    return (
-      <span className="text-xs leading-snug text-slate-600">
-        <span className="font-medium underline decoration-slate-500 underline-offset-2 text-slate-700">
-          Estimación
-        </span>
-        : índices disponibles; confirmar al vencer la fecha
-      </span>
-    )
-  }
-  return <span className="text-sm text-slate-400">—</span>
-}
-
-function detalleIndice(propuesta) {
-  if (propuesta.indice_tipo === 'ipc') {
-    if (propuesta.ipc_meses != null && propuesta.ipc_meses_esperados != null) {
-      const base = `${propuesta.ipc_meses}/${propuesta.ipc_meses_esperados} meses IPC`
-      return propuesta.es_aproximado ? `${base} (aprox.)` : base
-    }
-    if (propuesta.ipc_meses != null) {
-      return `${propuesta.ipc_meses} meses IPC`
-    }
-    return 'IPC'
-  }
-  if (propuesta.indice_valor_inicio != null && propuesta.indice_valor_fin != null) {
-    return `ICL ${propuesta.indice_valor_inicio} → ${propuesta.indice_valor_fin}`
-  }
-  return null
-}
-
-function etiquetaCola(item) {
-  if (item.es_vencido) {
-    if (item.dias === 0) return 'Vence hoy'
-    if (item.dias === 1) return 'Vencido hace 1 día'
-    return `Vencido hace ${item.dias} días`
-  }
-  if (item.dias === 0) return 'Vence hoy'
-  if (item.dias === 1) return 'En 1 día'
-  return `En ${item.dias} días`
-}
-
-const FILTRO_COLA = [
-  { value: 'todos', label: 'Todos' },
-  { value: 'vencidos', label: 'Vencidos' },
-  { value: 'proximos', label: 'Próximos 30 d' },
-]
-
-function IconoAdvertencia({ className = 'h-5 w-5' }) {
+function IconRefresh({ className = 'h-4 w-4' }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden>
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
-        d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
+        d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
       />
     </svg>
   )
 }
 
-function LeyendaIndicesModal({ open, onClose }) {
+function IconInfo({ className = 'h-5 w-5' }) {
   return (
-    <AdminAlertModal open={open} title="Cálculo de índices" onClose={onClose} compact>
-      <div className="mt-2 space-y-3 text-sm leading-relaxed text-slate-600">
-        <p>
-          <span className="font-semibold text-slate-900">ICL</span>
-          <br />
-          Si no hay índice para la fecha exacta, se usa el último valor publicado anterior. Los
-          aumentos próximos a vencer son{' '}
-          <span className="font-semibold text-red-600 underline decoration-red-500 underline-offset-2">
-            estimaciones
-          </span>{' '}
-          que pueden variar al confirmarse.
-        </p>
-        <p>
-          <span className="font-semibold text-slate-900">IPC</span>
-          <br />
-          Si faltan meses al final del período (aún no publicados), se muestra un monto{' '}
-          <span className="font-semibold text-red-600 underline decoration-red-500 underline-offset-2">
-            aproximado
-          </span>{' '}
-          con los meses disponibles; la confirmación requiere el período completo.
-        </p>
-      </div>
-    </AdminAlertModal>
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
+      />
+    </svg>
   )
 }
 
 export default function AdminAumentos() {
-  const [filtroCola, setFiltroCola] = useState('todos')
-  const [seleccionCola, setSeleccionCola] = useState(new Set())
+  const [filtro, setFiltro] = useState('todos')
+  const [paginaActual, setPaginaActual] = useState(1)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmTarget, setConfirmTarget] = useState([])
-  const [leyendaOpen, setLeyendaOpen] = useState(false)
+  const [detalleOpen, setDetalleOpen] = useState(false)
+  const [propuestaDetalle, setPropuestaDetalle] = useState(null)
+  const [ayudaOpen, setAyudaOpen] = useState(false)
 
   const {
-    cola,
-    colaLoading,
     propuestas,
     meta,
-    syncWarning,
-    calculando,
+    indicesResumen,
+    loading,
     confirmando,
     error,
-    calcularPendientes,
+    syncWarning,
+    cargarAumentos,
     confirmarSeleccionados,
     limpiarError,
-    setPropuestas,
   } = useAumentos()
 
-  const tituloConfirmar = (propuesta) => {
-    if (propuesta.confirmable) return 'Confirmar aumento'
-    if (propuesta.estado === 'falta_indice') return 'No se puede confirmar: falta índice'
-    if (propuesta.es_aproximado) {
-      return 'Aproximado: confirme cuando se publiquen todos los meses IPC del período'
-    }
-    return 'Solo se confirman aumentos vencidos con índice completo'
-  }
+  const hoy = hoyIsoLocal()
 
-  const contratosListado = useMemo(() => {
-    const items = cola?.items ?? []
-    if (filtroCola === 'vencidos') return items.filter((i) => i.es_vencido)
-    if (filtroCola === 'proximos') return items.filter((i) => !i.es_vencido)
-    return items
-  }, [cola?.items, filtroCola])
-
-  const conteosCola = useMemo(
-    () => ({
-      todos: cola?.items?.length ?? 0,
-      vencidos: cola?.vencidos?.length ?? 0,
-      proximos: cola?.proximos?.length ?? 0,
-    }),
-    [cola?.items?.length, cola?.vencidos?.length, cola?.proximos?.length]
+  const propuestasConUi = useMemo(
+    () =>
+      propuestas.map((p) => ({
+        ...p,
+        ui: interpretarPropuestaAumento(p, hoy),
+        fechaAumento: p.fecha_hasta ?? p.fecha_proximo_aumento,
+      })),
+    [propuestas, hoy]
   )
 
-  const mensajeListadoVacio = useMemo(() => {
-    if (colaLoading) return 'Cargando…'
-    if ((cola?.items.length ?? 0) === 0) {
-      return 'No hay contratos ICL/IPC vencidos ni con aumento en los próximos 30 días'
+  const conteos = useMemo(() => {
+    const listos = propuestasConUi.filter((p) => p.ui.puedeConfirmar).length
+    const proximos = propuestasConUi.filter((p) => p.fechaAumento > hoy).length
+    const pendientes = propuestasConUi.filter(
+      (p) => p.fechaAumento <= hoy && !p.ui.puedeConfirmar && p.ui.etiqueta !== 'sin_indices'
+    ).length
+    return {
+      todos: propuestasConUi.length,
+      listos,
+      proximos,
+      pendientes,
     }
-    if (filtroCola === 'vencidos') return 'No hay contratos vencidos con este filtro'
-    if (filtroCola === 'proximos') return 'No hay contratos con aumento en los próximos 30 días'
+  }, [propuestasConUi, hoy])
+
+  const listadoFiltrado = useMemo(() => {
+    if (filtro === 'listos') return propuestasConUi.filter((p) => p.ui.puedeConfirmar)
+    if (filtro === 'proximos') return propuestasConUi.filter((p) => p.fechaAumento > hoy)
+    if (filtro === 'pendientes') {
+      return propuestasConUi.filter(
+        (p) => p.fechaAumento <= hoy && !p.ui.puedeConfirmar && p.ui.etiqueta !== 'sin_indices'
+      )
+    }
+    return propuestasConUi
+  }, [propuestasConUi, filtro, hoy])
+
+  useEffect(() => {
+    setPaginaActual(1)
+  }, [filtro])
+
+  const totalPaginas = useMemo(
+    () => Math.max(1, Math.ceil(listadoFiltrado.length / FILAS_POR_PAGINA)),
+    [listadoFiltrado.length]
+  )
+
+  const listadoPagina = useMemo(() => {
+    const inicio = (paginaActual - 1) * FILAS_POR_PAGINA
+    return listadoFiltrado.slice(inicio, inicio + FILAS_POR_PAGINA)
+  }, [listadoFiltrado, paginaActual])
+
+  useEffect(() => {
+    if (paginaActual > totalPaginas) {
+      setPaginaActual(totalPaginas)
+    }
+  }, [paginaActual, totalPaginas])
+
+  const listosParaConfirmar = useMemo(
+    () => propuestasConUi.filter((p) => p.ui.puedeConfirmar),
+    [propuestasConUi]
+  )
+
+  const mensajeVacio = useMemo(() => {
+    if (loading) return 'Calculando aumentos…'
+    if (propuestasConUi.length === 0) {
+      return `No hay contratos con aumento en los próximos ${DIAS_VENTANA} días`
+    }
+    if (filtro === 'listos') return 'Ningún aumento listo para confirmar con este filtro'
+    if (filtro === 'proximos') return 'No hay aumentos con fecha futura en la ventana'
+    if (filtro === 'pendientes') return 'No hay aumentos pendientes sin confirmar'
     return 'Sin contratos para mostrar'
-  }, [colaLoading, cola?.items.length, filtroCola])
-
-  const totalCola = cola?.items?.length ?? 0
-
-  const esSeleccionParcial =
-    seleccionCola.size > 0 && seleccionCola.size < totalCola
-
-  const todosColaSeleccionados =
-    contratosListado.length > 0 &&
-    contratosListado.every((i) => seleccionCola.has(i.contrato_id))
-
-  const toggleSeleccionCola = (contratoId) => {
-    setSeleccionCola((prev) => {
-      const next = new Set(prev)
-      if (next.has(contratoId)) next.delete(contratoId)
-      else next.add(contratoId)
-      return next
-    })
-  }
-
-  const toggleSeleccionarTodaCola = () => {
-    if (todosColaSeleccionados) {
-      setSeleccionCola(new Set())
-    } else {
-      setSeleccionCola(new Set(contratosListado.map((i) => i.contrato_id)))
-    }
-  }
-
-  const handleCalcular = async () => {
-    limpiarError()
-    const contratoIds = esSeleccionParcial ? [...seleccionCola] : null
-    await calcularPendientes({ incluirProximos: true, diasProximos: 30, contratoIds })
-  }
+  }, [loading, propuestasConUi.length, filtro])
 
   const abrirConfirm = (lista) => {
     if (!lista.length) return
@@ -264,28 +190,90 @@ export default function AdminAumentos() {
   }
 
   const ejecutarConfirm = async () => {
-    const { ok, data } = await confirmarSeleccionados(confirmTarget)
-    if (!ok) return
+    const { ok } = await confirmarSeleccionados(confirmTarget)
+    if (ok) {
+      cerrarConfirm()
+      cerrarDetalle()
+    }
+  }
 
-    const confirmadosIds = new Set(confirmTarget.map((p) => p.contrato_id))
-    setPropuestas((prev) => prev.filter((p) => !confirmadosIds.has(p.contrato_id)))
-    setSeleccionCola((prev) => {
-      const next = new Set(prev)
-      confirmadosIds.forEach((id) => next.delete(id))
-      return next
-    })
-    cerrarConfirm()
+  const abrirDetalle = (propuesta) => {
+    setPropuestaDetalle(propuesta)
+    setDetalleOpen(true)
+  }
+
+  const cerrarDetalle = () => {
+    if (confirmando) return
+    setDetalleOpen(false)
+    setPropuestaDetalle(null)
+  }
+
+  const confirmarDesdeDetalle = (propuesta) => {
+    abrirConfirm([propuesta])
   }
 
   const mensajeConfirm =
     confirmTarget.length === 1
-      ? `¿Confirmar el aumento de ${confirmTarget[0].inquilino_nombre ?? 'este contrato'}? Se actualizará el monto del contrato y quedará registro en el historial.`
-      : `¿Confirmar ${confirmTarget.length} aumento(s)? Se actualizará el monto del contrato y quedará registro en el historial.`
+      ? `¿Confirmar el aumento de ${confirmTarget[0].inquilino_nombre ?? 'este contrato'}? El monto pasará a ${formatMonto(confirmTarget[0].monto_propuesto)}.`
+      : `¿Confirmar ${confirmTarget.length} aumento(s)? Se actualizarán los montos de los contratos y quedará registro en el historial.`
+
+  const handleActualizar = () => {
+    limpiarError()
+    cargarAumentos({ diasProximos: DIAS_VENTANA })
+  }
+
+  const indicadoresIndices = useMemo(() => {
+    const icl = indicesResumen.icl
+    const ipc = indicesResumen.ipc
+
+    return {
+      icl: {
+        value: loading ? '…' : formatValorIcl(icl?.valor),
+        label: icl
+          ? `ICL · Argly (${formatFechaAumento(icl.fecha)})`
+          : 'ICL · sin datos en Argly',
+      },
+      ipc: {
+        value: loading ? '…' : formatValorIpc(ipc?.valor),
+        label: ipc
+          ? `IPC · Argly (${formatPeriodoIpc(ipc.anio, ipc.mes)})`
+          : 'IPC · sin datos en Argly',
+      },
+    }
+  }, [indicesResumen, loading])
 
   return (
     <>
       <AdminListLayout
-        title="Aumentos de alquiler"
+        title="Aumentos de Alquiler"
+        subtitle={`Ajustes programados en los próximos ${DIAS_VENTANA} días o menos. Los montos se calculan al ingresar.`}
+        titleAction={
+          <button
+            type="button"
+            onClick={() => setAyudaOpen(true)}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-sky-600"
+            aria-label="Cómo funciona este módulo"
+            title="Cómo funciona este módulo"
+          >
+            <IconInfo />
+          </button>
+        }
+        summary={
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <StatCard
+              label={indicadoresIndices.icl.label}
+              value={indicadoresIndices.icl.value}
+              icon="chart"
+              theme="slate"
+            />
+            <StatCard
+              label={indicadoresIndices.ipc.label}
+              value={indicadoresIndices.ipc.value}
+              icon="chart"
+              theme="violet"
+            />
+          </div>
+        }
         alerts={
           <>
             {error && (
@@ -301,25 +289,24 @@ export default function AdminAumentos() {
           </>
         }
       >
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-4">
-          <h2 className="text-sm font-semibold text-slate-900">Listado de Contratos</h2>
+        <div className="flex flex-nowrap items-center gap-2 overflow-x-auto border-b border-slate-200 bg-slate-50/70 px-4 py-3 lg:px-6">
           <div
-            className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1"
+            className="inline-flex h-10 shrink-0 items-center rounded-lg border border-slate-300 bg-white p-1"
             role="group"
-            aria-label="Filtrar listado de contratos"
+            aria-label="Filtrar aumentos"
           >
-            {FILTRO_COLA.map(({ value, label }) => {
-              const activo = filtroCola === value
-              const count = colaLoading ? '…' : conteosCola[value]
+            {FILTRO_AUMENTOS.map(({ value, label }) => {
+              const activo = filtro === value
+              const count = loading ? '…' : conteos[value]
               return (
                 <button
                   key={value}
                   type="button"
-                  disabled={colaLoading}
-                  onClick={() => setFiltroCola(value)}
-                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  disabled={loading}
+                  onClick={() => setFiltro(value)}
+                  className={`inline-flex h-full shrink-0 items-center whitespace-nowrap rounded-md px-2.5 text-xs font-medium transition-colors lg:px-3 ${
                     activo
-                      ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200'
+                      ? 'bg-indigo-50 text-indigo-700 shadow-sm ring-1 ring-indigo-100'
                       : 'text-slate-600 hover:text-slate-900'
                   } disabled:opacity-50`}
                 >
@@ -328,201 +315,217 @@ export default function AdminAumentos() {
               )
             })}
           </div>
+
+          {meta && !loading && (
+            <span className="hidden shrink-0 text-xs text-slate-500 sm:inline">
+              Actualizado al {formatFechaAumento(meta.fecha_calculo)}
+            </span>
+          )}
+
+          <div className="sticky right-0 ml-auto flex shrink-0 items-center gap-2 bg-slate-50/70 pl-2">
+            <button
+              type="button"
+              onClick={handleActualizar}
+              disabled={loading || confirmando}
+              className={`${inputToolbarClass} inline-flex items-center gap-2 px-3`}
+              title="Actualizar índices y montos"
+            >
+              <IconRefresh className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Actualizar</span>
+            </button>
+
+            <AdminNuevoButton
+              label={
+                listosParaConfirmar.length > 0
+                  ? `CONFIRMAR TODOS (${listosParaConfirmar.length})`
+                  : 'CONFIRMAR TODOS'
+              }
+              onClick={() => abrirConfirm(listosParaConfirmar)}
+              variant="primary"
+              className="!h-10 whitespace-nowrap"
+              disabled={loading || confirmando || listosParaConfirmar.length === 0}
+            />
+          </div>
         </div>
 
         <AdminTable>
           <AdminTableHead>
             <AdminTableRow>
-              <AdminTableHeaderCell className="w-10">
-                <input
-                  type="checkbox"
-                  aria-label="Seleccionar todos los contratos visibles"
-                  checked={todosColaSeleccionados}
-                  onChange={toggleSeleccionarTodaCola}
-                  disabled={colaLoading || contratosListado.length === 0 || calculando || confirmando}
-                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                />
-              </AdminTableHeaderCell>
-              <AdminTableHeaderCell>Tipo</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Inquilino</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Propiedad</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Monto actual</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Fecha aumento</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Periodicidad</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Estado</AdminTableHeaderCell>
-            </AdminTableRow>
-          </AdminTableHead>
-          <AdminTableBody>
-            {colaLoading ? (
-              <AdminTableRow>
-                <AdminTableEmptyCell colSpan={8}>Cargando…</AdminTableEmptyCell>
-              </AdminTableRow>
-            ) : contratosListado.length === 0 ? (
-              <AdminTableRow>
-                <AdminTableEmptyCell colSpan={8}>{mensajeListadoVacio}</AdminTableEmptyCell>
-              </AdminTableRow>
-            ) : (
-              contratosListado.map((item) => (
-                <AdminTableRow key={item.contrato_id}>
-                  <AdminTableCell>
-                    <input
-                      type="checkbox"
-                      aria-label={`Seleccionar contrato de ${item.inquilino_nombre ?? 'inquilino'}`}
-                      checked={seleccionCola.has(item.contrato_id)}
-                      onChange={() => toggleSeleccionCola(item.contrato_id)}
-                      disabled={calculando || confirmando}
-                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                  </AdminTableCell>
-                  <AdminTableCell>
-                    <Badge color={item.tipo_ajuste === 'ipc' ? 'violet' : 'slate'} size="xs">
-                      {item.tipo_ajuste?.toUpperCase() ?? '—'}
-                    </Badge>
-                  </AdminTableCell>
-                  <AdminTableCell>{item.inquilino_nombre ?? '—'}</AdminTableCell>
-                  <AdminTableCell>{item.propiedad_direccion ?? '—'}</AdminTableCell>
-                  <AdminTableCell>{formatMonto(item.monto_actual)}</AdminTableCell>
-                  <AdminTableCell className="whitespace-nowrap">
-                    {formatFecha(item.fecha_proximo_aumento)}
-                  </AdminTableCell>
-                  <AdminTableCell className="text-sm text-slate-600">
-                    {periodicidadLabelPorMeses(item.periodicidad_meses)}
-                  </AdminTableCell>
-                  <AdminTableCell>
-                    <span
-                      className={`inline-flex items-center whitespace-nowrap rounded border border-slate-300 bg-transparent px-2 py-0.5 text-xs font-medium ${
-                        item.es_vencido ? 'text-red-700' : 'text-slate-700'
-                      }`}
-                    >
-                      {etiquetaCola(item)}
-                    </span>
-                  </AdminTableCell>
-                </AdminTableRow>
-              ))
-            )}
-          </AdminTableBody>
-        </AdminTable>
-
-        <div className="mt-8 border-t border-slate-200 bg-white">
-          <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-3 pt-8">
-            <div className="flex items-center gap-1.5">
-              <h2 className="text-sm font-semibold text-slate-900">Cálculo de aumentos</h2>
-              <button
-                type="button"
-                onClick={() => setLeyendaOpen(true)}
-                title="Cómo se calculan ICL e IPC"
-                aria-label="Ver advertencia sobre cálculo de índices"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full text-amber-600 transition-colors hover:bg-amber-50"
+              <AdminTableHeaderCell className={COL_INQUILINO}>Inquilino</AdminTableHeaderCell>
+              <AdminTableHeaderCell className="min-w-0">Propiedad</AdminTableHeaderCell>
+              <AdminTableHeaderCell className={COL_FECHA}>Fecha</AdminTableHeaderCell>
+              <AdminTableHeaderCell
+                className={`${COL_MONTO_ACTUAL} !text-right text-indigo-700`}
               >
-                <IconoAdvertencia className="h-4 w-4" />
-              </button>
-            </div>
-            {meta && (
-              <span className="text-xs text-slate-500">
-                {meta.total} contrato(s) calculado(s) al {formatFecha(meta.fecha_calculo)}
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3">
-            <Button
-            loading={calculando}
-            disabled={calculando || confirmando || colaLoading || (cola?.total ?? 0) === 0}
-            onClick={handleCalcular}
-            className="!border-indigo-500 !bg-indigo-600 !text-white hover:!bg-indigo-700"
-          >
-            {esSeleccionParcial
-              ? `Calcular seleccionados (${seleccionCola.size})`
-              : 'Calcular montos'}
-          </Button>
-
-          <p className="text-sm text-slate-500">
-            {esSeleccionParcial
-              ? 'Calcula solo los contratos seleccionados en el listado'
-              : 'Calcula todos: los vencidos y estima los de los próximos 30 días'}
-          </p>
-          </div>
-
-          <AdminTable>
-          <AdminTableHead>
-            <AdminTableRow>
-              <AdminTableHeaderCell className="w-[22%]">Inquilino</AdminTableHeaderCell>
-              <AdminTableHeaderCell className="w-[8%] !text-center">Tipo</AdminTableHeaderCell>
-              <AdminTableHeaderCell className="w-[16%] !text-right">Monto actual</AdminTableHeaderCell>
-              <AdminTableHeaderCell className="w-[14%] !text-right">Monto propuesto</AdminTableHeaderCell>
-              <AdminTableHeaderCell className="w-[18%]">Período</AdminTableHeaderCell>
-              <AdminTableHeaderCell className="w-[18%]">Observaciones</AdminTableHeaderCell>
-              <AdminTableActionsHeaderCell className="w-[12%]">Acciones</AdminTableActionsHeaderCell>
+                Monto actual
+              </AdminTableHeaderCell>
+              <AdminTableHeaderCell
+                className={`${COL_MONTO_AJUSTADO} !text-right text-emerald-700`}
+              >
+                Monto Ajustado
+              </AdminTableHeaderCell>
+              <AdminTableHeaderCell className={`${COL_INDICE} !text-center`}>
+                Índice
+              </AdminTableHeaderCell>
+              <AdminTableHeaderCell className={`${COL_ESTADO} !text-center`}>
+                Estado
+              </AdminTableHeaderCell>
+              <AdminTableActionsHeaderCell />
             </AdminTableRow>
           </AdminTableHead>
           <AdminTableBody>
-            {propuestas.length === 0 ? (
+            {loading ? (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={7}>
-                  {calculando
-                    ? 'Calculando montos…'
-                    : 'Apretá «Calcular montos» para ver índices y montos propuestos'}
-                </AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={8}>Calculando aumentos…</AdminTableEmptyCell>
+              </AdminTableRow>
+            ) : listadoFiltrado.length === 0 ? (
+              <AdminTableRow>
+                <AdminTableEmptyCell colSpan={8}>{mensajeVacio}</AdminTableEmptyCell>
               </AdminTableRow>
             ) : (
-              propuestas.map((p) => {
-                const indiceDetalle = detalleIndice(p)
-                const periodoTitle = indiceDetalle
-                  ? `${formatFecha(p.fecha_desde)} → ${formatFecha(p.fecha_hasta)} · ${indiceDetalle}`
-                  : `${formatFecha(p.fecha_desde)} → ${formatFecha(p.fecha_hasta)}`
+              listadoPagina.map((p) => {
+                const { ui } = p
+                const indicador = badgeIndicador(p.tipo_ajuste ?? p.indice_tipo)
 
                 return (
                   <AdminTableRow key={p.contrato_id}>
-                    <AdminTableCell className="truncate" title={p.inquilino_nombre ?? undefined}>
+                    <AdminTableCell className={`${COL_INQUILINO} font-medium text-slate-900`}>
                       {p.inquilino_nombre ?? '—'}
                     </AdminTableCell>
-                    <AdminTableCell className="!text-center">
-                      <Badge color={p.indice_tipo === 'ipc' ? 'violet' : 'slate'} size="xs">
-                        {p.tipo_ajuste?.toUpperCase() ?? p.indice_tipo?.toUpperCase() ?? '—'}
-                      </Badge>
+                    <AdminTableCell
+                      className="min-w-0 truncate text-slate-600"
+                      title={p.propiedad_direccion ?? undefined}
+                    >
+                      {p.propiedad_direccion ?? '—'}
                     </AdminTableCell>
-                    <AdminTableCell className="!text-right whitespace-nowrap">
-                      {formatMonto(p.monto_actual)}
+                    <AdminTableCell className={COL_FECHA}>
+                      <div className="flex flex-col">
+                        <span className="whitespace-nowrap text-sm text-slate-900">
+                          {formatFechaAumento(p.fechaAumento)}
+                        </span>
+                        <span className="whitespace-nowrap text-xs text-slate-500">
+                          {etiquetaFechaAumento(p.fechaAumento, hoy)}
+                        </span>
+                      </div>
                     </AdminTableCell>
-                    <AdminTableCell className="!text-right whitespace-nowrap">
-                      {p.estado === 'falta_indice' ? (
-                        <span className="text-slate-400">—</span>
+                    <AdminTableCell className={`${COL_MONTO_ACTUAL} !text-right`}>
+                      <span className="block whitespace-nowrap tabular-nums font-medium text-indigo-700">
+                        {formatMonto(p.monto_actual)}
+                      </span>
+                    </AdminTableCell>
+                    <AdminTableCell className={`${COL_MONTO_AJUSTADO} !text-right`}>
+                      {ui.montoMostrar == null ? (
+                        <span className="block whitespace-nowrap tabular-nums text-slate-400">—</span>
                       ) : (
-                        <span className="font-medium text-slate-900">
-                          {formatMonto(p.monto_propuesto)}
+                        <div className="flex flex-col items-end text-right">
+                          <span className="whitespace-nowrap tabular-nums font-semibold text-emerald-700">
+                            {ui.montoEsAproximado ? '~' : ''}
+                            {formatMonto(ui.montoMostrar)}
+                          </span>
                           {p.variacion_pct != null && (
-                            <span className="ml-1 text-xs font-normal text-slate-500">
-                              ({p.variacion_pct}%)
+                            <span className="text-xs font-medium tabular-nums text-emerald-600/90">
+                              (+{p.variacion_pct}%)
                             </span>
                           )}
-                        </span>
+                        </div>
                       )}
                     </AdminTableCell>
-                    <AdminTableCell className="text-sm whitespace-nowrap" title={periodoTitle}>
-                      {formatFechaCorta(p.fecha_desde)} → {formatFechaCorta(p.fecha_hasta)}
-                    </AdminTableCell>
-                    <AdminTableCell>{observacionesPropuesta(p)}</AdminTableCell>
-                    <AdminTableActionsCell>
-                      <button
-                        type="button"
-                        disabled={!p.confirmable || calculando || confirmando}
-                        title={tituloConfirmar(p)}
-                        onClick={() => abrirConfirm([p])}
-                        className="whitespace-nowrap rounded-md border border-indigo-500 bg-indigo-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-400 disabled:hover:bg-slate-100"
+                    <AdminTableCell className={`${COL_INDICE} !text-center`}>
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${indicador.className}`}
                       >
-                        Confirmar
-                      </button>
+                        {indicador.label}
+                      </span>
+                    </AdminTableCell>
+                    <AdminTableCell className={`${COL_ESTADO} !text-center`}>
+                      <span
+                        title={ui.observacion}
+                        className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset ${TONO_SITUACION[ui.tono] ?? TONO_SITUACION.slate}`}
+                      >
+                        {ui.etiquetaEstado ?? ui.etiquetaTexto}
+                      </span>
+                    </AdminTableCell>
+                    <AdminTableActionsCell>
+                      <AumentoRowActions
+                        onView={() => abrirDetalle(p)}
+                        onConfirm={() => abrirConfirm([p])}
+                        puedeConfirmar={ui.puedeConfirmar}
+                        confirmDisabledLabel={mensajeConfirmarDeshabilitado(ui)}
+                        disabled={loading || confirmando}
+                      />
                     </AdminTableActionsCell>
                   </AdminTableRow>
                 )
               })
             )}
           </AdminTableBody>
-          </AdminTable>
-        </div>
+        </AdminTable>
+
+        <AdminTablePagination
+          pagina={paginaActual}
+          totalPaginas={totalPaginas}
+          totalItems={listadoFiltrado.length}
+          itemsPorPagina={FILAS_POR_PAGINA}
+          onPaginaChange={setPaginaActual}
+        />
       </AdminListLayout>
 
-      <LeyendaIndicesModal open={leyendaOpen} onClose={() => setLeyendaOpen(false)} />
+      <AumentoDetalleModal
+        open={detalleOpen}
+        propuesta={propuestaDetalle}
+        onClose={cerrarDetalle}
+        onConfirmar={confirmarDesdeDetalle}
+        confirmando={confirmando}
+      />
+
+      <AdminAlertModal
+        open={ayudaOpen}
+        variant="info"
+        wide
+        title={`Aumentos de Alquiler (Próximos ${DIAS_VENTANA} días)`}
+        onClose={() => setAyudaOpen(false)}
+      >
+        <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
+          <div className="space-y-3">
+            <p>
+              Despliega automáticamente los contratos con ajuste programado en los próximos{' '}
+              {DIAS_VENTANA} días o menos. Los montos se calculan al ingresar.
+            </p>
+            <p>
+              <span className="font-medium text-slate-800">Cálculo:</span> usa los últimos valores
+              oficiales de ICL e IPC publicados.
+            </p>
+            <p>
+              <span className="font-medium text-slate-800">Acciones:</span> ícono del ojo para ver el
+              desglose y la fórmula del cálculo.
+            </p>
+          </div>
+
+          <div>
+            <p className="font-medium text-slate-800">Monto Ajustado — estados</p>
+            <div className="mt-2 grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
+              <div className="rounded-lg border border-emerald-100 bg-emerald-50/80 px-3 py-2">
+                <p className="text-xs font-semibold text-emerald-800">Definitivo</p>
+                <p className="mt-0.5 text-xs leading-snug text-emerald-900/80">
+                  Valores oficiales de cierre. Permite confirmar y actualizar el contrato.
+                </p>
+              </div>
+              <div className="rounded-lg border border-indigo-100 bg-indigo-50/80 px-3 py-2">
+                <p className="text-xs font-semibold text-indigo-800">Proyectado</p>
+                <p className="mt-0.5 text-xs leading-snug text-indigo-900/80">
+                  Estimación; índices definitivos del período aún no publicados.
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <p className="text-xs font-semibold text-slate-700">Sin Índices</p>
+                <p className="mt-0.5 text-xs leading-snug text-slate-600">
+                  Sin datos para calcular. Requiere revisión manual.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </AdminAlertModal>
 
       <AdminConfirmModal
         open={confirmOpen}

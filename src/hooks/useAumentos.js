@@ -1,100 +1,120 @@
 import { useCallback, useEffect, useState } from 'react'
-import { syncIndices } from '../services/arglyService'
-import {
-  calcularAumentosPendientes,
-  confirmarAumentos,
-  listarColaAumentos,
-} from '../services/aumentosService'
+import { syncIndices, obtenerUltimosIndicesArgly } from '../services/arglyService'
+import { calcularAumentosPendientes, confirmarAumentos } from '../services/aumentosService'
+
+function formatearErroresConfirmacion(errores) {
+  if (!Array.isArray(errores) || errores.length === 0) return ''
+  return errores.map((e) => `Contrato #${e.contrato_id}: ${e.error}`).join(' · ')
+}
 
 export function useAumentos() {
-  const [cola, setCola] = useState(null)
-  const [colaLoading, setColaLoading] = useState(true)
   const [propuestas, setPropuestas] = useState([])
   const [meta, setMeta] = useState(null)
-  const [calculando, setCalculando] = useState(false)
+  const [indicesResumen, setIndicesResumen] = useState({ icl: null, ipc: null })
+  const [loading, setLoading] = useState(true)
   const [confirmando, setConfirmando] = useState(false)
   const [error, setError] = useState(null)
   const [syncWarning, setSyncWarning] = useState(null)
-  const [syncInfo, setSyncInfo] = useState(null)
 
-  const cargarCola = useCallback(async ({ diasProximos = 30 } = {}) => {
-    setColaLoading(true)
-    const { data, error: colaError } = await listarColaAumentos({ diasProximos })
-
-    if (colaError) {
-      setError((prev) => prev ?? colaError.message)
-      setCola(null)
-    } else {
-      setCola(data)
-    }
-
-    setColaLoading(false)
-  }, [])
-
-  useEffect(() => {
-    cargarCola()
-  }, [cargarCola])
-
-  const calcularPendientes = useCallback(async ({ incluirProximos = false, diasProximos = 30, contratoIds = null } = {}) => {
-    setCalculando(true)
+  const cargarAumentos = useCallback(async ({ diasProximos = 30 } = {}) => {
+    setLoading(true)
     setError(null)
-    setSyncWarning(null)
-    setSyncInfo(null)
 
-    const { data: syncData, error: syncError } = await syncIndices({ incluirProximos, diasProximos })
+    const { error: syncError } = await syncIndices({ incluirProximos: true, diasProximos })
 
     if (syncError) {
       setSyncWarning(
-        `No se pudo sincronizar índices con Argly (${syncError.message}). Se usaron índices ya guardados.`
+        `No se pudieron actualizar índices (${syncError.message}). Se usan los datos guardados.`
       )
-    } else if (syncData) {
-      setSyncInfo(syncData)
+    } else {
+      setSyncWarning(null)
     }
 
-    const { data, error: calcError } = await calcularAumentosPendientes({ incluirProximos, diasProximos })
+    const [{ data, error: calcError }, indicesResult] = await Promise.all([
+      calcularAumentosPendientes({
+        incluirProximos: true,
+        diasProximos,
+      }),
+      obtenerUltimosIndicesArgly(),
+    ])
 
     if (calcError) {
       setError(calcError.message)
       setPropuestas([])
       setMeta(null)
-      setCalculando(false)
+      setIndicesResumen({ icl: null, ipc: null })
+      setLoading(false)
       return false
     }
 
-    let lista = Array.isArray(data?.propuestas) ? data.propuestas : []
-
-    if (contratoIds?.length) {
-      const ids = new Set(contratoIds)
-      lista = lista.filter((p) => ids.has(p.contrato_id))
-    }
-
+    const lista = Array.isArray(data?.propuestas) ? data.propuestas : []
     setPropuestas(lista)
     setMeta({ total: lista.length, fecha_calculo: data?.fecha_calculo })
-    setCalculando(false)
+
+    if (indicesResult.error) {
+      setIndicesResumen({ icl: null, ipc: null })
+      setSyncWarning((prev) =>
+        prev
+          ? `${prev} No se pudieron consultar los índices en Argly (${indicesResult.error.message}).`
+          : `No se pudieron consultar los índices en Argly (${indicesResult.error.message}).`
+      )
+    } else {
+      setIndicesResumen({
+        icl: indicesResult.data?.icl ?? null,
+        ipc: indicesResult.data?.ipc ?? null,
+      })
+    }
+    setLoading(false)
     return true
   }, [])
 
-  const confirmarSeleccionados = useCallback(async (propuestasSeleccionadas) => {
-    if (!propuestasSeleccionadas.length) {
-      setError('No hay aumentos seleccionados para confirmar')
-      return { ok: false, data: null }
-    }
+  useEffect(() => {
+    cargarAumentos()
+  }, [cargarAumentos])
 
-    setConfirmando(true)
-    setError(null)
+  const confirmarSeleccionados = useCallback(
+    async (propuestasSeleccionadas) => {
+      if (!propuestasSeleccionadas.length) {
+        setError('No hay aumentos listos para confirmar')
+        return { ok: false, data: null, errores: [], contratoIdsConfirmados: [] }
+      }
 
-    const { data, error: confirmError } = await confirmarAumentos(propuestasSeleccionadas)
+      setConfirmando(true)
+      setError(null)
 
-    if (confirmError) {
-      setError(confirmError.message)
+      const { data, error: confirmError } = await confirmarAumentos(propuestasSeleccionadas)
+
+      if (confirmError) {
+        setError(confirmError.message)
+        setConfirmando(false)
+        return { ok: false, data: null, errores: [], contratoIdsConfirmados: [] }
+      }
+
+      const confirmados = data?.confirmados ?? 0
+      const errores = Array.isArray(data?.errores) ? data.errores : []
+      const failedIds = new Set(errores.map((e) => Number(e.contrato_id)))
+      const contratoIdsConfirmados = propuestasSeleccionadas
+        .map((p) => p.contrato_id)
+        .filter((id) => !failedIds.has(Number(id)))
+
+      if (confirmados === 0 && errores.length > 0) {
+        setError(formatearErroresConfirmacion(errores))
+        setConfirmando(false)
+        return { ok: false, data, errores, contratoIdsConfirmados: [] }
+      }
+
+      if (errores.length > 0) {
+        setSyncWarning(
+          `Se confirmaron ${confirmados} aumento(s). ${errores.length} no se aplicaron: ${formatearErroresConfirmacion(errores)}`
+        )
+      }
+
+      await cargarAumentos()
       setConfirmando(false)
-      return { ok: false, data: null }
-    }
-
-    await cargarCola()
-    setConfirmando(false)
-    return { ok: true, data }
-  }, [cargarCola])
+      return { ok: true, data, errores, contratoIdsConfirmados }
+    },
+    [cargarAumentos]
+  )
 
   const limpiarError = useCallback(() => {
     setError(null)
@@ -102,19 +122,15 @@ export function useAumentos() {
   }, [])
 
   return {
-    cola,
-    colaLoading,
-    cargarCola,
     propuestas,
     meta,
-    syncInfo,
-    syncWarning,
-    calculando,
+    indicesResumen,
+    loading,
     confirmando,
     error,
-    calcularPendientes,
+    syncWarning,
+    cargarAumentos,
     confirmarSeleccionados,
     limpiarError,
-    setPropuestas,
   }
 }

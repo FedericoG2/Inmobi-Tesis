@@ -1,11 +1,65 @@
+/** Ciudades habilitadas para propiedades (valores canónicos con tildes). */
+import { calleTieneAlturaIncluida } from './normalizarUbicacion'
+
+export const CIUDADES_PROPIEDAD = ['Córdoba', 'Villa María', 'Río Cuarto']
+export const CIUDAD_PROPIEDAD_DEFAULT = 'Córdoba'
 export const TIPOS_PROPIEDAD = ['Departamento', 'Casa', 'Local comercial']
-export const ESTADOS_PROPIEDAD = ['Disponible', 'Alquilada', 'Mantenimiento']
+export const ESTADOS_PROPIEDAD = ['Disponible', 'Reservada', 'Alquilada', 'Mantenimiento']
+/** Estados permitidos al dar de alta o editar sin contrato activo. */
+export const ESTADOS_PROPIEDAD_ALTA = ['Disponible', 'Mantenimiento']
 
 export function validarDireccion(valor) {
   const v = (valor ?? '').trim()
   if (!v) return 'La dirección es obligatoria'
   if (v.length < 5) return 'La dirección debe tener al menos 5 caracteres'
   if (v.length > 200) return 'La dirección no puede superar los 200 caracteres'
+  return null
+}
+
+export function validarCalle(valor) {
+  const v = (valor ?? '').trim()
+  if (!v) return 'La calle es obligatoria'
+  if (v.length < 3) return 'La calle debe tener al menos 3 caracteres'
+  if (v.length > 120) return 'La calle no puede superar los 120 caracteres'
+  if (calleTieneAlturaIncluida(v)) {
+    return 'La calle es solo el nombre de la vía. El número va en el campo Altura'
+  }
+  return null
+}
+
+export function validarAltura(valor) {
+  const v = (valor ?? '').trim()
+  if (!v) return 'La altura es obligatoria'
+  const soloDigitos = v.replace(/\D/g, '')
+  if (!soloDigitos) return 'La altura debe contener al menos un número'
+  if (soloDigitos.length > 6) return 'La altura no es válida'
+  return null
+}
+
+export function validarPiso(valor, { requerido = false } = {}) {
+  const v = (valor ?? '').trim()
+  if (!v) {
+    return requerido ? 'El piso es obligatorio para departamentos' : null
+  }
+  if (v.length > 10) return 'El piso no puede superar los 10 caracteres'
+  return null
+}
+
+export function validarUnidad(valor, { requerido = false, mensajeRequerido } = {}) {
+  const v = (valor ?? '').trim()
+  if (!v) {
+    return requerido
+      ? (mensajeRequerido ?? 'La unidad es obligatoria para departamentos')
+      : null
+  }
+  if (v.length > 20) return 'La unidad no puede superar los 20 caracteres'
+  return null
+}
+
+export function validarCiudad(valor) {
+  const v = (valor ?? '').trim()
+  if (!v) return 'La ciudad es obligatoria'
+  if (!CIUDADES_PROPIEDAD.includes(v)) return 'Seleccioná una ciudad válida'
   return null
 }
 
@@ -45,5 +99,39 @@ export function validarEmail(valor) {
   const v = (valor ?? '').trim()
   if (!v) return 'El email es obligatorio'
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Ingresá un email válido'
+  return null
+}
+
+export const TIPOS_GARANTIA_INQUILINO = [
+  'Propietaria',
+  'Recibos de Sueldo',
+  'Aval Bancario',
+  'Otro',
+]
+
+export function validarEmailOpcional(valor) {
+  const v = (valor ?? '').trim()
+  if (!v) return null
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Ingresá un email válido'
+  return null
+}
+
+export function validarTelefonoOpcional(valor) {
+  const v = (valor ?? '').trim()
+  if (!v) return null
+  return validarTelefono(valor)
+}
+
+export function validarTipoGarantia(valor) {
+  if (!TIPOS_GARANTIA_INQUILINO.includes(valor)) {
+    return 'Seleccioná un tipo de garantía válido'
+  }
+  return null
+}
+
+export function validarTextoOpcional(valor, { maxLength = 500, etiqueta = 'El texto' } = {}) {
+  const v = (valor ?? '').trim()
+  if (!v) return null
+  if (v.length > maxLength) return `${etiqueta} no puede superar los ${maxLength} caracteres`
   return null
 }

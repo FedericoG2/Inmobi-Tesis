@@ -1,13 +1,11 @@
-import { useEffect, useState } from 'react'
-import { Badge, Card } from '@tremor/react'
+import { useEffect, useMemo, useState } from 'react'
+import { Card } from '@tremor/react'
 import AdminAlertModal from '../../components/admin/AdminAlertModal'
 import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
 import AdminListLayout from '../../components/admin/AdminListLayout'
 import {
   AdminTable,
   AdminTableBody,
-  AdminTableActionsCell,
-  AdminTableActionsHeaderCell,
   AdminTableCell,
   AdminTableEmptyCell,
   AdminTableHead,
@@ -15,19 +13,123 @@ import {
   AdminTableRow,
 } from '../../components/admin/AdminDataTable'
 import PropiedadFormModal from '../../components/admin/forms/PropiedadFormModal'
-import TableRowActions from '../../components/admin/TableRowActions'
+import PropiedadDetalleModal from '../../components/admin/PropiedadDetalleModal'
+import PropiedadRowActions from '../../components/admin/PropiedadRowActions'
+import AdminTablePagination from '../../components/admin/AdminTablePagination'
+import AdminNuevoButton from '../../components/admin/AdminNuevoButton'
 import { usePropiedades } from '../../hooks/usePropiedades'
 import { usePropietarios } from '../../hooks/usePropietarios'
 import { etiquetaPropietario } from '../../utils/etiquetaPropietario'
-
-const estadoColor = {
-  Disponible: 'emerald',
-  Alquilada: 'blue',
-  Mantenimiento: 'amber',
-}
+import { ESTADOS_PROPIEDAD, TIPOS_PROPIEDAD } from '../../utils/validaciones'
 
 const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
 const dependenciasIniciales = { contratos_activos: 0, contratos_historicos: 0, reclamos: 0 }
+const FILAS_POR_PAGINA = 4
+
+const inputToolbarClass =
+  'h-10 w-full rounded-lg border border-slate-300 bg-white text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
+
+const BADGE_ESTADO = {
+  Disponible: { label: 'Disponible', className: 'bg-emerald-600 text-white' },
+  Reservada: { label: 'Reservada', className: 'bg-violet-600 text-white' },
+  Alquilada: { label: 'Alquilada', className: 'bg-blue-600 text-white' },
+  Mantenimiento: { label: 'Mantenimiento', className: 'bg-amber-500 text-white' },
+}
+
+const BADGE_TIPO = {
+  Departamento: { label: 'Departamento', className: 'bg-indigo-600 text-white' },
+  Casa: { label: 'Casa', className: 'bg-orange-600 text-white' },
+  'Local comercial': { label: 'Local comercial', className: 'bg-slate-600 text-white' },
+}
+
+function IconSearch({ className = 'h-4 w-4' }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+      />
+    </svg>
+  )
+}
+
+function IconUser({ className = 'h-4 w-4' }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
+      />
+    </svg>
+  )
+}
+
+function IconHome({ className = 'h-4 w-4' }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"
+      />
+    </svg>
+  )
+}
+
+function IconSignal({ className = 'h-4 w-4' }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9.348 14.652a3.75 3.75 0 0 1 0-5.304m5.304 0a3.75 3.75 0 0 1 0 5.304m-7.425 2.122a6.75 6.75 0 0 1 0-9.546m9.546 0a6.75 6.75 0 0 1 0 9.546M5.106 18.894c-3.808-3.807-3.808-9.98 0-13.788m13.788 0c3.808 3.807 3.808 9.98 0 13.788M12 12h.008v.008H12V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
+      />
+    </svg>
+  )
+}
+
+function HeaderLabel({ icon: Icon, children, align = 'center' }) {
+  const justify = align === 'left' ? 'justify-start' : 'justify-center'
+  return (
+    <span className={`inline-flex w-full items-center gap-2 text-slate-600 ${justify}`}>
+      {Icon && <Icon className="h-4 w-4 shrink-0 text-slate-400" />}
+      {children}
+    </span>
+  )
+}
+
+const celdaTexto = 'text-sm text-slate-700'
+const celdaDestacada = 'text-sm font-medium text-slate-900'
+
+function CeldaDireccion({ propiedad }) {
+  const { calle, altura, piso, unidad, ciudad, direccion } = propiedad
+
+  if (!calle && !altura) {
+    return (
+      <span className={`block truncate ${celdaDestacada}`} title={direccion}>
+        {direccion}
+      </span>
+    )
+  }
+
+  const detalles = []
+  if (piso) detalles.push(`Piso ${piso}`)
+  if (unidad) detalles.push(`Depto ${unidad}`)
+  if (ciudad) detalles.push(ciudad)
+
+  return (
+    <div className="min-w-0" title={direccion}>
+      <p className="truncate text-sm font-medium leading-snug text-slate-900">
+        {calle} {altura}
+      </p>
+      {detalles.length > 0 && (
+        <p className="truncate text-xs leading-snug text-slate-500">{detalles.join(' · ')}</p>
+      )}
+    </div>
+  )
+}
 
 function buildMensajeConfirmacionDelete(propiedad, deps) {
   const partes = []
@@ -50,7 +152,7 @@ function buildMensajeConfirmacionDelete(propiedad, deps) {
 export default function AdminPropiedades() {
   const [modalOpen, setModalOpen] = useState(false)
   const [propiedadEditando, setPropiedadEditando] = useState(null)
-  const [tieneContratoActivo, setTieneContratoActivo] = useState(false)
+  const [dependenciasEditando, setDependenciasEditando] = useState(dependenciasIniciales)
   const [alerta, setAlerta] = useState(alertaInicial)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [propiedadAEliminar, setPropiedadAEliminar] = useState(null)
@@ -58,6 +160,12 @@ export default function AdminPropiedades() {
   const [eliminando, setEliminando] = useState(false)
   const [confirmCambioPropietario, setConfirmCambioPropietario] = useState(false)
   const [pendingForm, setPendingForm] = useState(null)
+  const [detalleOpen, setDetalleOpen] = useState(false)
+  const [propiedadDetalle, setPropiedadDetalle] = useState(null)
+  const [paginaActual, setPaginaActual] = useState(1)
+  const [filtroTexto, setFiltroTexto] = useState('')
+  const [filtroTipo, setFiltroTipo] = useState('')
+  const [filtroEstado, setFiltroEstado] = useState('')
 
   const {
     propiedades,
@@ -86,18 +194,54 @@ export default function AdminPropiedades() {
     limpiarActionError()
   }, [actionError, limpiarActionError])
 
+  const propiedadesFiltradas = useMemo(() => {
+    const busqueda = filtroTexto.toLowerCase().trim()
+
+    return propiedades.filter((p) => {
+      const cumpleTipo = !filtroTipo || p.tipo === filtroTipo
+      const cumpleEstado = !filtroEstado || p.estado === filtroEstado
+      if (!busqueda) return cumpleTipo && cumpleEstado
+
+      const propietario = etiquetaPropietario(p).toLowerCase()
+      const cumpleTexto =
+        (p.direccion ?? '').toLowerCase().includes(busqueda) || propietario.includes(busqueda)
+
+      return cumpleTipo && cumpleEstado && cumpleTexto
+    })
+  }, [propiedades, filtroTexto, filtroTipo, filtroEstado])
+
+  useEffect(() => {
+    setPaginaActual(1)
+  }, [filtroTexto, filtroTipo, filtroEstado])
+
+  const totalPaginas = useMemo(
+    () => Math.max(1, Math.ceil(propiedadesFiltradas.length / FILAS_POR_PAGINA)),
+    [propiedadesFiltradas.length]
+  )
+
+  const propiedadesPagina = useMemo(() => {
+    const inicio = (paginaActual - 1) * FILAS_POR_PAGINA
+    return propiedadesFiltradas.slice(inicio, inicio + FILAS_POR_PAGINA)
+  }, [propiedadesFiltradas, paginaActual])
+
+  useEffect(() => {
+    if (paginaActual > totalPaginas) {
+      setPaginaActual(totalPaginas)
+    }
+  }, [paginaActual, totalPaginas])
+
   const cerrarModal = () => {
     if (!submitting) {
       setModalOpen(false)
       setPropiedadEditando(null)
-      setTieneContratoActivo(false)
+      setDependenciasEditando(dependenciasIniciales)
     }
   }
 
   const abrirModalCrear = () => {
     limpiarSubmitError()
     setPropiedadEditando(null)
-    setTieneContratoActivo(false)
+    setDependenciasEditando(dependenciasIniciales)
     setModalOpen(true)
   }
 
@@ -107,14 +251,32 @@ export default function AdminPropiedades() {
     const deps = await contarDependenciasPropiedad(propiedad.id)
 
     setPropiedadEditando(propiedad)
-    setTieneContratoActivo(!deps.error && deps.contratos_activos > 0)
+    setDependenciasEditando(
+      deps.error
+        ? dependenciasIniciales
+        : {
+            contratos_activos: deps.contratos_activos,
+            contratos_historicos: deps.contratos_historicos,
+            reclamos: deps.reclamos,
+          }
+    )
     setModalOpen(true)
+  }
+
+  const abrirDetalle = (propiedad) => {
+    setPropiedadDetalle(propiedad)
+    setDetalleOpen(true)
+  }
+
+  const cerrarDetalle = () => {
+    setDetalleOpen(false)
+    setPropiedadDetalle(null)
   }
 
   const handleSubmit = async (form) => {
     if (propiedadEditando) {
       const propietarioCambio =
-        tieneContratoActivo &&
+        dependenciasEditando.contratos_activos > 0 &&
         String(form.propietario_id) !== String(propiedadEditando.propietario_id)
 
       if (propietarioCambio) {
@@ -204,8 +366,6 @@ export default function AdminPropiedades() {
     <>
       <AdminListLayout
         title="Propiedades"
-        actionLabel="Nueva propiedad"
-        onAction={abrirModalCrear}
         alerts={
           error ? (
             <Card className="border border-red-200 bg-red-50">
@@ -214,14 +374,76 @@ export default function AdminPropiedades() {
           ) : null
         }
       >
-        <AdminTable>
-          <AdminTableHead>
-            <AdminTableRow>
-              <AdminTableHeaderCell>Propietario</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Dirección</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Tipo</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Estado</AdminTableHeaderCell>
-              <AdminTableActionsHeaderCell />
+        <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 lg:px-6">
+          <div className="relative min-w-0 flex-1 sm:min-w-[12rem]">
+            <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              id="buscar-propiedad"
+              type="search"
+              value={filtroTexto}
+              onChange={(e) => setFiltroTexto(e.target.value)}
+              placeholder="Buscar por dirección o propietario..."
+              className={`${inputToolbarClass} pl-9`}
+            />
+          </div>
+
+          <select
+            id="filtro-tipo-propiedad"
+            value={filtroTipo}
+            onChange={(e) => setFiltroTipo(e.target.value)}
+            className={`${inputToolbarClass} sm:w-44 shrink-0 cursor-pointer`}
+            aria-label="Filtrar por tipo de propiedad"
+          >
+            <option value="">Tipo: Todos</option>
+            {TIPOS_PROPIEDAD.map((tipo) => (
+              <option key={tipo} value={tipo}>
+                {tipo}
+              </option>
+            ))}
+          </select>
+
+          <select
+            id="filtro-estado-propiedad"
+            value={filtroEstado}
+            onChange={(e) => setFiltroEstado(e.target.value)}
+            className={`${inputToolbarClass} sm:w-44 shrink-0 cursor-pointer`}
+            aria-label="Filtrar por estado de propiedad"
+          >
+            <option value="">Estado: Todos</option>
+            {ESTADOS_PROPIEDAD.map((estado) => (
+              <option key={estado} value={estado}>
+                {estado}
+              </option>
+            ))}
+          </select>
+
+          <div className="shrink-0 sm:ml-auto">
+            <AdminNuevoButton
+              label="Nueva propiedad"
+              onClick={abrirModalCrear}
+              className="!h-10 w-full !px-4 !py-0 sm:w-auto"
+            />
+          </div>
+        </div>
+
+        <AdminTable className="w-full">
+          <AdminTableHead className="!bg-slate-100/90">
+            <AdminTableRow className="hover:bg-transparent">
+              <AdminTableHeaderCell className="w-[30%] !text-left">
+                Dirección
+              </AdminTableHeaderCell>
+              <AdminTableHeaderCell className="w-[14%] !text-center">
+                <HeaderLabel icon={IconHome}>Tipo</HeaderLabel>
+              </AdminTableHeaderCell>
+              <AdminTableHeaderCell className="w-[14%] !text-center">
+                <HeaderLabel icon={IconSignal}>Estado</HeaderLabel>
+              </AdminTableHeaderCell>
+              <AdminTableHeaderCell className="w-[24%] !text-left">
+                <HeaderLabel icon={IconUser} align="left">
+                  Propietario
+                </HeaderLabel>
+              </AdminTableHeaderCell>
+              <AdminTableHeaderCell className="w-[18%] !text-center">Acciones</AdminTableHeaderCell>
             </AdminTableRow>
           </AdminTableHead>
           <AdminTableBody>
@@ -237,29 +459,78 @@ export default function AdminPropiedades() {
               </AdminTableRow>
             )}
 
+            {!loading && !error && propiedades.length > 0 && propiedadesFiltradas.length === 0 && (
+              <AdminTableRow>
+                <AdminTableEmptyCell colSpan={5}>
+                  Ninguna propiedad coincide con la búsqueda
+                </AdminTableEmptyCell>
+              </AdminTableRow>
+            )}
+
             {!loading &&
-              propiedades.map((p) => (
-                <AdminTableRow key={p.id}>
-                  <AdminTableCell
-                    className={!p.propietario_id ? 'italic text-slate-500' : undefined}
-                  >
-                    {etiquetaPropietario(p)}
-                  </AdminTableCell>
-                  <AdminTableCell className="font-medium text-slate-900">{p.direccion}</AdminTableCell>
-                  <AdminTableCell>{p.tipo}</AdminTableCell>
-                  <AdminTableCell>
-                    <Badge color={estadoColor[p.estado] ?? 'slate'}>{p.estado}</Badge>
-                  </AdminTableCell>
-                  <AdminTableActionsCell>
-                    <TableRowActions
-                      onEdit={() => abrirModalEditar(p)}
-                      onDelete={() => handleEliminar(p)}
-                    />
-                  </AdminTableActionsCell>
-                </AdminTableRow>
-              ))}
+              propiedadesFiltradas.length > 0 &&
+              propiedadesPagina.map((p, index) => {
+                const badgeTipo = BADGE_TIPO[p.tipo] ?? { label: p.tipo, className: 'bg-slate-500 text-white' }
+                const badgeEstado = BADGE_ESTADO[p.estado] ?? {
+                  label: p.estado,
+                  className: 'bg-slate-500 text-white',
+                }
+                const zebra = index % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'
+                const sinPropietario = !p.propietario_id
+
+                return (
+                  <AdminTableRow key={p.id} className={`${zebra} hover:bg-indigo-50/40`}>
+                    <AdminTableCell className="!text-left">
+                      <CeldaDireccion propiedad={p} />
+                    </AdminTableCell>
+
+                    <AdminTableCell className="!text-center">
+                      <span
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${badgeTipo.className}`}
+                      >
+                        {badgeTipo.label}
+                      </span>
+                    </AdminTableCell>
+
+                    <AdminTableCell className="!text-center">
+                      <span
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${badgeEstado.className}`}
+                      >
+                        {badgeEstado.label}
+                      </span>
+                    </AdminTableCell>
+
+                    <AdminTableCell className="!text-left">
+                      <span
+                        className={`block truncate ${sinPropietario ? 'italic text-slate-500' : celdaTexto}`}
+                        title={etiquetaPropietario(p)}
+                      >
+                        {etiquetaPropietario(p)}
+                      </span>
+                    </AdminTableCell>
+
+                    <AdminTableCell className="!text-center">
+                      <PropiedadRowActions
+                        onEdit={() => abrirModalEditar(p)}
+                        onDelete={() => handleEliminar(p)}
+                        onView={() => abrirDetalle(p)}
+                      />
+                    </AdminTableCell>
+                  </AdminTableRow>
+                )
+              })}
           </AdminTableBody>
         </AdminTable>
+
+        {!loading && !error && propiedadesFiltradas.length > 0 && (
+          <AdminTablePagination
+            pagina={paginaActual}
+            totalPaginas={totalPaginas}
+            totalItems={propiedadesFiltradas.length}
+            itemsPorPagina={FILAS_POR_PAGINA}
+            onPaginaChange={setPaginaActual}
+          />
+        )}
       </AdminListLayout>
 
       <PropiedadFormModal
@@ -271,7 +542,14 @@ export default function AdminPropiedades() {
         propiedad={propiedadEditando}
         propietarios={propietarios}
         propietariosLoading={propietariosLoading}
-        tieneContratoActivo={tieneContratoActivo}
+        dependenciasPropiedad={dependenciasEditando}
+      />
+
+      <PropiedadDetalleModal
+        open={detalleOpen}
+        propiedad={propiedadDetalle}
+        onClose={cerrarDetalle}
+        onEdit={abrirModalEditar}
       />
 
       <AdminAlertModal

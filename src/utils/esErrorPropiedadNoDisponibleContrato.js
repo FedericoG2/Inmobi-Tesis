@@ -13,3 +13,9 @@ export function esErrorPropiedadContratoActivo(error) {
   const mensaje = (error.message ?? '').toLowerCase()
   return mensaje.includes('contrato activo')
 }
+
+export function esErrorSolapamientoContrato(error) {
+  if (!error) return false
+  const mensaje = (error.message ?? '').toLowerCase()
+  return mensaje.includes('solapan') || mensaje.includes('solapamiento')
+}

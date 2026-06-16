@@ -1,4 +1,10 @@
+import { useEffect, useState } from 'react'
 import { usePortalInquilino } from '../../contexts/PortalInquilinoContext'
+import {
+  descargarDocumentoPortal,
+  etiquetaTipoArchivo,
+  listarDocumentosPortalContrato,
+} from '../../services/portalInquilinoService'
 
 const formatFecha = (fechaStr) => {
   if (!fechaStr) return '—'
@@ -36,7 +42,51 @@ function InfoFila({ label, value, destacado = false }) {
 }
 
 export default function InquilinoDocumentos() {
-  const { contratos, inquilino, loading, error } = usePortalInquilino()
+  const { contratoActivo, inquilino, loading, error } = usePortalInquilino()
+  const [documentos, setDocumentos] = useState([])
+  const [docsLoading, setDocsLoading] = useState(false)
+  const [docsError, setDocsError] = useState(null)
+  const [descargandoId, setDescargandoId] = useState(null)
+
+  const contrato = contratoActivo
+
+  useEffect(() => {
+    if (!contrato?.id) {
+      setDocumentos([])
+      return undefined
+    }
+
+    let activo = true
+    setDocsLoading(true)
+    setDocsError(null)
+
+    listarDocumentosPortalContrato(contrato.id).then(({ data, error: err }) => {
+      if (!activo) return
+      setDocsLoading(false)
+      if (err) {
+        setDocsError(err.message ?? 'No se pudieron cargar los documentos')
+        setDocumentos([])
+        return
+      }
+      setDocumentos(data ?? [])
+    })
+
+    return () => {
+      activo = false
+    }
+  }, [contrato?.id])
+
+  const handleDescargar = async (documento) => {
+    setDescargandoId(documento.id)
+    setDocsError(null)
+    const { data, error: err } = await descargarDocumentoPortal(documento.url_archivo)
+    setDescargandoId(null)
+    if (err || !data?.signedUrl) {
+      setDocsError(err?.message ?? 'No se pudo descargar el archivo')
+      return
+    }
+    window.open(data.signedUrl, '_blank', 'noopener,noreferrer')
+  }
 
   if (loading) {
     return (
@@ -54,7 +104,12 @@ export default function InquilinoDocumentos() {
     )
   }
 
-  const contrato = contratos[0] ?? null
+  const formatFechaDoc = (fecha) => {
+    if (!fecha) return '—'
+    const iso = fecha.includes('T') ? fecha.split('T')[0] : fecha
+    const [year, month, day] = iso.split('-')
+    return `${day}/${month}/${year}`
+  }
 
   return (
     <div className="space-y-5">
@@ -129,32 +184,42 @@ export default function InquilinoDocumentos() {
             </div>
           )}
 
-          {/* Documents placeholder */}
           <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
             <div className="border-b border-slate-100 px-5 py-4">
               <p className="text-sm font-semibold text-slate-800">Documentación adjunta</p>
             </div>
-            <div className="px-5 py-8 text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
-                <svg
-                  className="h-6 w-6 text-slate-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
-                  />
-                </svg>
+            {docsLoading ? (
+              <div className="px-5 py-8 text-center text-sm text-slate-500">Cargando documentos...</div>
+            ) : docsError ? (
+              <div className="px-5 py-6 text-center text-sm text-red-600">{docsError}</div>
+            ) : documentos.length === 0 ? (
+              <div className="px-5 py-8 text-center">
+                <p className="text-sm text-slate-500">
+                  Todavía no hay documentos compartidos para tu contrato.
+                </p>
               </div>
-              <p className="text-sm text-slate-500">
-                La descarga de documentos adjuntos (contrato, DNI, recibos)
-              </p>
-              <p className="text-sm text-slate-500">será habilitada próximamente.</p>
-            </div>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {documentos.map((documento) => (
+                  <li key={documento.id} className="flex items-center justify-between gap-3 px-5 py-4">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-slate-800">{documento.nombre}</p>
+                      <p className="text-xs text-slate-500">
+                        {etiquetaTipoArchivo(documento.nombre)} · {formatFechaDoc(documento.fecha_subida)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDescargar(documento)}
+                      disabled={descargandoId === documento.id}
+                      className="shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+                    >
+                      {descargandoId === documento.id ? 'Abriendo...' : 'Descargar'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </>
       )}

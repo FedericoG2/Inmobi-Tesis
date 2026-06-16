@@ -5,13 +5,16 @@ import {
   validarDniCuit,
   validarTelefono,
   validarEmail,
+  validarDireccion,
 } from '../../../utils/validaciones'
 
 const formInicial = {
+  tipo_persona: 'Física',
   nombre_completo: '',
   dni_cuit: '',
   telefono: '',
   email: '',
+  domicilio: '',
 }
 
 const inputClass =
@@ -22,10 +25,12 @@ const inputErrorClass =
 
 function formDesdePropietario(propietario) {
   return {
+    tipo_persona: propietario.tipo_persona ?? 'Física',
     nombre_completo: propietario.nombre_completo ?? '',
     dni_cuit: propietario.dni_cuit ?? '',
     telefono: propietario.telefono ?? '',
     email: propietario.email ?? '',
+    domicilio: propietario.domicilio ?? '',
   }
 }
 
@@ -35,6 +40,7 @@ function validarForm(form) {
     dni_cuit: validarDniCuit(form.dni_cuit),
     telefono: validarTelefono(form.telefono),
     email: validarEmail(form.email),
+    domicilio: validarDireccion(form.domicilio),
   }
 }
 
@@ -49,6 +55,7 @@ export default function PropietarioFormModal({
   const [form, setForm] = useState(formInicial)
   const [erroresCampo, setErroresCampo] = useState({})
   const esEdicion = Boolean(propietario)
+  const esJuridica = form.tipo_persona === 'Jurídica'
 
   useEffect(() => {
     if (!open) {
@@ -69,6 +76,10 @@ export default function PropietarioFormModal({
     }
   }
 
+  const handleTipoPersona = (tipo) => {
+    setForm((prev) => ({ ...prev, tipo_persona: tipo }))
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
 
@@ -80,10 +91,12 @@ export default function PropietarioFormModal({
     }
 
     const ok = await onSubmit({
+      tipo_persona: form.tipo_persona,
       nombre_completo: form.nombre_completo.trim(),
       dni_cuit: form.dni_cuit.trim(),
       telefono: form.telefono.trim(),
       email: form.email.trim().toLowerCase(),
+      domicilio: form.domicilio.trim(),
     })
     if (ok) onClose()
   }
@@ -97,7 +110,7 @@ export default function PropietarioFormModal({
         onClick={onClose}
       />
 
-      <div className="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+      <div className="relative z-10 w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
         <h2 className="text-lg font-semibold text-slate-900">
           {esEdicion ? 'Editar propietario' : 'Agregar propietario'}
         </h2>
@@ -109,8 +122,31 @@ export default function PropietarioFormModal({
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
+            <span className="mb-2 block text-sm font-medium text-slate-700">Tipo de persona</span>
+            <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1">
+              {['Física', 'Jurídica'].map((tipo) => {
+                const activo = form.tipo_persona === tipo
+                return (
+                  <button
+                    key={tipo}
+                    type="button"
+                    onClick={() => handleTipoPersona(tipo)}
+                    className={`flex-1 rounded-lg py-2 text-center text-sm font-medium transition-all ${
+                      activo
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                  >
+                    {tipo === 'Física' ? 'Particular' : 'Empresa'}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div>
             <label htmlFor="nombre_completo" className="mb-1 block text-sm font-medium text-slate-700">
-              Nombre completo
+              {esJuridica ? 'Razón social' : 'Nombre completo'}
             </label>
             <input
               id="nombre_completo"
@@ -120,49 +156,51 @@ export default function PropietarioFormModal({
               value={form.nombre_completo}
               onChange={handleChange('nombre_completo')}
               className={erroresCampo.nombre_completo ? inputErrorClass : inputClass}
-              placeholder="Juan Carlos Zitelli"
+              placeholder={esJuridica ? 'Inversiones del Sur S.A.' : 'María Elena Rodríguez'}
             />
             {erroresCampo.nombre_completo && (
               <p className="mt-1 text-xs text-red-600">{erroresCampo.nombre_completo}</p>
             )}
           </div>
 
-          <div>
-            <label htmlFor="dni_cuit" className="mb-1 block text-sm font-medium text-slate-700">
-              DNI / CUIT
-            </label>
-            <input
-              id="dni_cuit"
-              type="text"
-              required
-              maxLength={14}
-              value={form.dni_cuit}
-              onChange={handleChange('dni_cuit')}
-              className={erroresCampo.dni_cuit ? inputErrorClass : inputClass}
-              placeholder="20-12345678-9"
-            />
-            {erroresCampo.dni_cuit && (
-              <p className="mt-1 text-xs text-red-600">{erroresCampo.dni_cuit}</p>
-            )}
-          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="dni_cuit" className="mb-1 block text-sm font-medium text-slate-700">
+                {esJuridica ? 'CUIT' : 'DNI / CUIT'}
+              </label>
+              <input
+                id="dni_cuit"
+                type="text"
+                required
+                maxLength={14}
+                value={form.dni_cuit}
+                onChange={handleChange('dni_cuit')}
+                className={erroresCampo.dni_cuit ? inputErrorClass : inputClass}
+                placeholder={esJuridica ? '30-70894561-2' : '27-30123456-8'}
+              />
+              {erroresCampo.dni_cuit && (
+                <p className="mt-1 text-xs text-red-600">{erroresCampo.dni_cuit}</p>
+              )}
+            </div>
 
-          <div>
-            <label htmlFor="telefono" className="mb-1 block text-sm font-medium text-slate-700">
-              Teléfono
-            </label>
-            <input
-              id="telefono"
-              type="text"
-              required
-              maxLength={20}
-              value={form.telefono}
-              onChange={handleChange('telefono')}
-              className={erroresCampo.telefono ? inputErrorClass : inputClass}
-              placeholder="3516554433"
-            />
-            {erroresCampo.telefono && (
-              <p className="mt-1 text-xs text-red-600">{erroresCampo.telefono}</p>
-            )}
+            <div>
+              <label htmlFor="telefono" className="mb-1 block text-sm font-medium text-slate-700">
+                Teléfono
+              </label>
+              <input
+                id="telefono"
+                type="text"
+                required
+                maxLength={20}
+                value={form.telefono}
+                onChange={handleChange('telefono')}
+                className={erroresCampo.telefono ? inputErrorClass : inputClass}
+                placeholder="351 456 7890"
+              />
+              {erroresCampo.telefono && (
+                <p className="mt-1 text-xs text-red-600">{erroresCampo.telefono}</p>
+              )}
+            </div>
           </div>
 
           <div>
@@ -181,6 +219,25 @@ export default function PropietarioFormModal({
             />
             {erroresCampo.email && (
               <p className="mt-1 text-xs text-red-600">{erroresCampo.email}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="domicilio" className="mb-1 block text-sm font-medium text-slate-700">
+              Domicilio
+            </label>
+            <input
+              id="domicilio"
+              type="text"
+              required
+              maxLength={200}
+              value={form.domicilio}
+              onChange={handleChange('domicilio')}
+              className={erroresCampo.domicilio ? inputErrorClass : inputClass}
+              placeholder="Av. Colón 1820, Córdoba"
+            />
+            {erroresCampo.domicilio && (
+              <p className="mt-1 text-xs text-red-600">{erroresCampo.domicilio}</p>
             )}
           </div>
 

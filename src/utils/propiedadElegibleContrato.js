@@ -1,17 +1,15 @@
-/** Propiedad apta para alta de contrato: estado Disponible y sin contrato activo. */
-export function propiedadElegibleParaContrato(propiedad, idsPropiedadesConContratoActivo) {
+/** Propiedad apta para alta de contrato: estado Disponible. */
+export function propiedadElegibleParaContrato(propiedad) {
   if (!propiedad) return false
-  if (propiedad.estado !== 'Disponible') return false
-  if (idsPropiedadesConContratoActivo.has(String(propiedad.id))) return false
-  return true
+  return propiedad.estado === 'Disponible'
 }
 
-export function etiquetaPropiedadParaContrato(propiedad, idsPropiedadesConContratoActivo) {
-  if (idsPropiedadesConContratoActivo.has(String(propiedad.id))) {
-    return `${propiedad.direccion} (contrato activo)`
-  }
+export function etiquetaPropiedadParaContrato(propiedad) {
   if (propiedad.estado === 'Alquilada') {
     return `${propiedad.direccion} (Alquilada)`
+  }
+  if (propiedad.estado === 'Reservada') {
+    return `${propiedad.direccion} (Reservada)`
   }
   if (propiedad.estado === 'Mantenimiento') {
     return `${propiedad.direccion} (Mantenimiento)`
@@ -23,4 +21,7 @@ export const MENSAJE_PROPIEDAD_NO_DISPONIBLE =
   'Solo se pueden crear contratos sobre propiedades en estado Disponible.'
 
 export const MENSAJE_PROPIEDAD_CONTRATO_ACTIVO =
-  'Esta propiedad ya tiene un contrato activo. Finalizalo antes de crear otro.'
+  'Esta propiedad ya tiene un contrato vigente o programado que compromete las fechas seleccionadas.'
+
+export const MENSAJE_SOLAPAMIENTO_CONTRATO =
+  'Las fechas se solapan con otro contrato de esta propiedad.'

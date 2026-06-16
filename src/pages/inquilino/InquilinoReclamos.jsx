@@ -21,7 +21,7 @@ const formatFecha = (fechaStr) => {
 
 export default function InquilinoReclamos() {
   const {
-    contratos,
+    contratoActivo,
     reclamos,
     reclamosLoading,
     crearReclamo,
@@ -39,8 +39,6 @@ export default function InquilinoReclamos() {
   const [reclamoAEliminar, setReclamoAEliminar] = useState(null)
   const [eliminando, setEliminando] = useState(false)
   const [errorAccion, setErrorAccion] = useState(null)
-
-  const contratoActivo = contratos[0] ?? null
 
   const abrirFormCrear = () => {
     limpiarSubmitError()

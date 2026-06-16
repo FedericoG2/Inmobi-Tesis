@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useAuth } from './AuthContext'
 import {
   obtenerInquilinoPorPerfil,
@@ -9,6 +9,8 @@ import {
   eliminarReclamoPortal,
 } from '../services/portalInquilinoService'
 
+const STORAGE_KEY_CONTRATO = 'portal_inquilino_contrato_id'
+
 const PortalInquilinoContext = createContext(null)
 
 export function PortalInquilinoProvider({ children }) {
@@ -16,6 +18,7 @@ export function PortalInquilinoProvider({ children }) {
 
   const [inquilino, setInquilino] = useState(null)
   const [contratos, setContratos] = useState([])
+  const [contratoSeleccionadoId, setContratoSeleccionadoIdState] = useState(null)
   const [reclamos, setReclamos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -61,7 +64,13 @@ export function PortalInquilinoProvider({ children }) {
     if (contratosRes.error) {
       setError(contratosRes.error.message)
     } else {
-      setContratos(contratosRes.data ?? [])
+      const lista = contratosRes.data ?? []
+      setContratos(lista)
+
+      const guardado = sessionStorage.getItem(STORAGE_KEY_CONTRATO)
+      const idGuardado = guardado ? Number(guardado) : null
+      const existe = lista.some((c) => Number(c.id) === idGuardado)
+      setContratoSeleccionadoIdState(existe ? idGuardado : (lista[0]?.id ?? null))
     }
 
     if (!reclamosRes.error) {
@@ -74,6 +83,24 @@ export function PortalInquilinoProvider({ children }) {
   useEffect(() => {
     cargarDatos()
   }, [cargarDatos])
+
+  const setContratoSeleccionado = useCallback((id) => {
+    const numId = Number(id)
+    setContratoSeleccionadoIdState(numId)
+    if (id) {
+      sessionStorage.setItem(STORAGE_KEY_CONTRATO, String(numId))
+    } else {
+      sessionStorage.removeItem(STORAGE_KEY_CONTRATO)
+    }
+  }, [])
+
+  const contratoActivo = useMemo(() => {
+    if (!contratos.length) return null
+    if (contratoSeleccionadoId != null) {
+      return contratos.find((c) => Number(c.id) === Number(contratoSeleccionadoId)) ?? contratos[0]
+    }
+    return contratos[0]
+  }, [contratos, contratoSeleccionadoId])
 
   const crearReclamo = useCallback(
     async (datos) => {
@@ -145,6 +172,9 @@ export function PortalInquilinoProvider({ children }) {
   const value = {
     inquilino,
     contratos,
+    contratoActivo,
+    contratoSeleccionadoId,
+    setContratoSeleccionado,
     reclamos,
     loading,
     error,

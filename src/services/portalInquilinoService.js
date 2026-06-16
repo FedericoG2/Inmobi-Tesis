@@ -1,4 +1,7 @@
 import { supabase } from '../supabaseClient'
+import { listarDocumentosVisiblesInquilino, obtenerUrlDescargaDocumento, etiquetaTipoArchivo } from './documentosService'
+
+export { etiquetaTipoArchivo }
 
 const SELECT_RECLAMO_PORTAL = `
   id,
@@ -44,11 +47,12 @@ export async function listarContratosActivosInquilino(inquilinoId) {
       fecha_proximo_aumento,
       observaciones,
       activo,
+      estado,
       propiedad_id,
       propiedades ( id, direccion, tipo )
     `)
     .eq('inquilino_id', inquilinoId)
-    .eq('activo', true)
+    .eq('estado', 'activo')
     .order('fecha_inicio', { ascending: false })
 
   return { data, error }
@@ -142,6 +146,14 @@ export async function actualizarReclamoPortal(id, datos, inquilinoId) {
   }
 
   return { data, error: null }
+}
+
+export async function listarDocumentosPortalContrato(contratoId) {
+  return listarDocumentosVisiblesInquilino(contratoId)
+}
+
+export async function descargarDocumentoPortal(urlArchivo) {
+  return obtenerUrlDescargaDocumento(urlArchivo)
 }
 
 /**

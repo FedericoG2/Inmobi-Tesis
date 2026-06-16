@@ -5,16 +5,20 @@ import AdminNuevoButton from './AdminNuevoButton'
 export default function AdminListLayout({
   title,
   subtitle,
+  titleAction,
   actionLabel,
   onAction,
   alerts,
+  summary,
   children,
 }) {
   return (
     <div>
-      <AdminModuleHeader title={title} subtitle={subtitle} />
+      <AdminModuleHeader title={title} subtitle={subtitle} titleAction={titleAction} />
 
       {alerts && <div className="mt-4">{alerts}</div>}
+
+      {summary && <div className="mt-8">{summary}</div>}
 
       {actionLabel && onAction && (
         <div className="mt-8 flex justify-end">

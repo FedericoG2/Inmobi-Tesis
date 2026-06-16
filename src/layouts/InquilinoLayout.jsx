@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { PortalInquilinoProvider, usePortalInquilino } from '../contexts/PortalInquilinoContext'
 import InquilinoBottomNav from '../components/inquilino/InquilinoBottomNav'
+import InquilinoContratoSelector from '../components/inquilino/InquilinoContratoSelector'
 
 function InquilinoHeader() {
   const { inquilino } = usePortalInquilino()
@@ -38,6 +39,7 @@ export default function InquilinoLayout() {
     <PortalInquilinoProvider>
       <div className="min-h-screen bg-slate-50 pb-24">
         <InquilinoHeader />
+        <InquilinoContratoSelector />
         <main className="mx-auto max-w-lg px-4 py-5">
           <Outlet />
         </main>

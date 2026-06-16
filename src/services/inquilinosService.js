@@ -173,29 +173,37 @@ export async function contarDependenciasInquilino(inquilinoId) {
     return { error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
 
-  const [contratosActivosRes, contratosHistoricosRes, reclamosRes] = await Promise.all([
-    supabase
-      .from('contratos')
-      .select('id', { count: 'exact', head: true })
-      .eq('inquilino_id', inquilinoId)
-      .eq('activo', true),
-    supabase
-      .from('contratos')
-      .select('id', { count: 'exact', head: true })
-      .eq('inquilino_id', inquilinoId)
-      .eq('activo', false),
-    supabase
-      .from('reclamos')
-      .select('id', { count: 'exact', head: true })
-      .eq('inquilino_id', inquilinoId),
-  ])
+  const [contratosActivosRes, contratosProgramadosRes, contratosHistoricosRes, reclamosRes] =
+    await Promise.all([
+      supabase
+        .from('contratos')
+        .select('id', { count: 'exact', head: true })
+        .eq('inquilino_id', inquilinoId)
+        .eq('estado', 'activo'),
+      supabase
+        .from('contratos')
+        .select('id', { count: 'exact', head: true })
+        .eq('inquilino_id', inquilinoId)
+        .eq('estado', 'programado'),
+      supabase
+        .from('contratos')
+        .select('id', { count: 'exact', head: true })
+        .eq('inquilino_id', inquilinoId)
+        .eq('estado', 'inactivo'),
+      supabase
+        .from('reclamos')
+        .select('id', { count: 'exact', head: true })
+        .eq('inquilino_id', inquilinoId),
+    ])
 
   if (contratosActivosRes.error) return { error: contratosActivosRes.error }
+  if (contratosProgramadosRes.error) return { error: contratosProgramadosRes.error }
   if (contratosHistoricosRes.error) return { error: contratosHistoricosRes.error }
   if (reclamosRes.error) return { error: reclamosRes.error }
 
   return {
     contratos_activos: contratosActivosRes.count ?? 0,
+    contratos_programados: contratosProgramadosRes.count ?? 0,
     contratos_historicos: contratosHistoricosRes.count ?? 0,
     reclamos: reclamosRes.count ?? 0,
   }

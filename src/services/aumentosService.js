@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { activarContratosProgramados } from './contratosService'
 
 function hoyIsoLocal() {
   const d = new Date()
@@ -48,6 +49,8 @@ export async function listarColaAumentos({ diasProximos = 30 } = {}) {
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
 
+  await activarContratosProgramados()
+
   const hoy = hoyIsoLocal()
   const limite = sumarDiasIso(hoy, diasProximos)
 
@@ -58,11 +61,12 @@ export async function listarColaAumentos({ diasProximos = 30 } = {}) {
       tipo_ajuste,
       monto_alquiler,
       fecha_proximo_aumento,
+      fecha_fin,
       periodicidad_meses,
       inquilinos ( nombre_completo ),
       propiedades ( direccion )
     `)
-    .eq('activo', true)
+    .eq('estado', 'activo')
     .in('tipo_ajuste', ['icl', 'ipc'])
     .not('fecha_proximo_aumento', 'is', null)
     .lte('fecha_proximo_aumento', limite)
@@ -72,7 +76,9 @@ export async function listarColaAumentos({ diasProximos = 30 } = {}) {
     return { data: null, error: { message: error.message } }
   }
 
-  const items = (data ?? []).map((row) => mapColaItem(row, hoy))
+  const items = (data ?? [])
+    .filter((row) => !row.fecha_fin || row.fecha_proximo_aumento <= row.fecha_fin)
+    .map((row) => mapColaItem(row, hoy))
   const vencidos = items.filter((i) => i.es_vencido)
   const proximos = items.filter((i) => !i.es_vencido)
 
@@ -86,6 +92,8 @@ export async function calcularAumentosPendientes({ incluirProximos = false, dias
   if (!supabase) {
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
+
+  await activarContratosProgramados()
 
   const { data, error } = await supabase.rpc('calcular_aumentos_pendientes', {
     incluir_proximos: incluirProximos,

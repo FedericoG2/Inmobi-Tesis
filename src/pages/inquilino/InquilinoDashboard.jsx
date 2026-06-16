@@ -48,7 +48,7 @@ function IconChevron() {
 }
 
 export default function InquilinoDashboard() {
-  const { inquilino, contratos, reclamos, loading, error } = usePortalInquilino()
+  const { inquilino, contratoActivo, reclamos, loading, error } = usePortalInquilino()
 
   if (loading) {
     return (
@@ -67,7 +67,6 @@ export default function InquilinoDashboard() {
   }
 
   const primerNombre = inquilino?.nombre_completo?.split(' ')[0] ?? 'Inquilino'
-  const contratoActivo = contratos[0] ?? null
   const dias = calcularDiasRestantes(contratoActivo?.fecha_fin)
   const reclamosPendientes = reclamos.filter((r) => r.estado === 'Pendiente').length
   const diasCriticos = dias !== null && dias <= 60

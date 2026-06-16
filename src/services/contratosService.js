@@ -2,14 +2,57 @@ import { supabase } from '../supabaseClient'
 import {
   esErrorPropiedadContratoActivo,
   esErrorPropiedadNoDisponibleContrato,
+  esErrorSolapamientoContrato,
 } from '../utils/esErrorPropiedadNoDisponibleContrato'
 import {
   MENSAJE_PROPIEDAD_CONTRATO_ACTIVO,
   MENSAJE_PROPIEDAD_NO_DISPONIBLE,
+  MENSAJE_SOLAPAMIENTO_CONTRATO,
 } from '../utils/propiedadElegibleContrato'
 import { sincronizarEstadoPropiedadPorContratos } from './propiedadesService'
 
+async function activarContratosProgramados() {
+  if (!supabase) return
+  await supabase.rpc('activar_contratos_programados')
+}
+
+export { activarContratosProgramados }
+
 export async function listarContratos() {
+  if (!supabase) {
+    return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
+  }
+
+  await activarContratosProgramados()
+
+  const { data, error } = await supabase
+    .from('contratos')
+    .select(`
+      id,
+      fecha_inicio,
+      fecha_fin,
+      monto_alquiler,
+      monto_inicial,
+      periodicidad_meses,
+      tipo_ajuste,
+      porcentaje_ajuste,
+      fecha_proximo_aumento,
+      fecha_ultimo_aumento,
+      dia_vencimiento,
+      observaciones,
+      activo,
+      estado,
+      propiedad_id,
+      inquilino_id,
+      propiedades ( direccion ),
+      inquilinos ( nombre_completo )
+    `)
+    .order('fecha_inicio', { ascending: false })
+
+  return { data, error }
+}
+
+export async function obtenerContratoDetalle(id) {
   if (!supabase) {
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
@@ -30,12 +73,45 @@ export async function listarContratos() {
       dia_vencimiento,
       observaciones,
       activo,
+      estado,
       propiedad_id,
       inquilino_id,
-      propiedades ( direccion ),
-      inquilinos ( nombre_completo )
+      propiedades (
+        id,
+        direccion,
+        ciudad,
+        calle,
+        altura,
+        piso,
+        unidad,
+        tipo,
+        estado
+      ),
+      inquilinos (
+        id,
+        nombre_completo,
+        tipo_persona,
+        tipo_garantia,
+        dni_cuit,
+        email,
+        telefono
+      ),
+      aumentos (
+        id,
+        fecha_aplicacion,
+        monto_anterior,
+        monto_nuevo,
+        porcentaje_aplicado,
+        indice_tipo,
+        indice_valor_inicio,
+        indice_valor_fin,
+        modo,
+        fecha_creacion
+      )
     `)
-    .order('fecha_inicio', { ascending: false })
+    .eq('id', id)
+    .order('fecha_aplicacion', { foreignTable: 'aumentos', ascending: false })
+    .maybeSingle()
 
   return { data, error }
 }
@@ -55,18 +131,6 @@ export async function crearContrato(contrato) {
 
   if (propiedad.estado !== 'Disponible') {
     return { data: null, error: { message: MENSAJE_PROPIEDAD_NO_DISPONIBLE } }
-  }
-
-  const { count: contratosActivos, error: contratosError } = await supabase
-    .from('contratos')
-    .select('id', { count: 'exact', head: true })
-    .eq('propiedad_id', contrato.propiedad_id)
-    .eq('activo', true)
-
-  if (contratosError) return { data: null, error: contratosError }
-
-  if ((contratosActivos ?? 0) > 0) {
-    return { data: null, error: { message: MENSAJE_PROPIEDAD_CONTRATO_ACTIVO } }
   }
 
   const payload = {
@@ -97,6 +161,7 @@ export async function crearContrato(contrato) {
       fecha_fin,
       monto_alquiler,
       activo,
+      estado,
       propiedad_id,
       inquilino_id,
       propiedades ( direccion ),
@@ -110,6 +175,9 @@ export async function crearContrato(contrato) {
     }
     if (esErrorPropiedadContratoActivo(error)) {
       return { data: null, error: { message: MENSAJE_PROPIEDAD_CONTRATO_ACTIVO } }
+    }
+    if (esErrorSolapamientoContrato(error)) {
+      return { data: null, error: { message: MENSAJE_SOLAPAMIENTO_CONTRATO } }
     }
     return { data, error }
   }
@@ -155,7 +223,7 @@ export async function anularContrato(id) {
     .from('contratos')
     .delete()
     .eq('id', id)
-    .eq('activo', false)
+    .in('estado', ['inactivo', 'programado'])
     .select('id, propiedad_id')
     .maybeSingle()
 
@@ -178,15 +246,16 @@ export async function finalizarContrato(id) {
 
   const { data, error } = await supabase
     .from('contratos')
-    .update({ activo: false })
+    .update({ activo: false, estado: 'inactivo' })
     .eq('id', id)
-    .eq('activo', true)
+    .in('estado', ['activo', 'programado'])
     .select(`
       id,
       fecha_inicio,
       fecha_fin,
       monto_alquiler,
       activo,
+      estado,
       propiedad_id,
       inquilino_id,
       propiedades ( direccion ),

@@ -4,7 +4,7 @@ import { calleTieneAlturaIncluida } from './normalizarUbicacion'
 export const CIUDADES_PROPIEDAD = ['Córdoba', 'Villa María', 'Río Cuarto']
 export const CIUDAD_PROPIEDAD_DEFAULT = 'Córdoba'
 export const TIPOS_PROPIEDAD = ['Departamento', 'Casa', 'Local comercial']
-export const ESTADOS_PROPIEDAD = ['Disponible', 'Alquilada', 'Mantenimiento']
+export const ESTADOS_PROPIEDAD = ['Disponible', 'Reservada', 'Alquilada', 'Mantenimiento']
 /** Estados permitidos al dar de alta o editar sin contrato activo. */
 export const ESTADOS_PROPIEDAD_ALTA = ['Disponible', 'Mantenimiento']
 

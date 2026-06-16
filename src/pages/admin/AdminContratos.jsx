@@ -3,6 +3,8 @@ import { Badge, Card } from '@tremor/react'
 import AdminAlertModal from '../../components/admin/AdminAlertModal'
 import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
 import AdminListLayout from '../../components/admin/AdminListLayout'
+import AdminNuevoButton from '../../components/admin/AdminNuevoButton'
+import AdminTablePagination from '../../components/admin/AdminTablePagination'
 import {
   AdminTable,
   AdminTableBody,
@@ -14,18 +16,26 @@ import {
   AdminTableHeaderCell,
   AdminTableRow,
 } from '../../components/admin/AdminDataTable'
+import ContratoDetalleModal from '../../components/admin/ContratoDetalleModal'
 import ContratoFormModal from '../../components/admin/forms/ContratoFormModal'
-import TableRowActions from '../../components/admin/TableRowActions'
+import ContratoRowActions from '../../components/admin/ContratoRowActions'
+import InquilinoDetalleModal from '../../components/admin/InquilinoDetalleModal'
+import PropiedadDetalleModal from '../../components/admin/PropiedadDetalleModal'
 import { useContratos } from '../../hooks/useContratos'
 import { useInquilinos } from '../../hooks/useInquilinos'
 import { usePropiedades } from '../../hooks/usePropiedades'
 import { periodicidadLabelPorMeses, TIPO_AJUSTE_LABELS, TIPO_AJUSTE_OPCIONES } from '../../utils/contratoAumentosPreview'
+import { colorEstadoContrato, esContratoPlazoVencido, etiquetaEstadoContrato } from '../../utils/contratoVigencia'
 
 const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
 
+const FILAS_POR_PAGINA = 4
+
 const FILTRO_ESTADO = [
   { value: 'activos', label: 'Activos' },
+  { value: 'programados', label: 'Programados' },
   { value: 'inactivos', label: 'Inactivos' },
+  { value: 'vencidos', label: 'Vencidos' },
   { value: 'todos', label: 'Todos' },
 ]
 
@@ -34,8 +44,16 @@ const FILTRO_TIPO_AJUSTE = [
   ...TIPO_AJUSTE_OPCIONES.map(({ value, label }) => ({ value, label })),
 ]
 
-const toolbarFieldClass =
-  'box-border inline-flex h-[38px] w-auto max-w-full items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 outline-none transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 disabled:opacity-50'
+const inputToolbarClass =
+  'h-10 w-full rounded-lg border border-slate-300 bg-white text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:opacity-50'
+
+function IconSearch({ className = 'h-4 w-4' }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+    </svg>
+  )
+}
 
 function normalizarBusqueda(texto) {
   return (texto ?? '')
@@ -67,6 +85,12 @@ export default function AdminContratos() {
   const [confirmAnularOpen, setConfirmAnularOpen] = useState(false)
   const [contratoFinalizando, setContratoFinalizando] = useState(null)
   const [contratoAnulando, setContratoAnulando] = useState(null)
+  const [contratoDetalleId, setContratoDetalleId] = useState(null)
+  const [detalleInquilinoOpen, setDetalleInquilinoOpen] = useState(false)
+  const [detallePropiedadOpen, setDetallePropiedadOpen] = useState(false)
+  const [inquilinoDetalle, setInquilinoDetalle] = useState(null)
+  const [propiedadDetalle, setPropiedadDetalle] = useState(null)
+  const [paginaActual, setPaginaActual] = useState(1)
   const [alerta, setAlerta] = useState(alertaInicial)
   const {
     contratos,
@@ -90,8 +114,10 @@ export default function AdminContratos() {
 
   const conteosEstado = useMemo(
     () => ({
-      activos: contratos.filter((c) => c.activo).length,
-      inactivos: contratos.filter((c) => !c.activo).length,
+      activos: contratos.filter((c) => c.estado === 'activo').length,
+      programados: contratos.filter((c) => c.estado === 'programado').length,
+      inactivos: contratos.filter((c) => c.estado === 'inactivo').length,
+      vencidos: contratos.filter((c) => esContratoPlazoVencido(c)).length,
       todos: contratos.length,
     }),
     [contratos]
@@ -100,8 +126,15 @@ export default function AdminContratos() {
   const contratosFiltrados = useMemo(() => {
     let items = contratos
 
-    if (filtroEstado === 'activos') items = items.filter((c) => c.activo)
-    else if (filtroEstado === 'inactivos') items = items.filter((c) => !c.activo)
+    if (filtroEstado === 'activos') {
+      items = items.filter((c) => c.estado === 'activo')
+    } else if (filtroEstado === 'programados') {
+      items = items.filter((c) => c.estado === 'programado')
+    } else if (filtroEstado === 'inactivos') {
+      items = items.filter((c) => c.estado === 'inactivo')
+    } else if (filtroEstado === 'vencidos') {
+      items = items.filter((c) => esContratoPlazoVencido(c))
+    }
 
     if (filtroTipoAjuste !== 'todos') {
       items = items.filter((c) => c.tipo_ajuste === filtroTipoAjuste)
@@ -117,6 +150,26 @@ export default function AdminContratos() {
     return items
   }, [contratos, filtroEstado, filtroTipoAjuste, busquedaInquilino])
 
+  useEffect(() => {
+    setPaginaActual(1)
+  }, [filtroEstado, filtroTipoAjuste, busquedaInquilino])
+
+  const totalPaginas = useMemo(
+    () => Math.max(1, Math.ceil(contratosFiltrados.length / FILAS_POR_PAGINA)),
+    [contratosFiltrados.length]
+  )
+
+  const contratosPagina = useMemo(() => {
+    const inicio = (paginaActual - 1) * FILAS_POR_PAGINA
+    return contratosFiltrados.slice(inicio, inicio + FILAS_POR_PAGINA)
+  }, [contratosFiltrados, paginaActual])
+
+  useEffect(() => {
+    if (paginaActual > totalPaginas) {
+      setPaginaActual(totalPaginas)
+    }
+  }, [paginaActual, totalPaginas])
+
   const hayFiltrosExtra =
     filtroTipoAjuste !== 'todos' || busquedaInquilino.trim().length > 0
 
@@ -127,7 +180,9 @@ export default function AdminContratos() {
       return 'No hay contratos que coincidan con la búsqueda o los filtros aplicados'
     }
     if (filtroEstado === 'activos') return 'No hay contratos activos'
+    if (filtroEstado === 'programados') return 'No hay contratos programados'
     if (filtroEstado === 'inactivos') return 'No hay contratos inactivos'
+    if (filtroEstado === 'vencidos') return 'No hay contratos vencidos'
     return 'No hay contratos para mostrar'
   }, [loading, contratos.length, contratosFiltrados.length, filtroEstado, hayFiltrosExtra])
 
@@ -206,12 +261,44 @@ export default function AdminContratos() {
     return ok
   }
 
+  const abrirDetalle = (contrato) => {
+    setContratoDetalleId(contrato.id)
+  }
+
+  const cerrarDetalle = () => {
+    setContratoDetalleId(null)
+  }
+
+  const resolverInquilino = (inquilino) => {
+    if (!inquilino?.id) return inquilino
+    return inquilinos.find((i) => String(i.id) === String(inquilino.id)) ?? inquilino
+  }
+
+  const resolverPropiedad = (propiedad) => {
+    if (!propiedad?.id) return propiedad
+    return propiedades.find((p) => String(p.id) === String(propiedad.id)) ?? propiedad
+  }
+
+  const abrirDetalleInquilino = (inquilino) => {
+    setInquilinoDetalle(resolverInquilino(inquilino))
+    setDetalleInquilinoOpen(true)
+  }
+
+  const abrirDetallePropiedad = (propiedad) => {
+    setPropiedadDetalle(resolverPropiedad(propiedad))
+    setDetallePropiedadOpen(true)
+  }
+
   const cerrarAlerta = () => {
     setAlerta(alertaInicial)
   }
 
   const mensajeConfirmacionFinalizar = contratoFinalizando
-    ? `¿Finalizar el contrato de ${contratoFinalizando.inquilinos?.nombre_completo ?? 'este inquilino'} en ${contratoFinalizando.propiedades?.direccion ?? 'esta propiedad'}? Quedará inactivo pero se conservará en el historial.`
+    ? `¿Finalizar el contrato de ${contratoFinalizando.inquilinos?.nombre_completo ?? 'este inquilino'} en ${contratoFinalizando.propiedades?.direccion ?? 'esta propiedad'}? ${
+        contratoFinalizando.estado === 'programado'
+          ? 'Se cancelará la reserva programada.'
+          : 'Quedará inactivo pero se conservará en el historial.'
+      }`
     : ''
 
   const mensajeConfirmacionAnular = contratoAnulando
@@ -221,10 +308,8 @@ export default function AdminContratos() {
   return (
     <>
       <AdminListLayout
-        title="Contratos de alquiler"
-        subtitle="Por defecto se muestran los contratos activos"
-        actionLabel="Nuevo contrato"
-        onAction={abrirModal}
+        title="Contratos de Alquiler"
+        subtitle=""
         alerts={
           error ? (
             <Card className="border border-red-200 bg-red-50">
@@ -233,10 +318,9 @@ export default function AdminContratos() {
           ) : null
         }
       >
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-4">
-          <h2 className="text-sm font-semibold text-slate-900">Listado de Contratos</h2>
-
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-nowrap items-center gap-2 overflow-x-auto border-b border-slate-200 bg-slate-50/70 px-4 py-3 lg:px-6">
+          <div className="relative w-36 shrink-0 lg:w-40">
+            <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               id="busqueda-inquilino"
               type="search"
@@ -244,50 +328,64 @@ export default function AdminContratos() {
               onChange={(e) => setBusquedaInquilino(e.target.value)}
               placeholder="Buscar inquilino..."
               aria-label="Buscar inquilino por nombre"
-              className={`${toolbarFieldClass} min-w-[11rem] max-w-[14rem]`}
+              className={`${inputToolbarClass} pl-9`}
               disabled={loading}
             />
+          </div>
 
-            <select
-              id="filtro-tipo-ajuste"
-              value={filtroTipoAjuste}
-              onChange={(e) => setFiltroTipoAjuste(e.target.value)}
-              aria-label="Filtrar por tipo de ajuste"
-              className={`${toolbarFieldClass} max-w-[11rem] pr-8`}
-              disabled={loading}
-            >
-              {FILTRO_TIPO_AJUSTE.map(({ value, label }) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
+          <select
+            id="filtro-tipo-ajuste"
+            value={filtroTipoAjuste}
+            onChange={(e) => setFiltroTipoAjuste(e.target.value)}
+            aria-label="Filtrar por tipo de ajuste"
+            className={`${inputToolbarClass} w-32 shrink-0 cursor-pointer pr-8 lg:w-36`}
+            disabled={loading}
+          >
+            {FILTRO_TIPO_AJUSTE.map(({ value, label }) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
 
-            <div
-              className="inline-flex h-[38px] items-center rounded-lg border border-slate-200 bg-slate-50 p-1"
-              role="group"
-              aria-label="Filtrar contratos por estado"
-            >
-              {FILTRO_ESTADO.map(({ value, label }) => {
-                const activo = filtroEstado === value
-                const count = loading ? '…' : conteosEstado[value]
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    disabled={loading}
-                    onClick={() => setFiltroEstado(value)}
-                    className={`inline-flex h-full items-center rounded-md px-3 text-sm font-medium transition-colors ${
-                      activo
-                        ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200'
+          <div
+            className="inline-flex h-10 shrink-0 items-center rounded-lg border border-slate-300 bg-white p-1"
+            role="group"
+            aria-label="Filtrar contratos por estado"
+          >
+            {FILTRO_ESTADO.map(({ value, label }) => {
+              const activo = filtroEstado === value
+              const count = loading ? '…' : conteosEstado[value]
+              const esVencidos = value === 'vencidos'
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  disabled={loading}
+                  onClick={() => setFiltroEstado(value)}
+                  className={`inline-flex h-full shrink-0 items-center whitespace-nowrap rounded-md px-2 text-xs font-medium transition-colors lg:px-2.5 ${
+                    activo
+                      ? esVencidos
+                        ? 'bg-red-50 text-red-700 shadow-sm ring-1 ring-red-100'
+                        : 'bg-indigo-50 text-indigo-700 shadow-sm ring-1 ring-indigo-100'
+                      : esVencidos
+                        ? 'text-red-600 hover:text-red-800'
                         : 'text-slate-600 hover:text-slate-900'
-                    } disabled:opacity-50`}
-                  >
-                    {label} ({count})
-                  </button>
-                )
-              })}
-            </div>
+                  } disabled:opacity-50`}
+                >
+                  {label} ({count})
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="sticky right-0 ml-auto shrink-0 bg-slate-50/70 pl-2">
+            <AdminNuevoButton
+              label="NUEVO CONTRATO"
+              onClick={abrirModal}
+              variant="primary"
+              className="!h-10 whitespace-nowrap"
+            />
           </div>
         </div>
 
@@ -318,7 +416,7 @@ export default function AdminContratos() {
             )}
 
             {!loading &&
-              contratosFiltrados.map((c) => (
+              contratosPagina.map((c) => (
                 <AdminTableRow key={c.id ?? `${c.inquilino_id}-${c.propiedad_id}`}>
                   <AdminTableCell className="font-medium text-slate-900">
                     {c.inquilinos?.nombre_completo ?? '—'}
@@ -338,29 +436,36 @@ export default function AdminContratos() {
                     {formatFecha(c.fecha_proximo_aumento)}
                   </AdminTableCell>
                   <AdminTableCell>
-                    <Badge color={c.activo ? 'emerald' : 'gray'}>
-                      {c.activo ? 'Activo' : 'Inactivo'}
+                    <Badge color={colorEstadoContrato(c)}>
+                      {etiquetaEstadoContrato(c)}
                     </Badge>
                   </AdminTableCell>
                   <AdminTableActionsCell>
-                    {c.activo ? (
-                      <TableRowActions
-                        onDelete={() => abrirConfirmFinalizar(c)}
-                        deleteLabel="Finalizar"
-                        deleteVariant="finalize"
-                      />
-                    ) : (
-                      <TableRowActions
-                        onDelete={() => abrirConfirmAnular(c)}
-                        deleteLabel="Anular"
-                        deleteVariant="danger"
-                      />
-                    )}
+                    <ContratoRowActions
+                      onView={() => abrirDetalle(c)}
+                      onFinalize={
+                        c.estado === 'programado' || c.estado === 'activo'
+                          ? () => abrirConfirmFinalizar(c)
+                          : undefined
+                      }
+                      finalizeLabel={c.estado === 'programado' ? 'Cancelar' : 'Finalizar'}
+                      onAnular={
+                        c.estado === 'inactivo' ? () => abrirConfirmAnular(c) : undefined
+                      }
+                    />
                   </AdminTableActionsCell>
                 </AdminTableRow>
               ))}
           </AdminTableBody>
         </AdminTable>
+
+        <AdminTablePagination
+          pagina={paginaActual}
+          totalPaginas={totalPaginas}
+          totalItems={contratosFiltrados.length}
+          itemsPorPagina={FILAS_POR_PAGINA}
+          onPaginaChange={setPaginaActual}
+        />
       </AdminListLayout>
 
       <ContratoFormModal
@@ -374,6 +479,34 @@ export default function AdminContratos() {
         propiedades={propiedades}
         propiedadesLoading={propiedadesLoading}
         contratos={contratos}
+      />
+
+      <ContratoDetalleModal
+        open={contratoDetalleId != null}
+        contratoId={contratoDetalleId}
+        onClose={cerrarDetalle}
+        onVerInquilino={abrirDetalleInquilino}
+        onVerPropiedad={abrirDetallePropiedad}
+      />
+
+      <InquilinoDetalleModal
+        open={detalleInquilinoOpen}
+        inquilino={inquilinoDetalle}
+        onClose={() => {
+          setDetalleInquilinoOpen(false)
+          setInquilinoDetalle(null)
+        }}
+        apilado
+      />
+
+      <PropiedadDetalleModal
+        open={detallePropiedadOpen}
+        propiedad={propiedadDetalle}
+        onClose={() => {
+          setDetallePropiedadOpen(false)
+          setPropiedadDetalle(null)
+        }}
+        apilado
       />
 
       <AdminConfirmModal

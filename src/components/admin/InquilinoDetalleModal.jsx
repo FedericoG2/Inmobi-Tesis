@@ -183,7 +183,7 @@ function etiquetaReclamos(cantidad) {
   return `${cantidad} reclamos asociados`
 }
 
-export default function InquilinoDetalleModal({ open, inquilino, onClose, onEdit }) {
+export default function InquilinoDetalleModal({ open, inquilino, onClose, onEdit, apilado = false }) {
   const [dependencias, setDependencias] = useState(null)
   const [cargandoDeps, setCargandoDeps] = useState(false)
 
@@ -235,7 +235,7 @@ export default function InquilinoDetalleModal({ open, inquilino, onClose, onEdit
     .join(' · ') || '—'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className={`fixed inset-0 ${apilado ? 'z-[60]' : 'z-50'} flex items-center justify-center p-4`}>
       <button
         type="button"
         aria-label="Cerrar detalle"

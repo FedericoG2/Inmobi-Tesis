@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { obtenerIpcAnualArgly } from '../services/arglyService'
 import { obtenerDashboardAdmin } from '../services/dashboardService'
 
 export function useDashboard() {
@@ -7,28 +8,41 @@ export function useDashboard() {
   const [reclamosUrgentes, setReclamosUrgentes] = useState([])
   const [ipcAnual, setIpcAnual] = useState([])
   const [ipcAnio, setIpcAnio] = useState(new Date().getFullYear())
+  const [ipcError, setIpcError] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   const refetch = useCallback(async () => {
     setLoading(true)
     setError(null)
+    setIpcError(null)
 
-    const { data, error: fetchError } = await obtenerDashboardAdmin()
+    const anioActual = new Date().getFullYear()
 
-    if (fetchError) {
-      setError(fetchError.message)
+    const [dashboardResult, ipcResult] = await Promise.all([
+      obtenerDashboardAdmin(),
+      obtenerIpcAnualArgly(anioActual),
+    ])
+
+    if (dashboardResult.error) {
+      setError(dashboardResult.error.message)
       setKpis(null)
       setAumentosProximos([])
       setReclamosUrgentes([])
-      setIpcAnual([])
-      setIpcAnio(new Date().getFullYear())
     } else {
-      setKpis(data.kpis)
-      setAumentosProximos(data.aumentosProximos)
-      setReclamosUrgentes(data.reclamosUrgentes)
-      setIpcAnual(data.ipcAnual)
-      setIpcAnio(data.ipcAnio)
+      setKpis(dashboardResult.data.kpis)
+      setAumentosProximos(dashboardResult.data.aumentosProximos)
+      setReclamosUrgentes(dashboardResult.data.reclamosUrgentes)
+    }
+
+    if (ipcResult.error) {
+      setIpcAnual([])
+      setIpcAnio(anioActual)
+      setIpcError(ipcResult.error.message)
+    } else {
+      setIpcAnual(ipcResult.data.ipcAnual)
+      setIpcAnio(ipcResult.data.anio)
+      setIpcError(null)
     }
 
     setLoading(false)
@@ -44,6 +58,7 @@ export function useDashboard() {
     reclamosUrgentes,
     ipcAnual,
     ipcAnio,
+    ipcError,
     loading,
     error,
     refetch,

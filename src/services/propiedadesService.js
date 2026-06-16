@@ -257,29 +257,21 @@ export async function actualizarPropiedad(id, datos) {
   return { data, error: null }
 }
 
-/** Deriva Disponible / Alquilada según contratos activos de la propiedad. */
+/** Deriva Disponible / Reservada / Alquilada según contratos de la propiedad. */
 export async function sincronizarEstadoPropiedadPorContratos(propiedadId) {
   if (!supabase) {
     return { error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
 
-  const { count, error: countError } = await supabase
-    .from('contratos')
-    .select('id', { count: 'exact', head: true })
-    .eq('propiedad_id', propiedadId)
-    .eq('activo', true)
-
-  if (countError) return { error: countError }
-
-  const estado = (count ?? 0) > 0 ? 'Alquilada' : 'Disponible'
-
-  const { error } = await supabase.from('propiedades').update({ estado }).eq('id', propiedadId)
+  const { error } = await supabase.rpc('sincronizar_estado_propiedad_por_contratos', {
+    p_propiedad_id: propiedadId,
+  })
 
   return { error }
 }
 
 /**
- * Devuelve la cantidad de contratos activos, contratos históricos y reclamos
+ * Devuelve la cantidad de contratos vigentes (activos o programados), históricos y reclamos
  * asociados a una propiedad. Usado para bloquear o advertir antes de eliminar.
  */
 export async function contarDependenciasPropiedad(propiedadId) {
@@ -287,29 +279,29 @@ export async function contarDependenciasPropiedad(propiedadId) {
     return { error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
 
-  const [contratosActivosRes, contratosHistoricosRes, reclamosRes] = await Promise.all([
+  const [contratosVigentesRes, contratosHistoricosRes, reclamosRes] = await Promise.all([
     supabase
       .from('contratos')
       .select('id', { count: 'exact', head: true })
       .eq('propiedad_id', propiedadId)
-      .eq('activo', true),
+      .in('estado', ['activo', 'programado']),
     supabase
       .from('contratos')
       .select('id', { count: 'exact', head: true })
       .eq('propiedad_id', propiedadId)
-      .eq('activo', false),
+      .eq('estado', 'inactivo'),
     supabase
       .from('reclamos')
       .select('id', { count: 'exact', head: true })
       .eq('propiedad_id', propiedadId),
   ])
 
-  if (contratosActivosRes.error) return { error: contratosActivosRes.error }
+  if (contratosVigentesRes.error) return { error: contratosVigentesRes.error }
   if (contratosHistoricosRes.error) return { error: contratosHistoricosRes.error }
   if (reclamosRes.error) return { error: reclamosRes.error }
 
   return {
-    contratos_activos: contratosActivosRes.count ?? 0,
+    contratos_activos: contratosVigentesRes.count ?? 0,
     contratos_historicos: contratosHistoricosRes.count ?? 0,
     reclamos: reclamosRes.count ?? 0,
   }

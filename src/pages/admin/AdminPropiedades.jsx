@@ -31,6 +31,7 @@ const inputToolbarClass =
 
 const BADGE_ESTADO = {
   Disponible: { label: 'Disponible', className: 'bg-emerald-600 text-white' },
+  Reservada: { label: 'Reservada', className: 'bg-violet-600 text-white' },
   Alquilada: { label: 'Alquilada', className: 'bg-blue-600 text-white' },
   Mantenimiento: { label: 'Mantenimiento', className: 'bg-amber-500 text-white' },
 }

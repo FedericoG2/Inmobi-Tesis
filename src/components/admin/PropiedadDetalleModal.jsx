@@ -26,6 +26,7 @@ const ESTILO_TIPO = {
 
 const ESTILO_ESTADO = {
   Disponible: { label: 'Disponible', className: 'bg-emerald-600 text-white' },
+  Reservada: { label: 'Reservada', className: 'bg-violet-600 text-white' },
   Alquilada: { label: 'Alquilada', className: 'bg-blue-600 text-white' },
   Mantenimiento: { label: 'Mantenimiento', className: 'bg-amber-500 text-white' },
 }
@@ -206,7 +207,7 @@ function etiquetaReclamos(cantidad) {
   return `${cantidad} reclamos asociados`
 }
 
-export default function PropiedadDetalleModal({ open, propiedad, onClose, onEdit }) {
+export default function PropiedadDetalleModal({ open, propiedad, onClose, onEdit, apilado = false }) {
   const [dependencias, setDependencias] = useState(null)
   const [cargandoDeps, setCargandoDeps] = useState(false)
 
@@ -258,7 +259,7 @@ export default function PropiedadDetalleModal({ open, propiedad, onClose, onEdit
       : etiquetaReclamos(dependencias.reclamos ?? 0)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className={`fixed inset-0 ${apilado ? 'z-[60]' : 'z-50'} flex items-center justify-center p-4`}>
       <button
         type="button"
         aria-label="Cerrar detalle"

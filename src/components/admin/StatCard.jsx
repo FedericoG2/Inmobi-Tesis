@@ -24,6 +24,11 @@ const THEMES = {
     iconColor: 'text-violet-600',
     valueColor: 'text-violet-700',
   },
+  slate: {
+    iconBg: 'bg-slate-100',
+    iconColor: 'text-slate-600',
+    valueColor: 'text-slate-700',
+  },
 }
 
 function IconBuilding({ className }) {

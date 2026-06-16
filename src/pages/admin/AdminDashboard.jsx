@@ -17,7 +17,8 @@ function etiquetaDiasAumento(dias) {
 }
 
 export default function AdminDashboard() {
-  const { kpis, aumentosProximos, reclamosUrgentes, ipcAnual, ipcAnio, loading, error } = useDashboard()
+  const { kpis, aumentosProximos, reclamosUrgentes, ipcAnual, ipcAnio, ipcError, loading, error } =
+    useDashboard()
 
   if (loading) {
     return (
@@ -78,11 +79,15 @@ export default function AdminDashboard() {
       <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
         <Title className="text-slate-800">Evolución IPC {ipcAnio}</Title>
         <p className="mt-1 text-xs text-slate-500">
-          Variación mensual del Índice de Precios al Consumidor (Nivel General)
+          Variación mensual del Índice de Precios al Consumidor (Nivel General) · Fuente Argly
         </p>
-        {ipcAnual.length === 0 ? (
+        {ipcError ? (
+          <p className="mt-8 text-sm text-amber-700">
+            No se pudo cargar el IPC desde Argly ({ipcError}).
+          </p>
+        ) : ipcAnual.length === 0 ? (
           <p className="mt-8 text-sm text-slate-500">
-            No hay datos de IPC publicados para {ipcAnio}. Sincronizá índices desde el módulo de Aumentos.
+            No hay datos de IPC publicados en Argly para {ipcAnio}.
           </p>
         ) : (
           <IpcBarChart data={ipcAnual} />

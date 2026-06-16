@@ -6,6 +6,7 @@ import {
   finalizarContrato,
   listarContratos,
 } from '../services/contratosService'
+import { subirDocumentoContrato } from '../services/documentosService'
 import {
   esErrorContratoActivoAnular,
   esErrorMovimientosContrato,
@@ -47,7 +48,7 @@ export function useContratos() {
       setSubmitting(true)
       setSubmitError(null)
 
-      const { error: createError } = await crearContrato({
+      const { data, error: createError } = await crearContrato({
         inquilino_id: Number(datos.inquilino_id),
         propiedad_id: Number(datos.propiedad_id),
         fecha_inicio: datos.fecha_inicio,
@@ -65,6 +66,24 @@ export function useContratos() {
         setSubmitError(createError.message)
         setSubmitting(false)
         return false
+      }
+
+      if (datos.archivo_legal && data?.id) {
+        const { error: docError } = await subirDocumentoContrato({
+          contratoId: data.id,
+          propiedadId: datos.propiedad_id,
+          archivo: datos.archivo_legal,
+          visibleParaInquilino: datos.documento_visible_inquilino ?? true,
+        })
+
+        if (docError) {
+          setSubmitError(
+            `El contrato se creó correctamente, pero no se pudo adjuntar el archivo: ${docError.message}. Podés subirlo desde la ficha del contrato.`
+          )
+          await refetch()
+          setSubmitting(false)
+          return false
+        }
       }
 
       await refetch()
@@ -99,7 +118,7 @@ export function useContratos() {
       setAnulando(true)
       setActionError(null)
 
-      if (contrato.activo) {
+      if (contrato.estado === 'activo') {
         setActionError(MENSAJE_SOLO_INACTIVO)
         setAnulando(false)
         return false

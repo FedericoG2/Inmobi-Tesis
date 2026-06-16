@@ -13,9 +13,20 @@ import {
   etiquetaPropiedadParaContrato,
   MENSAJE_PROPIEDAD_CONTRATO_ACTIVO,
   MENSAJE_PROPIEDAD_NO_DISPONIBLE,
+  MENSAJE_SOLAPAMIENTO_CONTRATO,
   propiedadElegibleParaContrato,
 } from '../../../utils/propiedadElegibleContrato'
+import {
+  calcularFechaFinPorDuracion,
+  contratoComprometePropiedad,
+  DURACION_CONTRATO_OPCIONES,
+  fechasSeSolapan,
+} from '../../../utils/contratoVigencia'
+import { formatearMontoInput, parsearMontoInput } from '../../../utils/formatoMonto'
 import AdminSearchSelect from '../AdminSearchSelect'
+import ContratoDocumentoAltaPicker from './ContratoDocumentoAltaPicker'
+import InquilinoDetalleModal from '../InquilinoDetalleModal'
+import PropiedadDetalleModal from '../PropiedadDetalleModal'
 
 const inputClass =
   'w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200'
@@ -148,12 +159,20 @@ export default function ContratoFormModal({
   const [form, setForm] = useState(formContratoInicial)
   const [seccionActiva, setSeccionActiva] = useState(0)
   const [errorPaso, setErrorPaso] = useState(null)
+  const [detalleInquilinoOpen, setDetalleInquilinoOpen] = useState(false)
+  const [detallePropiedadOpen, setDetallePropiedadOpen] = useState(false)
+  const [archivoLegal, setArchivoLegal] = useState(null)
+  const [errorArchivoLegal, setErrorArchivoLegal] = useState(null)
 
   useEffect(() => {
     if (!open) {
       setForm(formContratoInicial)
       setSeccionActiva(0)
       setErrorPaso(null)
+      setDetalleInquilinoOpen(false)
+      setDetallePropiedadOpen(false)
+      setArchivoLegal(null)
+      setErrorArchivoLegal(null)
     }
   }, [open])
 
@@ -161,28 +180,20 @@ export default function ContratoFormModal({
   const periodicidadLabel =
     PERIODICIDAD_OPCIONES.find((o) => o.key === form.periodicidad_key)?.label ?? 'Anual'
 
-  const propiedadesConActivo = useMemo(
-    () =>
-      new Set(
-        contratos.filter((c) => c.activo).map((c) => String(c.propiedad_id))
-      ),
-    [contratos]
-  )
-
-  const inquilinoSeleccionado = inquilinos.find((i) => String(i.id) === String(form.inquilino_id))
-  const propiedadSeleccionada = propiedades.find((p) => String(p.id) === String(form.propiedad_id))
-  const propiedadOcupada =
-    Boolean(form.propiedad_id) && propiedadesConActivo.has(String(form.propiedad_id))
-  const propiedadNoDisponible =
-    Boolean(propiedadSeleccionada) && propiedadSeleccionada.estado !== 'Disponible'
-  const propiedadSeleccionadaNoElegible =
-    Boolean(propiedadSeleccionada) &&
-    !propiedadElegibleParaContrato(propiedadSeleccionada, propiedadesConActivo)
-
   const propiedadesElegibles = useMemo(
-    () => propiedades.filter((p) => propiedadElegibleParaContrato(p, propiedadesConActivo)),
-    [propiedades, propiedadesConActivo]
+    () => propiedades.filter((p) => propiedadElegibleParaContrato(p)),
+    [propiedades]
   )
+
+  const solapaConContratoExistente = useMemo(() => {
+    if (!form.propiedad_id || !form.fecha_inicio || !form.fecha_fin) return false
+    return contratos.some(
+      (c) =>
+        contratoComprometePropiedad(c) &&
+        String(c.propiedad_id) === String(form.propiedad_id) &&
+        fechasSeSolapan(form.fecha_inicio, form.fecha_fin, c.fecha_inicio, c.fecha_fin)
+    )
+  }, [contratos, form.propiedad_id, form.fecha_inicio, form.fecha_fin])
 
   const preview = useMemo(
     () =>
@@ -197,7 +208,51 @@ export default function ContratoFormModal({
 
   const fechaProximoAumento = primeraFechaAumento(form.fecha_inicio, periodicidadMeses)
 
+  const inquilinoSeleccionado = inquilinos.find((i) => String(i.id) === String(form.inquilino_id))
+  const propiedadSeleccionada = propiedades.find((p) => String(p.id) === String(form.propiedad_id))
+  const propiedadNoDisponible =
+    Boolean(propiedadSeleccionada) && propiedadSeleccionada.estado !== 'Disponible'
+  const propiedadSeleccionadaNoElegible =
+    Boolean(propiedadSeleccionada) && !propiedadElegibleParaContrato(propiedadSeleccionada)
+
   if (!open) return null
+
+  const recalcularFechaFin = (fechaInicio, duracionAnios) => {
+    const anios = Number(duracionAnios)
+    if (!fechaInicio || !anios) return ''
+    return calcularFechaFinPorDuracion(fechaInicio, anios)
+  }
+
+  const handleFechaInicio = (e) => {
+    setErrorPaso(null)
+    const fechaInicio = e.target.value
+    setForm((prev) => ({
+      ...prev,
+      fecha_inicio: fechaInicio,
+      fecha_fin: recalcularFechaFin(fechaInicio, prev.duracion_anios),
+    }))
+  }
+
+  const handleDuracion = (e) => {
+    setErrorPaso(null)
+    const duracionAnios = e.target.value
+    setForm((prev) => ({
+      ...prev,
+      duracion_anios: duracionAnios,
+      fecha_fin: recalcularFechaFin(prev.fecha_inicio, duracionAnios),
+    }))
+  }
+
+  const handleMonto = (e) => {
+    setErrorPaso(null)
+    const display = formatearMontoInput(e.target.value)
+    const monto = parsearMontoInput(display)
+    setForm((prev) => ({
+      ...prev,
+      monto_alquiler_display: display,
+      monto_alquiler: monto === '' ? '' : String(monto),
+    }))
+  }
 
   const handleChange = (field) => (e) => {
     setErrorPaso(null)
@@ -212,7 +267,6 @@ export default function ContratoFormModal({
   const validarPaso = (indice) => {
     if (indice === 0) {
       if (!form.inquilino_id || !form.propiedad_id) return 'Seleccioná inquilino y propiedad.'
-      if (propiedadOcupada) return MENSAJE_PROPIEDAD_CONTRATO_ACTIVO
       if (propiedadNoDisponible) return MENSAJE_PROPIEDAD_NO_DISPONIBLE
       return null
     }
@@ -221,6 +275,7 @@ export default function ContratoFormModal({
       if (!fechasValidas(form.fecha_inicio, form.fecha_fin)) {
         return 'La fecha de fin debe ser posterior a la de inicio.'
       }
+      if (solapaConContratoExistente) return MENSAJE_SOLAPAMIENTO_CONTRATO
       if (!form.monto_alquiler || Number(form.monto_alquiler) <= 0) {
         return 'Ingresá un monto de alquiler válido.'
       }
@@ -232,6 +287,9 @@ export default function ContratoFormModal({
     }
     if (indice === 2) {
       if (!fechaProximoAumento) return 'No se pudo calcular el próximo aumento. Revisá las fechas.'
+      if (form.fecha_fin && fechaProximoAumento > form.fecha_fin) {
+        return 'El primer ajuste cae fuera de la vigencia del contrato. Revisá la periodicidad o la duración.'
+      }
       return null
     }
     return null
@@ -279,6 +337,8 @@ export default function ContratoFormModal({
       periodicidad_meses: periodicidadMeses,
       fecha_proximo_aumento: fechaProximoAumento,
       monto_inicial: Number(form.monto_alquiler),
+      archivo_legal: archivoLegal,
+      documento_visible_inquilino: form.documento_visible_inquilino,
     })
     if (ok) onClose()
   }
@@ -288,6 +348,7 @@ export default function ContratoFormModal({
   const mostrarPanelLateral = esSeccionAjustes
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         type="button"
@@ -310,9 +371,11 @@ export default function ContratoFormModal({
           className="flex min-h-0 flex-1 flex-col"
         >
           <div className="flex min-h-0 flex-1 overflow-y-auto">
-            <div className={`min-w-0 flex-1 p-6 pb-8 ${mostrarPanelLateral ? 'lg:pr-4' : ''}`}>
+            <div
+              className={`min-w-0 flex-1 p-6 pb-8 ${mostrarPanelLateral ? 'lg:pr-4' : ''} ${seccionActiva === 0 ? 'flex flex-col' : ''}`}
+            >
               {seccionActiva === 0 && (
-                <div className="space-y-4">
+                <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center space-y-5">
                   <div>
                     {inquilinosLoading ? (
                       <p className="text-sm text-slate-500">Cargando inquilinos...</p>
@@ -334,9 +397,10 @@ export default function ContratoFormModal({
                           value: i.id,
                           label: i.nombre_completo,
                         }))}
-                        emptySelectionLabel="Sin inquilino seleccionado"
+                        emptySelectionLabel="Buscar inquilino..."
                         searchPlaceholder="Buscar inquilino..."
                         disabled={formDeshabilitado}
+                        onVerDetalle={() => setDetalleInquilinoOpen(true)}
                       />
                     )}
                   </div>
@@ -365,23 +429,19 @@ export default function ContratoFormModal({
                             setForm((prev) => ({ ...prev, propiedad_id: id }))
                           }}
                           options={propiedades.map((p) => {
-                            const elegible = propiedadElegibleParaContrato(p, propiedadesConActivo)
+                            const elegible = propiedadElegibleParaContrato(p)
                             return {
                               value: p.id,
-                              label: etiquetaPropiedadParaContrato(p, propiedadesConActivo),
+                              label: etiquetaPropiedadParaContrato(p),
                               disabled: !elegible,
                             }
                           })}
-                          emptySelectionLabel="Sin propiedad seleccionada"
+                          emptySelectionLabel="Buscar propiedad..."
                           searchPlaceholder="Buscar propiedad..."
                           disabled={formDeshabilitado}
+                          onVerDetalle={() => setDetallePropiedadOpen(true)}
                         />
-                        {propiedadOcupada && (
-                          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                            {MENSAJE_PROPIEDAD_CONTRATO_ACTIVO}
-                          </p>
-                        )}
-                        {propiedadNoDisponible && !propiedadOcupada && (
+                        {propiedadNoDisponible && (
                           <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
                             {MENSAJE_PROPIEDAD_NO_DISPONIBLE}
                           </p>
@@ -397,33 +457,60 @@ export default function ContratoFormModal({
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <label htmlFor="fecha_inicio" className="mb-1 block text-sm font-medium text-slate-700">
-                        Fecha inicio
+                        Fecha inicio de vigencia
                       </label>
                       <input
                         id="fecha_inicio"
                         type="date"
                         required
                         value={form.fecha_inicio}
-                        onChange={handleChange('fecha_inicio')}
+                        onChange={handleFechaInicio}
                         className={inputClass}
                         disabled={formDeshabilitado}
                       />
                     </div>
                     <div>
-                      <label htmlFor="fecha_fin" className="mb-1 block text-sm font-medium text-slate-700">
-                        Fecha fin
+                      <label htmlFor="duracion_anios" className="mb-1 block text-sm font-medium text-slate-700">
+                        Duración del contrato
                       </label>
-                      <input
-                        id="fecha_fin"
-                        type="date"
-                        required
-                        value={form.fecha_fin}
-                        onChange={handleChange('fecha_fin')}
+                      <select
+                        id="duracion_anios"
+                        value={form.duracion_anios}
+                        onChange={handleDuracion}
                         className={inputClass}
                         disabled={formDeshabilitado}
-                      />
+                      >
+                        {DURACION_CONTRATO_OPCIONES.map((o) => (
+                          <option key={o.key} value={o.key}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
+
+                  <div>
+                    <label htmlFor="fecha_fin" className="mb-1 block text-sm font-medium text-slate-700">
+                      Fecha fin (calculada)
+                    </label>
+                    <input
+                      id="fecha_fin"
+                      type="date"
+                      readOnly
+                      value={form.fecha_fin}
+                      className={`${inputClass} cursor-not-allowed bg-slate-50 text-slate-700`}
+                      disabled={formDeshabilitado}
+                    />
+                    <p className="mt-1 text-xs text-slate-500">
+                      Plazo cerrado: inicio + duración − 1 día.
+                    </p>
+                  </div>
+
+                  {solapaConContratoExistente && (
+                    <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                      {MENSAJE_SOLAPAMIENTO_CONTRATO}
+                    </p>
+                  )}
 
                   <div>
                     <label htmlFor="monto_alquiler" className="mb-1 block text-sm font-medium text-slate-700">
@@ -431,14 +518,13 @@ export default function ContratoFormModal({
                     </label>
                     <input
                       id="monto_alquiler"
-                      type="number"
-                      min="0"
-                      step="0.01"
+                      type="text"
+                      inputMode="numeric"
                       required
-                      value={form.monto_alquiler}
-                      onChange={handleChange('monto_alquiler')}
+                      value={form.monto_alquiler_display}
+                      onChange={handleMonto}
                       className={inputClass}
-                      placeholder="300000"
+                      placeholder="$ 350.000"
                       disabled={formDeshabilitado}
                     />
                     <p className="mt-1 text-xs text-slate-500">
@@ -533,13 +619,34 @@ export default function ContratoFormModal({
               )}
 
               {seccionActiva === 3 && (
+                <ContratoDocumentoAltaPicker
+                  archivo={archivoLegal}
+                  onArchivoChange={setArchivoLegal}
+                  visibleParaInquilino={form.documento_visible_inquilino}
+                  onVisibleChange={(value) =>
+                    setForm((prev) => ({ ...prev, documento_visible_inquilino: value }))
+                  }
+                  error={errorArchivoLegal}
+                  onErrorChange={setErrorArchivoLegal}
+                  disabled={submitting}
+                />
+              )}
+
+              {seccionActiva === 4 && (
                 <div className="space-y-4">
                   <CampoResumen label="Inquilino" value={inquilinoSeleccionado?.nombre_completo ?? '—'} />
                   <CampoResumen label="Propiedad" value={propiedadSeleccionada?.direccion ?? '—'} />
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <CampoResumen label="Fecha inicio" value={formatFecha(form.fecha_inicio)} />
-                    <CampoResumen label="Fecha fin" value={formatFecha(form.fecha_fin)} />
+                    <CampoResumen
+                      label="Duración"
+                      value={
+                        DURACION_CONTRATO_OPCIONES.find((o) => o.key === form.duracion_anios)?.label ??
+                        '—'
+                      }
+                    />
                   </div>
+                  <CampoResumen label="Fecha fin" value={formatFecha(form.fecha_fin)} />
                   <CampoResumen
                     label="Monto inicial / vigente"
                     value={formatMonto(Number(form.monto_alquiler))}
@@ -560,6 +667,14 @@ export default function ContratoFormModal({
                     value={fechaProximoAumento ? formatFecha(fechaProximoAumento) : '—'}
                   />
                   <CampoResumen label="Observaciones" value={form.observaciones?.trim() || '—'} />
+                  <CampoResumen
+                    label="Contrato legal adjunto"
+                    value={
+                      archivoLegal
+                        ? `${archivoLegal.name}${form.documento_visible_inquilino ? ' · Visible inquilino' : ' · Solo admin'}`
+                        : 'Sin adjuntar (opcional)'
+                    }
+                  />
                   <BloqueProximosAumentos
                     preview={preview}
                     fechaInicio={form.fecha_inicio}
@@ -618,5 +733,19 @@ export default function ContratoFormModal({
         </form>
       </div>
     </div>
+
+    <InquilinoDetalleModal
+      open={detalleInquilinoOpen}
+      inquilino={inquilinoSeleccionado}
+      onClose={() => setDetalleInquilinoOpen(false)}
+      apilado
+    />
+    <PropiedadDetalleModal
+      open={detallePropiedadOpen}
+      propiedad={propiedadSeleccionada}
+      onClose={() => setDetallePropiedadOpen(false)}
+      apilado
+    />
+    </>
   )
 }

@@ -21,7 +21,12 @@ import { useInquilinos } from '../../hooks/useInquilinos'
 import { formatearDniCuit, formatearTelefono } from '../../utils/normalizarContacto'
 
 const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
-const dependenciasIniciales = { contratos_activos: 0, contratos_historicos: 0, reclamos: 0 }
+const dependenciasIniciales = {
+  contratos_activos: 0,
+  contratos_programados: 0,
+  contratos_historicos: 0,
+  reclamos: 0,
+}
 const FILAS_POR_PAGINA = 4
 
 const inputToolbarClass =
@@ -30,13 +35,6 @@ const inputToolbarClass =
 const BADGE_TIPO = {
   Física: { label: 'Particular', className: 'bg-violet-600 text-white' },
   Jurídica: { label: 'Empresa', className: 'bg-teal-600 text-white' },
-}
-
-const BADGE_GARANTIA = {
-  Propietaria: { label: 'Propietaria', className: 'bg-indigo-600 text-white' },
-  'Recibos de Sueldo': { label: 'Recibo Sueldo', className: 'bg-sky-600 text-white' },
-  'Aval Bancario': { label: 'Aval Bancario', className: 'bg-blue-600 text-white' },
-  Otro: { label: 'Otro / Caución', className: 'bg-teal-600 text-white' },
 }
 
 function IconSearch({ className = 'h-4 w-4' }) {
@@ -87,18 +85,6 @@ function IconPhone({ className = 'h-4 w-4' }) {
   )
 }
 
-function IconShield({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"
-      />
-    </svg>
-  )
-}
-
 function HeaderLabel({ icon: Icon, children, align = 'center' }) {
   const justify = align === 'left' ? 'justify-start' : 'justify-center'
   return (
@@ -144,7 +130,6 @@ export default function AdminInquilinos() {
   const [eliminando, setEliminando] = useState(false)
   const [paginaActual, setPaginaActual] = useState(1)
   const [filtroTexto, setFiltroTexto] = useState('')
-  const [filtroGarantia, setFiltroGarantia] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
 
   const {
@@ -183,12 +168,11 @@ export default function AdminInquilinos() {
         (i.dni_cuit ?? '').toLowerCase().includes(busqueda) ||
         (i.email ?? '').toLowerCase().includes(busqueda)
 
-      const cumpleGarantia = !filtroGarantia || i.tipo_garantia === filtroGarantia
       const cumpleTipo = !filtroTipo || i.tipo_persona === filtroTipo
 
-      return cumpleTexto && cumpleGarantia && cumpleTipo
+      return cumpleTexto && cumpleTipo
     })
-  }, [inquilinos, filtroTexto, filtroGarantia, filtroTipo])
+  }, [inquilinos, filtroTexto, filtroTipo])
 
   const totalPaginas = useMemo(
     () => Math.max(1, Math.ceil(inquilinosFiltrados.length / FILAS_POR_PAGINA)),
@@ -202,7 +186,7 @@ export default function AdminInquilinos() {
 
   useEffect(() => {
     setPaginaActual(1)
-  }, [filtroTexto, filtroGarantia, filtroTipo])
+  }, [filtroTexto, filtroTipo])
 
   useEffect(() => {
     if (paginaActual > totalPaginas) {
@@ -238,6 +222,7 @@ export default function AdminInquilinos() {
         ? dependenciasIniciales
         : {
             contratos_activos: deps.contratos_activos,
+            contratos_programados: deps.contratos_programados ?? 0,
             contratos_historicos: deps.contratos_historicos,
             reclamos: deps.reclamos,
           }
@@ -276,7 +261,7 @@ export default function AdminInquilinos() {
       return
     }
 
-    if (dependencias.contratos_activos > 0) {
+    if (dependencias.contratos_activos > 0 || dependencias.contratos_programados > 0) {
       setAlerta({
         open: true,
         titulo: 'No se puede eliminar',
@@ -355,20 +340,6 @@ export default function AdminInquilinos() {
             <option value="Jurídica">Empresa</option>
           </select>
 
-          <select
-            id="filtro-garantia-inquilino"
-            value={filtroGarantia}
-            onChange={(e) => setFiltroGarantia(e.target.value)}
-            className={`${inputToolbarClass} shrink-0 cursor-pointer sm:w-48`}
-            aria-label="Filtrar por tipo de garantía"
-          >
-            <option value="">Garantía: Todas</option>
-            <option value="Propietaria">Propietaria</option>
-            <option value="Recibos de Sueldo">Recibo de Sueldo</option>
-            <option value="Aval Bancario">Aval Bancario</option>
-            <option value="Otro">Otro / Caución</option>
-          </select>
-
           <div className="shrink-0 sm:ml-auto">
             <AdminNuevoButton
               label="Nuevo inquilino"
@@ -397,28 +368,25 @@ export default function AdminInquilinos() {
                   Teléfono
                 </HeaderLabel>
               </AdminTableHeaderCell>
-              <AdminTableHeaderCell className="w-[14%] !text-center">
-                <HeaderLabel icon={IconShield}>Garantía</HeaderLabel>
-              </AdminTableHeaderCell>
               <AdminTableHeaderCell className="w-[14%] !text-center">Acciones</AdminTableHeaderCell>
             </AdminTableRow>
           </AdminTableHead>
           <AdminTableBody>
             {loading && (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={6}>Cargando inquilinos...</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={5}>Cargando inquilinos...</AdminTableEmptyCell>
               </AdminTableRow>
             )}
 
             {!loading && !error && inquilinos.length === 0 && (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={6}>No hay inquilinos cargados</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={5}>No hay inquilinos cargados</AdminTableEmptyCell>
               </AdminTableRow>
             )}
 
             {!loading && !error && inquilinos.length > 0 && inquilinosFiltrados.length === 0 && (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={6}>
+                <AdminTableEmptyCell colSpan={5}>
                   Ningún inquilino coincide con la búsqueda
                 </AdminTableEmptyCell>
               </AdminTableRow>
@@ -428,10 +396,6 @@ export default function AdminInquilinos() {
               inquilinosFiltrados.length > 0 &&
               inquilinosPagina.map((i, index) => {
                 const badgeTipo = BADGE_TIPO[i.tipo_persona] ?? BADGE_TIPO['Física']
-                const badgeGarantia = BADGE_GARANTIA[i.tipo_garantia] ?? {
-                  label: i.tipo_garantia ?? '—',
-                  className: 'bg-slate-500 text-white',
-                }
                 const zebra = index % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'
 
                 return (
@@ -461,14 +425,6 @@ export default function AdminInquilinos() {
 
                     <AdminTableCell className={`!text-left ${celdaNumero}`}>
                       {formatearTelefono(i.telefono)}
-                    </AdminTableCell>
-
-                    <AdminTableCell className="!text-center">
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${badgeGarantia.className}`}
-                      >
-                        {badgeGarantia.label}
-                      </span>
                     </AdminTableCell>
 
                     <AdminTableCell className="!text-center">

@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import InmobiLogoMark from '../../components/brand/InmobiLogoMark'
 import {
   IconBuilding,
   IconClipboard,
@@ -22,9 +23,17 @@ const navItems = [
 export default function AdminSidebar() {
   return (
     <aside className="fixed left-0 top-0 z-30 flex h-screen w-64 flex-col border-r border-slate-200 bg-white">
-      <div className="border-b border-slate-200 px-6 py-5">
-        <h1 className="text-xl font-bold text-indigo-700">INMOBI</h1>
-        <p className="text-xs text-slate-500">Panel Administrador</p>
+      <div className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 px-5 shadow-sm shadow-slate-200/60">
+        <span
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-indigo-700 text-white shadow-sm ring-1 ring-indigo-600/20"
+          aria-hidden
+        >
+          <InmobiLogoMark className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-base font-bold tracking-tight text-slate-900">INMOBI</p>
+          <p className="truncate text-[11px] font-medium text-slate-500">Panel administrador</p>
+        </div>
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">

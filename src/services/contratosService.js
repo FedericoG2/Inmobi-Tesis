@@ -91,7 +91,6 @@ export async function obtenerContratoDetalle(id) {
         id,
         nombre_completo,
         tipo_persona,
-        tipo_garantia,
         dni_cuit,
         email,
         telefono

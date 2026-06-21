@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@tremor/react'
 import {
-  TIPOS_GARANTIA_INQUILINO,
   validarNombreCompleto,
   validarDniCuit,
   validarTelefono,
   validarEmailOpcional,
   validarTelefonoOpcional,
-  validarTipoGarantia,
   validarTextoOpcional,
 } from '../../../utils/validaciones'
 
@@ -20,7 +18,6 @@ const formInicial = {
   fecha_nacimiento: '',
   estado_civil: '',
   ocupacion: '',
-  tipo_garantia: 'Propietaria',
   emergencia_nombre: '',
   emergencia_telefono: '',
   observaciones: '',
@@ -54,9 +51,6 @@ function formDesdeInquilino(inquilino) {
     fecha_nacimiento: inquilino.fecha_nacimiento ?? '',
     estado_civil: inquilino.estado_civil ?? '',
     ocupacion: inquilino.ocupacion ?? '',
-    tipo_garantia: TIPOS_GARANTIA_INQUILINO.includes(inquilino.tipo_garantia)
-      ? inquilino.tipo_garantia
-      : 'Propietaria',
     emergencia_nombre: inquilino.emergencia_nombre ?? '',
     emergencia_telefono: inquilino.emergencia_telefono ?? '',
     observaciones: inquilino.observaciones ?? '',
@@ -69,7 +63,6 @@ function validarForm(form) {
     dni_cuit: validarDniCuit(form.dni_cuit),
     telefono: validarTelefono(form.telefono),
     email: validarEmailOpcional(form.email),
-    tipo_garantia: validarTipoGarantia(form.tipo_garantia),
     emergencia_telefono: validarTelefonoOpcional(form.emergencia_telefono),
     observaciones: validarTextoOpcional(form.observaciones, {
       maxLength: 1000,
@@ -331,42 +324,19 @@ export default function InquilinoFormModal({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="flex flex-col gap-1.5">
-                  <LabelCampo htmlFor="ocupacion">
-                    {esJuridica ? 'Rubro / giro comercial' : 'Ocupación / situación laboral'}
-                  </LabelCampo>
-                  <input
-                    id="ocupacion"
-                    type="text"
-                    maxLength={120}
-                    value={form.ocupacion}
-                    onChange={handleChange('ocupacion')}
-                    className={inputClass}
-                    placeholder={esJuridica ? 'Gastronómico, Logística...' : 'Empleado administrativo'}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <LabelCampo htmlFor="tipo_garantia" obligatorio>
-                    Tipo de garantía
-                  </LabelCampo>
-                  <select
-                    id="tipo_garantia"
-                    value={form.tipo_garantia}
-                    onChange={handleChange('tipo_garantia')}
-                    className={campoClass('tipo_garantia')}
-                  >
-                    {TIPOS_GARANTIA_INQUILINO.map((tipo) => (
-                      <option key={tipo} value={tipo}>
-                        {tipo}
-                      </option>
-                    ))}
-                  </select>
-                  {erroresCampo.tipo_garantia && (
-                    <p className="text-xs text-red-600">{erroresCampo.tipo_garantia}</p>
-                  )}
-                </div>
+              <div className="flex flex-col gap-1.5">
+                <LabelCampo htmlFor="ocupacion">
+                  {esJuridica ? 'Rubro / giro comercial' : 'Ocupación / situación laboral'}
+                </LabelCampo>
+                <input
+                  id="ocupacion"
+                  type="text"
+                  maxLength={120}
+                  value={form.ocupacion}
+                  onChange={handleChange('ocupacion')}
+                  className={inputClass}
+                  placeholder={esJuridica ? 'Gastronómico, Logística...' : 'Empleado administrativo'}
+                />
               </div>
             </div>
 

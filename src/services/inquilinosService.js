@@ -4,22 +4,13 @@ import {
   normalizarNombreCompleto,
   normalizarSoloDigitos,
 } from '../utils/normalizarContacto'
-import { TIPOS_GARANTIA_INQUILINO } from '../utils/validaciones'
 
 export { esErrorContratosActivos as esErrorContratosAsociados }
 
 const COLUMNAS_INQUILINO =
-  'id, perfil_id, tipo_persona, nombre_completo, dni_cuit, telefono, email, fecha_nacimiento, estado_civil, ocupacion, tipo_garantia, emergencia_nombre, emergencia_telefono, observaciones'
+  'id, perfil_id, tipo_persona, nombre_completo, dni_cuit, telefono, email, fecha_nacimiento, estado_civil, ocupacion, emergencia_nombre, emergencia_telefono, observaciones'
 
 function sanitizarInquilino(datos) {
-  const tipoGarantia = TIPOS_GARANTIA_INQUILINO.includes(datos.tipo_garantia)
-    ? datos.tipo_garantia
-    : null
-
-  if (!tipoGarantia) {
-    return { error: { message: 'Seleccioná un tipo de garantía válido' } }
-  }
-
   const esJuridica = datos.tipo_persona === 'Jurídica'
 
   return {
@@ -32,7 +23,6 @@ function sanitizarInquilino(datos) {
       fecha_nacimiento: esJuridica ? null : (datos.fecha_nacimiento || null),
       estado_civil: esJuridica ? null : (datos.estado_civil ?? '').trim() || null,
       ocupacion: (datos.ocupacion ?? '').trim() || null,
-      tipo_garantia: tipoGarantia,
       emergencia_nombre: (datos.emergencia_nombre ?? '').trim() || null,
       emergencia_telefono: (datos.emergencia_telefono ?? '').trim() || null,
       observaciones: (datos.observaciones ?? '').trim() || null,

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@tremor/react'
+import AdminFormModalHeader from '../AdminFormModalHeader'
 import {
   validarNombreCompleto,
   validarDniCuit,
@@ -103,10 +104,6 @@ export default function InquilinoFormModal({
   const campoIdentidadClass = (field) =>
     identidadBloqueada ? inputBloqueadoClass : campoClass(field)
 
-  const subtituloEdicion = identidadBloqueada
-    ? 'Contrato activo: el tipo de persona y el DNI/CUIT están bloqueados. El resto de la ficha sigue editable.'
-    : 'Modificá los datos del inquilino.'
-
   const handleChange = (field) => (e) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }))
     if (erroresCampo[field]) {
@@ -159,26 +156,18 @@ export default function InquilinoFormModal({
         onClick={onClose}
       />
 
-      <div className="relative z-10 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl">
-        <div className="border-b border-slate-100 px-6 py-4">
-          <h2 className="text-lg font-bold text-slate-900">
-            {esEdicion ? 'Editar inquilino' : 'Agregar inquilino'}
-          </h2>
-          <p className="mt-0.5 text-xs text-slate-500">
-            {esEdicion
-              ? subtituloEdicion
-              : 'Ficha comercial y legal del inquilino para la gestión de contratos de Inmobi.'}
-          </p>
-          {esEdicion && identidadBloqueada && (
-            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              Este inquilino tiene un contrato activo. No podés cambiar el tipo de persona ni el
-              DNI/CUIT mientras el contrato esté vigente.
-            </div>
-          )}
-        </div>
+      <div className="relative z-10 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+        <AdminFormModalHeader title={esEdicion ? 'Editar Inquilino' : 'Nuevo Inquilino'} />
 
         <form noValidate onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
           <div className="custom-scrollbar flex-1 space-y-6 overflow-y-auto p-6">
+            {esEdicion && identidadBloqueada && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                Este inquilino tiene un contrato activo. No podés cambiar el tipo de persona ni el
+                DNI/CUIT mientras el contrato esté vigente.
+              </div>
+            )}
+
             <div className="flex flex-col gap-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">
                 Tipo de persona

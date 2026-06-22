@@ -17,6 +17,29 @@ export function calcularFechaFinPorDuracion(fechaInicio, anios) {
   return `${yy}-${mm}-${dd}`
 }
 
+/** Etiqueta legible de duración (ej. "2 años") a partir de inicio y fin contractuales. */
+export function duracionContratoLabel(fechaInicio, fechaFin) {
+  if (!fechaInicio || !fechaFin) return null
+
+  for (const o of DURACION_CONTRATO_OPCIONES) {
+    if (calcularFechaFinPorDuracion(fechaInicio, o.anios) === fechaFin) {
+      return o.label
+    }
+  }
+
+  const [yi, mi] = fechaInicio.split('-').map(Number)
+  const [yf, mf] = fechaFin.split('-').map(Number)
+  let meses = (yf - yi) * 12 + (mf - mi) + 1
+  if (meses < 1) meses = 1
+
+  if (meses % 12 === 0 && meses >= 12) {
+    const anios = meses / 12
+    return anios === 1 ? '1 año' : `${anios} años`
+  }
+
+  return meses === 1 ? '1 mes' : `${meses} meses`
+}
+
 /** Solapamiento inclusivo entre dos rangos ISO (YYYY-MM-DD). */
 export function fechasSeSolapan(inicioA, finA, inicioB, finB) {
   if (!inicioA || !finA || !inicioB || !finB) return false
@@ -60,4 +83,26 @@ export function colorEstadoContrato(contrato) {
   if (contrato?.estado === 'programado') return 'amber'
   if (contrato?.estado === 'activo' || contrato?.activo) return 'emerald'
   return 'gray'
+}
+
+export function puedeFinalizarContrato(contrato) {
+  return contratoComprometePropiedad(contrato)
+}
+
+export function etiquetaFinalizarContrato(contrato) {
+  return contrato?.estado === 'programado' ? 'Cancelar reserva' : 'Finalizar contrato'
+}
+
+export function mensajeConfirmacionFinalizarContrato(contrato) {
+  if (!contrato) return ''
+
+  const inquilino = contrato.inquilinos?.nombre_completo ?? 'este inquilino'
+  const direccion = contrato.propiedades?.direccion ?? 'esta propiedad'
+  const base = `¿Finalizar el contrato de ${inquilino} en ${direccion}?`
+
+  if (contrato.estado === 'programado') {
+    return `${base} Se cancelará la reserva programada y la propiedad volverá a Disponible.`
+  }
+
+  return `${base} El contrato quedará inactivo, la propiedad se liberará y dejará de incluirse en aumentos. El historial se conserva.`
 }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@tremor/react'
+import AdminFormModalHeader from '../AdminFormModalHeader'
 import {
   buscarContratoActivoPorInquilino,
   inquilinosConContratoActivo,
@@ -123,24 +124,11 @@ export default function ReclamoFormModal({
       />
 
       {/* Contenedor principal del modal */}
-      <div className="relative z-10 w-full max-w-2xl rounded-2xl bg-white shadow-xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden">
-        
-        {/* Cabecera */}
-        <div className="border-b border-slate-100 px-6 py-4">
-          <h2 className="text-lg font-bold text-slate-900">
-            {esEdicion ? 'Editar reclamo' : 'Agregar reclamo'}
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            {esEdicion
-              ? 'El inquilino y la propiedad no se modifican. Podés cambiar título, descripción, prioridad, categoría y estado.'
-              : 'Se vincula al contrato activo del inquilino. El reclamo inicia en Pendiente.'}
-          </p>
-        </div>
+      <div className="relative z-10 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl">
+        <AdminFormModalHeader title={esEdicion ? 'Editar Reclamo' : 'Nuevo Reclamo'} />
 
-        {/* Formulario con Scroll Interno */}
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-          
-          <div className="p-6 flex-1 overflow-y-auto space-y-5 custom-scrollbar">
+        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
+          <div className="custom-scrollbar flex-1 space-y-5 overflow-y-auto p-6">
             
             {/* SECCIÓN: INQUILINO Y PROPIEDAD VINCULADA */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 bg-slate-50 p-4 rounded-xl border border-slate-100">

@@ -87,3 +87,80 @@ export function calcularPreviewAumentos({
 export function primeraFechaAumento(fechaInicio, periodicidadMeses) {
   return sumarMeses(fechaInicio, periodicidadMeses)
 }
+
+/**
+ * Cronograma unificado: fechas programadas en la vigencia + estado aplicado/pendiente.
+ * Combina el calendario teórico con los aumentos confirmados en DB.
+ */
+export function armarCronogramaAumentosContrato(contrato, propuestaPendiente = null) {
+  const aumentos = [...(contrato?.aumentos ?? [])].sort((a, b) =>
+    (a.fecha_aplicacion ?? '').localeCompare(b.fecha_aplicacion ?? '')
+  )
+
+  const fechaPropuesta =
+    propuestaPendiente?.fecha_hasta ?? propuestaPendiente?.fecha_proximo_aumento ?? null
+
+  const fechasProgramadas = calcularPreviewAumentos({
+    fechaInicio: contrato?.fecha_inicio,
+    fechaFin: contrato?.fecha_fin,
+    periodicidadMeses: contrato?.periodicidad_meses,
+    tipoAjuste: contrato?.tipo_ajuste,
+    maxFilas: 120,
+  })
+
+  if (fechasProgramadas.length === 0) {
+    return aumentos.map((a) => ({
+      fecha: a.fecha_aplicacion,
+      aplicado: true,
+      monto: a.monto_nuevo,
+      montoEsEstimado: false,
+    }))
+  }
+
+  const aumentosPorFecha = new Map(aumentos.map((a) => [a.fecha_aplicacion, a]))
+  const fechasVistas = new Set()
+  const filas = []
+
+  for (const { fecha } of fechasProgramadas) {
+    fechasVistas.add(fecha)
+    const confirmado = aumentosPorFecha.get(fecha)
+    const esPropuesta = !confirmado && fechaPropuesta === fecha
+
+    filas.push({
+      fecha,
+      aplicado: Boolean(confirmado),
+      monto: confirmado?.monto_nuevo ?? (esPropuesta ? propuestaPendiente?.monto_propuesto : null),
+      montoEsEstimado: Boolean(esPropuesta && propuestaPendiente?.monto_propuesto != null),
+    })
+  }
+
+  for (const a of aumentos) {
+    if (!fechasVistas.has(a.fecha_aplicacion)) {
+      filas.push({
+        fecha: a.fecha_aplicacion,
+        aplicado: true,
+        monto: a.monto_nuevo,
+        montoEsEstimado: false,
+      })
+    }
+  }
+
+  return filas.sort((a, b) => a.fecha.localeCompare(b.fecha))
+}
+
+/** Cantidad de aumentos programados dentro de la vigencia del contrato. */
+export function contarAumentosProgramados(contrato) {
+  return calcularPreviewAumentos({
+    fechaInicio: contrato?.fecha_inicio,
+    fechaFin: contrato?.fecha_fin,
+    periodicidadMeses: contrato?.periodicidad_meses,
+    tipoAjuste: contrato?.tipo_ajuste,
+    maxFilas: 120,
+  }).length
+}
+
+export function etiquetaCantidadAumentos(cantidad) {
+  if (cantidad == null || cantidad < 0) return '—'
+  if (cantidad === 0) return 'Ninguno'
+  return cantidad === 1 ? '1 aumento' : `${cantidad} aumentos`
+}

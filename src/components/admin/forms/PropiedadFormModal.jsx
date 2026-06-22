@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@tremor/react'
 import AdminSearchSelect from '../AdminSearchSelect'
+import AdminFormModalHeader from '../AdminFormModalHeader'
 import {
   TIPOS_PROPIEDAD,
   ESTADOS_PROPIEDAD_ALTA,
@@ -142,12 +143,6 @@ export default function PropiedadFormModal({
   const campoIdentidadClass = (tieneError) =>
     identidadBloqueada ? inputBloqueadoClass : tieneError ? inputErrorClass : inputClass
 
-  const subtituloEdicion = tieneContratoActivo
-    ? 'Contrato activo: podés cambiar el propietario. El estado, tipo y dirección están bloqueados.'
-    : identidadBloqueada
-      ? 'Tiene historial: podés cambiar propietario y estado. El tipo y la dirección están bloqueados.'
-      : 'Modificá los datos de la propiedad.'
-
   if (!open) return null
 
   const handleChange = (field) => (e) => {
@@ -266,24 +261,20 @@ export default function PropiedadFormModal({
         onClick={onClose}
       />
 
-      <div className="relative z-10 w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="text-lg font-semibold text-slate-900">
-          {esEdicion ? 'Editar propiedad' : 'Agregar propiedad'}
-        </h2>
-        <p className="mt-1 text-sm text-slate-500">
-          {esEdicion ? subtituloEdicion : 'Completá la ubicación y datos de la nueva propiedad'}
-        </p>
+      <div className="relative z-10 flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+        <AdminFormModalHeader title={esEdicion ? 'Editar Propiedad' : 'Nueva Propiedad'} />
 
+        <form noValidate onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex-1 space-y-4 overflow-y-auto p-6">
         {esEdicion && identidadBloqueada && (
-          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
             {tieneContratoActivo
               ? 'Esta propiedad tiene un contrato activo. El estado, tipo y dirección están bloqueados. Si cambiás el propietario se pedirá confirmación.'
               : 'Esta propiedad tiene contratos o reclamos asociados. El tipo y la dirección no se pueden modificar.'}
           </div>
         )}
 
-        <form noValidate onSubmit={handleSubmit} className="mt-5 space-y-4">
-          <div>
+        <div className="space-y-4">
             {propietariosLoading ? (
               <p className="text-sm text-slate-500">Cargando propietarios...</p>
             ) : sinPropietarios ? (
@@ -515,8 +506,9 @@ export default function PropiedadFormModal({
           {submitError && (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{submitError}</p>
           )}
+          </div>
 
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
             <Button type="button" variant="secondary" onClick={onClose} disabled={submitting}>
               Cancelar
             </Button>

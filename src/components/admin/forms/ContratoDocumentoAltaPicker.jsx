@@ -46,7 +46,7 @@ export default function ContratoDocumentoAltaPicker({
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-4">
+    <div className="w-full space-y-3">
       <div>
         <h3 className="text-sm font-semibold text-slate-900">Contrato legal firmado</h3>
         <p className="mt-1 text-sm text-slate-600">

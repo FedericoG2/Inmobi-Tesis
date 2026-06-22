@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@tremor/react'
+import AdminFormModalHeader from '../AdminFormModalHeader'
 import {
   validarNombreCompleto,
   validarDniCuit,
@@ -110,17 +111,11 @@ export default function PropietarioFormModal({
         onClick={onClose}
       />
 
-      <div className="relative z-10 w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="text-lg font-semibold text-slate-900">
-          {esEdicion ? 'Editar propietario' : 'Agregar propietario'}
-        </h2>
-        <p className="mt-1 text-sm text-slate-500">
-          {esEdicion
-            ? 'Modificá los datos del propietario'
-            : 'Completá los datos del nuevo propietario'}
-        </p>
+      <div className="relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+        <AdminFormModalHeader title={esEdicion ? 'Editar Propietario' : 'Nuevo Propietario'} />
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex-1 space-y-4 overflow-y-auto p-6">
           <div>
             <span className="mb-2 block text-sm font-medium text-slate-700">Tipo de persona</span>
             <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1">
@@ -244,8 +239,9 @@ export default function PropietarioFormModal({
           {submitError && (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{submitError}</p>
           )}
+          </div>
 
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
             <Button type="button" variant="secondary" onClick={onClose} disabled={submitting}>
               Cancelar
             </Button>

@@ -342,9 +342,9 @@ export default function AdminInquilinos() {
 
           <div className="shrink-0 sm:ml-auto">
             <AdminNuevoButton
-              label="Nuevo inquilino"
+              label="NUEVO INQUILINO"
               onClick={abrirModalCrear}
-              className="!h-10 w-full !px-4 !py-0 sm:w-auto"
+              className="w-full sm:w-auto"
             />
           </div>
         </div>

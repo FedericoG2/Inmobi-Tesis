@@ -419,9 +419,9 @@ export default function AdminPropiedades() {
 
           <div className="shrink-0 sm:ml-auto">
             <AdminNuevoButton
-              label="Nueva propiedad"
+              label="NUEVA PROPIEDAD"
               onClick={abrirModalCrear}
-              className="!h-10 w-full !px-4 !py-0 sm:w-auto"
+              className="w-full sm:w-auto"
             />
           </div>
         </div>

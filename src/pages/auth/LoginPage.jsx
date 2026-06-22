@@ -213,7 +213,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full rounded-lg border border-slate-300 py-2.5 pl-11 pr-4 text-sm outline-none transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                  placeholder="tu@email.com"
+                  placeholder=""
                 />
               </div>
             </div>
@@ -231,7 +231,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full rounded-lg border border-slate-300 py-2.5 pl-11 pr-11 text-sm outline-none transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                  placeholder="••••••••"
+                  placeholder=""
                 />
                 <button
                   type="button"

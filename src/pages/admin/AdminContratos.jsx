@@ -25,7 +25,12 @@ import { useContratos } from '../../hooks/useContratos'
 import { useInquilinos } from '../../hooks/useInquilinos'
 import { usePropiedades } from '../../hooks/usePropiedades'
 import { periodicidadLabelPorMeses, TIPO_AJUSTE_LABELS, TIPO_AJUSTE_OPCIONES } from '../../utils/contratoAumentosPreview'
-import { colorEstadoContrato, esContratoPlazoVencido, etiquetaEstadoContrato } from '../../utils/contratoVigencia'
+import {
+  colorEstadoContrato,
+  esContratoPlazoVencido,
+  etiquetaEstadoContrato,
+  mensajeConfirmacionFinalizarContrato,
+} from '../../utils/contratoVigencia'
 
 const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
 
@@ -223,11 +228,15 @@ export default function AdminContratos() {
   const confirmarFinalizar = async () => {
     if (!contratoFinalizando) return
 
-    const ok = await finalizar(contratoFinalizando.id)
+    const idFinalizado = contratoFinalizando.id
+    const ok = await finalizar(idFinalizado)
     if (ok) {
       await refetchPropiedades()
       setConfirmOpen(false)
       setContratoFinalizando(null)
+      if (contratoDetalleId != null && String(contratoDetalleId) === String(idFinalizado)) {
+        cerrarDetalle()
+      }
     }
   }
 
@@ -293,13 +302,7 @@ export default function AdminContratos() {
     setAlerta(alertaInicial)
   }
 
-  const mensajeConfirmacionFinalizar = contratoFinalizando
-    ? `¿Finalizar el contrato de ${contratoFinalizando.inquilinos?.nombre_completo ?? 'este inquilino'} en ${contratoFinalizando.propiedades?.direccion ?? 'esta propiedad'}? ${
-        contratoFinalizando.estado === 'programado'
-          ? 'Se cancelará la reserva programada.'
-          : 'Quedará inactivo pero se conservará en el historial.'
-      }`
-    : ''
+  const mensajeConfirmacionFinalizar = mensajeConfirmacionFinalizarContrato(contratoFinalizando)
 
   const mensajeConfirmacionAnular = contratoAnulando
     ? `¿Anular el contrato inactivo de ${contratoAnulando.inquilinos?.nombre_completo ?? 'este inquilino'} en ${contratoAnulando.propiedades?.direccion ?? 'esta propiedad'}? Solo está permitido si no tiene aumentos confirmados ni reclamos para ese inquilino y propiedad. Los documentos adjuntos se eliminarán junto con el contrato. Esta acción no se puede deshacer.`
@@ -383,8 +386,7 @@ export default function AdminContratos() {
             <AdminNuevoButton
               label="NUEVO CONTRATO"
               onClick={abrirModal}
-              variant="primary"
-              className="!h-10 whitespace-nowrap"
+              className="h-10 w-full whitespace-nowrap sm:w-auto"
             />
           </div>
         </div>
@@ -487,6 +489,7 @@ export default function AdminContratos() {
         onClose={cerrarDetalle}
         onVerInquilino={abrirDetalleInquilino}
         onVerPropiedad={abrirDetallePropiedad}
+        onFinalizar={abrirConfirmFinalizar}
       />
 
       <InquilinoDetalleModal
@@ -513,8 +516,9 @@ export default function AdminContratos() {
         open={confirmOpen}
         title="Finalizar contrato"
         message={mensajeConfirmacionFinalizar}
-        confirmLabel="Finalizar"
-        confirmVariant="primary"
+        confirmLabel={contratoFinalizando?.estado === 'programado' ? 'Cancelar reserva' : 'Finalizar'}
+        confirmVariant="warning"
+        apilado={contratoDetalleId != null}
         onConfirm={confirmarFinalizar}
         onCancel={cancelarFinalizar}
         loading={finalizando}

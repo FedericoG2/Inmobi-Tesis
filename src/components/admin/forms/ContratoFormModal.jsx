@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@tremor/react'
 import {
   calcularPreviewAumentos,
+  etiquetaCantidadAumentos,
   fechasValidas,
   periodicidadMesesPorKey,
   primeraFechaAumento,
@@ -24,12 +25,16 @@ import {
 } from '../../../utils/contratoVigencia'
 import { formatearMontoInput, parsearMontoInput } from '../../../utils/formatoMonto'
 import AdminSearchSelect from '../AdminSearchSelect'
+import AdminFormModalHeader from '../AdminFormModalHeader'
 import ContratoDocumentoAltaPicker from './ContratoDocumentoAltaPicker'
 import InquilinoDetalleModal from '../InquilinoDetalleModal'
 import PropiedadDetalleModal from '../PropiedadDetalleModal'
 
 const inputClass =
   'w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200'
+
+const inputClassSinSpinner =
+  'w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
 
 const formatMonto = (monto) =>
   new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(monto)
@@ -89,7 +94,7 @@ function CampoResumen({ label, value }) {
 function StepperProgreso({ secciones, activa }) {
   return (
     <div
-      className="flex items-center justify-center border-b border-slate-200 px-4 py-5 sm:px-6"
+      className="flex items-center justify-center border-b border-slate-200 px-4 py-4 sm:px-6"
       aria-label="Progreso del formulario"
     >
       {secciones.map((sec, i) => (
@@ -140,6 +145,16 @@ function BloqueProximosAumentos({ preview, fechaInicio, fechaFin }) {
       <div className="rounded-lg border border-slate-300 bg-slate-50 px-4 py-3">
         <PanelProximosAumentos preview={preview} fechaInicio={fechaInicio} fechaFin={fechaFin} />
       </div>
+    </div>
+  )
+}
+
+function ContenidoPasoWizard({ children, className = '' }) {
+  return (
+    <div
+      className={`mx-auto flex w-full flex-1 flex-col justify-center space-y-3 lg:max-w-xl ${className}`}
+    >
+      {children}
     </div>
   )
 }
@@ -202,9 +217,12 @@ export default function ContratoFormModal({
         fechaFin: form.fecha_fin,
         periodicidadMeses,
         tipoAjuste: form.tipo_ajuste,
+        maxFilas: 120,
       }),
     [form, periodicidadMeses]
   )
+
+  const cantidadAumentos = preview.length
 
   const fechaProximoAumento = primeraFechaAumento(form.fecha_inicio, periodicidadMeses)
 
@@ -229,7 +247,8 @@ export default function ContratoFormModal({
     setForm((prev) => ({
       ...prev,
       fecha_inicio: fechaInicio,
-      fecha_fin: recalcularFechaFin(fechaInicio, prev.duracion_anios),
+      duracion_anios: fechaInicio ? prev.duracion_anios : '',
+      fecha_fin: fechaInicio ? recalcularFechaFin(fechaInicio, prev.duracion_anios) : '',
     }))
   }
 
@@ -271,7 +290,9 @@ export default function ContratoFormModal({
       return null
     }
     if (indice === 1) {
-      if (!form.fecha_inicio || !form.fecha_fin) return 'Completá las fechas de vigencia.'
+      if (!form.fecha_inicio) return 'Completá la fecha de inicio de vigencia.'
+      if (!form.duracion_anios) return 'Seleccioná la duración del contrato.'
+      if (!form.fecha_fin) return 'Completá las fechas de vigencia.'
       if (!fechasValidas(form.fecha_inicio, form.fecha_fin)) {
         return 'La fecha de fin debe ser posterior a la de inicio.'
       }
@@ -345,6 +366,8 @@ export default function ContratoFormModal({
 
   const esUltimaSeccion = seccionActiva === SECCIONES_CONTRATO.length - 1
   const esSeccionAjustes = seccionActiva === 2
+  const esSeccionResumen = esUltimaSeccion
+  const tamanoFijoWizard = !esSeccionResumen
   const mostrarPanelLateral = esSeccionAjustes
 
   return (
@@ -357,11 +380,12 @@ export default function ContratoFormModal({
         onClick={onClose}
       />
 
-      <div className="relative z-10 flex min-h-[min(720px,92vh)] max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
-        <div className="border-b border-slate-200 px-6 py-4">
-          <h2 className="text-lg font-semibold text-slate-900">Agregar contrato</h2>
-          <p className="mt-1 text-sm text-slate-500">Completá las secciones para registrar el alquiler</p>
-        </div>
+      <div
+        className={`relative z-10 flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl ${
+          tamanoFijoWizard ? 'h-[min(620px,90vh)]' : 'max-h-[94vh]'
+        }`}
+      >
+        <AdminFormModalHeader title="Nuevo Contrato" />
 
         <StepperProgreso secciones={SECCIONES_CONTRATO} activa={seccionActiva} />
 
@@ -370,12 +394,14 @@ export default function ContratoFormModal({
           onKeyDown={handleFormKeyDown}
           className="flex min-h-0 flex-1 flex-col"
         >
-          <div className="flex min-h-0 flex-1 overflow-y-auto">
+          <div className={`flex min-h-0 flex-1 ${tamanoFijoWizard ? 'overflow-hidden' : 'overflow-y-auto'}`}>
             <div
-              className={`min-w-0 flex-1 p-6 pb-8 ${mostrarPanelLateral ? 'lg:pr-4' : ''} ${seccionActiva === 0 ? 'flex flex-col' : ''}`}
+              className={`flex min-w-0 flex-1 flex-col ${
+                tamanoFijoWizard ? 'p-5 pb-4' : 'p-6 pb-8'
+              } ${esSeccionAjustes ? 'lg:pr-4' : ''}`}
             >
               {seccionActiva === 0 && (
-                <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center space-y-5">
+                <ContenidoPasoWizard className="max-w-md lg:max-w-md">
                   <div>
                     {inquilinosLoading ? (
                       <p className="text-sm text-slate-500">Cargando inquilinos...</p>
@@ -401,6 +427,7 @@ export default function ContratoFormModal({
                         searchPlaceholder="Buscar inquilino..."
                         disabled={formDeshabilitado}
                         onVerDetalle={() => setDetalleInquilinoOpen(true)}
+                        verDetalleLabel="Ver detalles"
                       />
                     )}
                   </div>
@@ -440,6 +467,7 @@ export default function ContratoFormModal({
                           searchPlaceholder="Buscar propiedad..."
                           disabled={formDeshabilitado}
                           onVerDetalle={() => setDetallePropiedadOpen(true)}
+                          verDetalleLabel="Ver detalles"
                         />
                         {propiedadNoDisponible && (
                           <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
@@ -449,12 +477,12 @@ export default function ContratoFormModal({
                       </>
                     )}
                   </div>
-                </div>
+                </ContenidoPasoWizard>
               )}
 
               {seccionActiva === 1 && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <ContenidoPasoWizard>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                       <label htmlFor="fecha_inicio" className="mb-1 block text-sm font-medium text-slate-700">
                         Fecha inicio de vigencia
@@ -465,7 +493,7 @@ export default function ContratoFormModal({
                         required
                         value={form.fecha_inicio}
                         onChange={handleFechaInicio}
-                        className={inputClass}
+                        className={inputClassSinSpinner}
                         disabled={formDeshabilitado}
                       />
                     </div>
@@ -473,38 +501,51 @@ export default function ContratoFormModal({
                       <label htmlFor="duracion_anios" className="mb-1 block text-sm font-medium text-slate-700">
                         Duración del contrato
                       </label>
-                      <select
-                        id="duracion_anios"
-                        value={form.duracion_anios}
-                        onChange={handleDuracion}
-                        className={inputClass}
-                        disabled={formDeshabilitado}
-                      >
-                        {DURACION_CONTRATO_OPCIONES.map((o) => (
-                          <option key={o.key} value={o.key}>
-                            {o.label}
+                      {!form.fecha_inicio ? (
+                        <div
+                          id="duracion_anios"
+                          className={`${inputClass} cursor-not-allowed bg-slate-50 text-slate-400`}
+                          aria-disabled="true"
+                        >
+                          Seleccionar duración
+                        </div>
+                      ) : (
+                        <select
+                          id="duracion_anios"
+                          value={form.duracion_anios}
+                          onChange={handleDuracion}
+                          className={`${inputClass} text-slate-900`}
+                          disabled={formDeshabilitado}
+                        >
+                          <option value="" disabled hidden>
+                            Seleccionar duración
                           </option>
-                        ))}
-                      </select>
+                          {DURACION_CONTRATO_OPCIONES.map((o) => (
+                            <option key={o.key} value={o.key}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </div>
                   </div>
 
-                  <div>
-                    <label htmlFor="fecha_fin" className="mb-1 block text-sm font-medium text-slate-700">
-                      Fecha fin (calculada)
-                    </label>
-                    <input
-                      id="fecha_fin"
-                      type="date"
-                      readOnly
-                      value={form.fecha_fin}
-                      className={`${inputClass} cursor-not-allowed bg-slate-50 text-slate-700`}
-                      disabled={formDeshabilitado}
-                    />
-                    <p className="mt-1 text-xs text-slate-500">
-                      Plazo cerrado: inicio + duración − 1 día.
-                    </p>
-                  </div>
+                  {form.fecha_inicio && form.duracion_anios && form.fecha_fin && (
+                    <div>
+                      <label htmlFor="fecha_fin" className="mb-1 block text-sm font-medium text-slate-700">
+                        Fecha fin (calculada)
+                      </label>
+                      <input
+                        id="fecha_fin"
+                        type="date"
+                        readOnly
+                        value={form.fecha_fin}
+                        className={`${inputClassSinSpinner} cursor-not-allowed bg-slate-50 text-slate-700`}
+                        disabled={formDeshabilitado}
+                        tabIndex={-1}
+                      />
+                    </div>
+                  )}
 
                   {solapaConContratoExistente && (
                     <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
@@ -514,7 +555,7 @@ export default function ContratoFormModal({
 
                   <div>
                     <label htmlFor="monto_alquiler" className="mb-1 block text-sm font-medium text-slate-700">
-                      Monto de alquiler (vigente al inicio)
+                      Monto de alquiler
                     </label>
                     <input
                       id="monto_alquiler"
@@ -527,9 +568,6 @@ export default function ContratoFormModal({
                       placeholder="$ 350.000"
                       disabled={formDeshabilitado}
                     />
-                    <p className="mt-1 text-xs text-slate-500">
-                      Será el monto inicial y el vigente hasta el primer aumento.
-                    </p>
                   </div>
 
                   <div>
@@ -538,9 +576,8 @@ export default function ContratoFormModal({
                     </label>
                     <input
                       id="dia_vencimiento"
-                      type="number"
-                      min="1"
-                      max="28"
+                      type="text"
+                      inputMode="numeric"
                       value={form.dia_vencimiento}
                       onChange={handleChange('dia_vencimiento')}
                       className={inputClass}
@@ -548,11 +585,16 @@ export default function ContratoFormModal({
                       disabled={formDeshabilitado}
                     />
                   </div>
-                </div>
+                </ContenidoPasoWizard>
               )}
 
               {seccionActiva === 2 && (
-                <div className="space-y-4 lg:max-w-xl">
+                <ContenidoPasoWizard>
+                  <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm leading-snug text-emerald-900">
+                    La periodicidad y el tipo de ajuste definen todos los aumentos futuros del contrato. Revisá
+                    el calendario antes de continuar.
+                  </p>
+
                   <div>
                     <label htmlFor="periodicidad_key" className="mb-1 block text-sm font-medium text-slate-700">
                       Periodicidad del ajuste
@@ -570,7 +612,7 @@ export default function ContratoFormModal({
                       ))}
                     </select>
                     {fechaProximoAumento && (
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-0.5 text-xs text-slate-500">
                         Primer ajuste estimado: {formatFecha(fechaProximoAumento)}
                       </p>
                     )}
@@ -600,10 +642,10 @@ export default function ContratoFormModal({
                     </label>
                     <textarea
                       id="observaciones"
-                      rows={3}
+                      rows={2}
                       value={form.observaciones}
                       onChange={handleChange('observaciones')}
-                      className={inputClass}
+                      className={`${inputClass} resize-none`}
                       placeholder="Cláusulas o notas del contrato"
                     />
                   </div>
@@ -615,11 +657,12 @@ export default function ContratoFormModal({
                       fechaFin={form.fecha_fin}
                     />
                   </div>
-                </div>
+                </ContenidoPasoWizard>
               )}
 
               {seccionActiva === 3 && (
-                <ContratoDocumentoAltaPicker
+                <ContenidoPasoWizard className="max-w-2xl lg:max-w-2xl">
+                  <ContratoDocumentoAltaPicker
                   archivo={archivoLegal}
                   onArchivoChange={setArchivoLegal}
                   visibleParaInquilino={form.documento_visible_inquilino}
@@ -630,12 +673,17 @@ export default function ContratoFormModal({
                   onErrorChange={setErrorArchivoLegal}
                   disabled={submitting}
                 />
+                </ContenidoPasoWizard>
               )}
 
               {seccionActiva === 4 && (
                 <div className="space-y-4">
                   <CampoResumen label="Inquilino" value={inquilinoSeleccionado?.nombre_completo ?? '—'} />
                   <CampoResumen label="Propiedad" value={propiedadSeleccionada?.direccion ?? '—'} />
+                  <CampoResumen
+                    label="Propietario"
+                    value={propiedadSeleccionada?.propietarios?.nombre_completo ?? '—'}
+                  />
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <CampoResumen label="Fecha inicio" value={formatFecha(form.fecha_inicio)} />
                     <CampoResumen
@@ -666,6 +714,10 @@ export default function ContratoFormModal({
                     label="Próximo aumento"
                     value={fechaProximoAumento ? formatFecha(fechaProximoAumento) : '—'}
                   />
+                  <CampoResumen
+                    label="Aumentos en el plazo"
+                    value={etiquetaCantidadAumentos(cantidadAumentos)}
+                  />
                   <CampoResumen label="Observaciones" value={form.observaciones?.trim() || '—'} />
                   <CampoResumen
                     label="Contrato legal adjunto"
@@ -692,7 +744,7 @@ export default function ContratoFormModal({
             </div>
 
             {mostrarPanelLateral && (
-              <aside className="hidden w-72 shrink-0 border-l border-slate-200 p-4 lg:block">
+              <aside className="hidden w-64 shrink-0 self-start border-l border-slate-200 p-4 lg:block">
                 <BloqueProximosAumentos
                   preview={preview}
                   fechaInicio={form.fecha_inicio}

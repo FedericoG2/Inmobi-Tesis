@@ -16,13 +16,6 @@ const ESTILO_TIPO = {
   },
 }
 
-const ESTILO_GARANTIA = {
-  Propietaria: { label: 'Propietaria', className: 'bg-indigo-600 text-white' },
-  'Recibos de Sueldo': { label: 'Recibo de Sueldo', className: 'bg-sky-600 text-white' },
-  'Aval Bancario': { label: 'Aval Bancario', className: 'bg-blue-600 text-white' },
-  Otro: { label: 'Otro / Caución', className: 'bg-teal-600 text-white' },
-}
-
 function iniciales(nombre) {
   const partes = (nombre ?? '').trim().split(/\s+/).filter(Boolean)
   if (partes.length >= 2) {
@@ -216,10 +209,6 @@ export default function InquilinoDetalleModal({ open, inquilino, onClose, onEdit
   if (!open || !inquilino) return null
 
   const estiloTipo = ESTILO_TIPO[inquilino.tipo_persona] ?? ESTILO_TIPO['Física']
-  const estiloGarantia = ESTILO_GARANTIA[inquilino.tipo_garantia] ?? {
-    label: inquilino.tipo_garantia ?? '—',
-    className: 'bg-slate-600 text-white',
-  }
   const esJuridica = inquilino.tipo_persona === 'Jurídica'
 
   const textoContratos = cargandoDeps ? 'Consultando...' : etiquetaContratos(dependencias)
@@ -269,11 +258,6 @@ export default function InquilinoDetalleModal({ open, inquilino, onClose, onEdit
                   className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${estiloTipo.badgeClass}`}
                 >
                   {estiloTipo.label}
-                </span>
-                <span
-                  className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${estiloGarantia.className}`}
-                >
-                  {estiloGarantia.label}
                 </span>
                 <span
                   className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${

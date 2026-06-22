@@ -5,20 +5,21 @@ import ContratoDocumentosPanel from './ContratoDocumentosPanel'
 import { calcularAumentosPendientes } from '../../services/aumentosService'
 import { obtenerContratoDetalle } from '../../services/contratosService'
 import {
+  armarCronogramaAumentosContrato,
+  contarAumentosProgramados,
+  etiquetaCantidadAumentos,
   periodicidadLabelPorMeses,
   TIPO_AJUSTE_LABELS,
 } from '../../utils/contratoAumentosPreview'
-import { colorEstadoContrato, esContratoPlazoVencido, etiquetaEstadoContrato } from '../../utils/contratoVigencia'
-import { interpretarPropuestaAumento } from '../../utils/aumentosUi'
+import {
+  colorEstadoContrato,
+  duracionContratoLabel,
+  esContratoPlazoVencido,
+  etiquetaEstadoContrato,
+  etiquetaFinalizarContrato,
+  puedeFinalizarContrato,
+} from '../../utils/contratoVigencia'
 import { formatearDniCuit } from '../../utils/normalizarContacto'
-
-function hoyIsoLocal() {
-  const d = new Date()
-  const yy = d.getFullYear()
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  return `${yy}-${mm}-${dd}`
-}
 
 function formatFecha(fecha) {
   if (!fecha) return '—'
@@ -92,16 +93,19 @@ function IconChart({ className = 'h-4 w-4' }) {
   )
 }
 
-function IconDocument({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
-      />
-    </svg>
-  )
+function textoMontoCronograma(fila) {
+  if (fila.monto != null) {
+    return (
+      <>
+        {fila.montoEsEstimado ? <span className="text-slate-500">~</span> : null}
+        {formatMonto(fila.monto)}
+      </>
+    )
+  }
+  if (!fila.aplicado) {
+    return <span className="text-xs font-medium italic text-slate-400">A calcular</span>
+  }
+  return <span className="text-slate-400">—</span>
 }
 
 function DetalleFila({ label, value, icon: Icon, className = '', children }) {
@@ -132,6 +136,7 @@ export default function ContratoDetalleModal({
   onClose,
   onVerInquilino,
   onVerPropiedad,
+  onFinalizar,
   apilado = false,
 }) {
   const [contrato, setContrato] = useState(null)
@@ -192,7 +197,8 @@ export default function ContratoDetalleModal({
         setPropuestaAumento(null)
         return
       }
-      const propuesta = (data ?? []).find((p) => Number(p.contrato_id) === Number(contrato.id))
+      const lista = Array.isArray(data?.propuestas) ? data.propuestas : []
+      const propuesta = lista.find((p) => Number(p.contrato_id) === Number(contrato.id))
       setPropuestaAumento(propuesta ?? null)
     })
 
@@ -201,7 +207,11 @@ export default function ContratoDetalleModal({
     }
   }, [open, contrato?.id, contrato?.estado, contrato?.tipo_ajuste])
 
-  const aumentos = contrato?.aumentos ?? []
+  const cronogramaAumentos = contrato
+    ? armarCronogramaAumentosContrato(contrato, propuestaAumento)
+    : []
+  const duracionPlazo = contrato ? duracionContratoLabel(contrato.fecha_inicio, contrato.fecha_fin) : null
+  const cantidadAumentos = contrato ? contarAumentosProgramados(contrato) : null
 
   if (!open) return null
 
@@ -292,11 +302,6 @@ export default function ContratoDetalleModal({
                     ) : undefined}
                   </DetalleFila>
                   <DetalleFila
-                    label="Garantía del inquilino"
-                    value={inquilino?.tipo_garantia ?? '—'}
-                    icon={IconDocument}
-                  />
-                  <DetalleFila
                     label="Propiedad"
                     value={propiedad?.direccion ?? '—'}
                     icon={IconPin}
@@ -337,13 +342,18 @@ export default function ContratoDetalleModal({
                     className="sm:col-span-2"
                   />
                   <DetalleFila
-                    label="Monto vigente"
-                    value={formatMonto(contrato.monto_alquiler)}
-                    icon={IconCurrency}
+                    label="Duración del plazo"
+                    value={duracionPlazo ?? '—'}
+                    icon={IconCalendar}
                   />
                   <DetalleFila
-                    label="Monto inicial"
-                    value={formatMonto(contrato.monto_inicial)}
+                    label="Aumentos en el plazo"
+                    value={etiquetaCantidadAumentos(cantidadAumentos)}
+                    icon={IconChart}
+                  />
+                  <DetalleFila
+                    label="Monto actual"
+                    value={formatMonto(contrato.monto_alquiler)}
                     icon={IconCurrency}
                   />
                   <DetalleFila
@@ -361,94 +371,51 @@ export default function ContratoDetalleModal({
                     value={periodicidadLabelPorMeses(contrato.periodicidad_meses)}
                     icon={IconChart}
                   />
-                  <DetalleFila
-                    label="Próximo aumento"
-                    value={formatFecha(contrato.fecha_proximo_aumento)}
-                    icon={IconCalendar}
-                  />
-                  <DetalleFila
-                    label="Último aumento"
-                    value={formatFecha(contrato.fecha_ultimo_aumento)}
-                    icon={IconCalendar}
-                  />
                 </div>
               </section>
 
-              {propuestaAumento && (
-                <section>
-                  <SeccionTitulo>Próximo aumento</SeccionTitulo>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    {cargandoAumento ? (
-                      <p className="text-sm text-slate-600">Calculando monto sugerido...</p>
-                    ) : (
-                      (() => {
-                        const ui = interpretarPropuestaAumento(propuestaAumento)
-                        return (
-                          <>
-                            {ui.montoMostrar != null ? (
-                              <p className="text-sm text-slate-700">
-                                Monto {ui.montoEsAproximado ? 'orientativo' : 'propuesto'}:{' '}
-                                <span className="font-semibold text-slate-900">
-                                  {ui.montoEsAproximado ? '~' : ''}
-                                  {formatMonto(ui.montoMostrar)}
-                                </span>
-                                {propuestaAumento.variacion_pct != null && (
-                                  <span className="text-slate-500">
-                                    {' '}
-                                    ({Number(propuestaAumento.variacion_pct).toFixed(2)}%)
-                                  </span>
-                                )}
-                              </p>
-                            ) : (
-                              <p className="text-sm text-slate-600">Monto aún no disponible.</p>
-                            )}
-                            <p className="mt-1 text-xs text-slate-500">{ui.observacion}</p>
-                            {ui.puedeConfirmar && (
-                              <p className="mt-2 text-xs font-medium text-indigo-700">
-                                Confirmá desde el módulo Aumentos.
-                              </p>
-                            )}
-                          </>
-                        )
-                      })()
-                    )}
-                  </div>
-                </section>
-              )}
-
               <section>
-                <SeccionTitulo>Historial de aumentos</SeccionTitulo>
-                {aumentos.length === 0 ? (
+                <SeccionTitulo>Cronograma de aumentos</SeccionTitulo>
+                {cronogramaAumentos.length > 0 && cronogramaAumentos.some((f) => !f.aplicado) ? (
+                  <p className="mb-2 text-xs text-slate-500">
+                    Solo el próximo aumento pendiente muestra monto estimado; el resto figura como a calcular
+                    cuando corresponda.
+                  </p>
+                ) : null}
+                {cargandoAumento && cronogramaAumentos.some((f) => !f.aplicado) ? (
+                  <p className="mb-2 text-xs text-slate-500">Actualizando montos estimados...</p>
+                ) : null}
+                {cronogramaAumentos.length === 0 ? (
                   <p className="rounded-lg border border-dashed border-slate-200 px-3 py-2.5 text-sm text-slate-500">
-                    Todavía no hay aumentos confirmados para este contrato.
+                    Este contrato no tiene fechas de aumento programadas en su vigencia.
                   </p>
                 ) : (
                   <div className="overflow-x-auto rounded-xl border border-slate-200">
                     <table className="min-w-full text-left text-sm">
                       <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                         <tr>
-                          <th className="px-3 py-2.5">Fecha</th>
-                          <th className="px-3 py-2.5">Anterior</th>
-                          <th className="px-3 py-2.5">Nuevo</th>
-                          <th className="px-3 py-2.5">Variación</th>
-                          <th className="px-3 py-2.5">Índice</th>
+                          <th className="px-3 py-2.5">Fecha de aumento</th>
+                          <th className="px-3 py-2.5">Estado</th>
+                          <th className="px-3 py-2.5">Monto</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {aumentos.map((a) => (
-                          <tr key={a.id} className="text-slate-700">
-                            <td className="px-3 py-2.5 tabular-nums">{formatFecha(a.fecha_aplicacion)}</td>
-                            <td className="px-3 py-2.5 tabular-nums">{formatMonto(a.monto_anterior)}</td>
-                            <td className="px-3 py-2.5 font-medium tabular-nums text-slate-900">
-                              {formatMonto(a.monto_nuevo)}
+                        {cronogramaAumentos.map((fila) => (
+                          <tr key={fila.fecha} className="text-slate-700">
+                            <td className="px-3 py-2.5 tabular-nums">{formatFecha(fila.fecha)}</td>
+                            <td className="px-3 py-2.5">
+                              {fila.aplicado ? (
+                                <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                                  Aplicado
+                                </span>
+                              ) : (
+                                <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                                  Pendiente
+                                </span>
+                              )}
                             </td>
-                            <td className="px-3 py-2.5 tabular-nums">
-                              {a.porcentaje_aplicado != null
-                                ? `${Number(a.porcentaje_aplicado).toFixed(2)}%`
-                                : '—'}
-                            </td>
-                            <td className="px-3 py-2.5 text-xs uppercase text-slate-500">
-                              {a.indice_tipo ?? a.modo ?? '—'}
+                            <td className="px-3 py-2.5 tabular-nums text-slate-900">
+                              {textoMontoCronograma(fila)}
                             </td>
                           </tr>
                         ))}
@@ -480,6 +447,15 @@ export default function ContratoDetalleModal({
           <Button variant="secondary" onClick={onClose}>
             Cerrar
           </Button>
+          {onFinalizar && contrato && puedeFinalizarContrato(contrato) && (
+            <Button
+              type="button"
+              onClick={() => onFinalizar(contrato)}
+              className="!border-amber-500 !bg-amber-600 !text-white hover:!border-amber-600 hover:!bg-amber-700"
+            >
+              {etiquetaFinalizarContrato(contrato)}
+            </Button>
+          )}
         </div>
       </div>
     </div>

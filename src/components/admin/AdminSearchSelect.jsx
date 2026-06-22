@@ -2,15 +2,24 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 const inputClass =
-  'w-full rounded-lg border border-slate-300 py-2.5 pl-4 pr-9 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200'
-
-const inputClassCompacto =
-  'w-full rounded-lg border border-slate-300 py-2 pl-3 pr-8 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200'
+  'w-full rounded-lg border border-slate-300 py-2.5 pl-10 pr-9 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200'
 
 function IconX({ className = 'h-4 w-4' }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+    </svg>
+  )
+}
+
+function IconSearch({ className = 'h-4 w-4' }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+      />
     </svg>
   )
 }
@@ -60,16 +69,10 @@ export default function AdminSearchSelect({
     return options.filter((o) => normalizar(o.label).includes(q))
   }, [options, query])
 
-  const valorInput =
-    query !== '' ? query : onVerDetalle && seleccionado ? '' : (seleccionado?.label ?? '')
-  const placeholder =
-    onVerDetalle && seleccionado
-      ? searchPlaceholder
-      : seleccionado
-        ? searchPlaceholder
-        : emptySelectionLabel || searchPlaceholder
-  const puedeLimpiarInput = Boolean(query && !disabled)
-  const mostrarTarjetaSeleccion = Boolean(onVerDetalle && seleccionado && !disabled)
+  const valorInput = query !== '' ? query : (seleccionado?.label ?? '')
+  const placeholder = seleccionado ? searchPlaceholder : emptySelectionLabel || searchPlaceholder
+  const puedeLimpiar = Boolean((query || seleccionado) && !disabled)
+  const mostrarBotonDetalle = Boolean(onVerDetalle && seleccionado && !disabled)
 
   const actualizarPosicionMenu = useCallback(() => {
     const el = wrapperRef.current
@@ -189,107 +192,49 @@ export default function AdminSearchSelect({
         </label>
       )}
 
-      {mostrarTarjetaSeleccion ? (
-        <div className="flex items-center gap-2">
-          <div ref={wrapperRef} className="relative w-40 shrink-0 sm:w-44">
-            <input
-              ref={inputRef}
-              id={`${id ?? reactId}-search`}
-              type="search"
-              value={valorInput}
-              onChange={(e) => {
-                setQuery(e.target.value)
-                setOpen(true)
-              }}
-              onFocus={abrirLista}
-              disabled={disabled}
-              placeholder={placeholder}
-              className={`${inputClassCompacto} ${disabled ? 'opacity-60' : ''}`}
-              autoComplete="off"
-              role="combobox"
-              aria-expanded={open}
-              aria-controls={listboxId}
-              aria-autocomplete="list"
-            />
-            {puedeLimpiarInput && (
-              <button
-                type="button"
-                aria-label="Borrar búsqueda"
-                className={btnLimpiar}
-                onClick={limpiar}
-              >
-                <IconX className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
+      <div ref={wrapperRef} className="relative min-w-0">
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+          <IconSearch />
+        </span>
+        <input
+          ref={inputRef}
+          id={`${id ?? reactId}-search`}
+          type="search"
+          value={valorInput}
+          onChange={(e) => {
+            setQuery(e.target.value)
+            setOpen(true)
+          }}
+          onFocus={abrirLista}
+          disabled={disabled}
+          placeholder={placeholder}
+          className={`${inputClass} ${disabled ? 'opacity-60' : ''}`}
+          autoComplete="off"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listboxId}
+          aria-autocomplete="list"
+        />
+        {puedeLimpiar && (
+          <button
+            type="button"
+            aria-label={query ? 'Borrar búsqueda' : 'Quitar selección'}
+            className={btnLimpiar}
+            onClick={limpiar}
+          >
+            <IconX className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
 
-          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-            <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900">
-              {seleccionado.label}
-            </span>
-            <button
-              type="button"
-              onClick={onVerDetalle}
-              className="shrink-0 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
-            >
-              {verDetalleLabel}
-            </button>
-            <button
-              type="button"
-              aria-label="Quitar selección"
-              onClick={() => {
-                onChange('')
-                setQuery('')
-                setOpen(false)
-              }}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-white hover:text-slate-600"
-            >
-              <IconX className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div ref={wrapperRef} className="relative min-w-0">
-          <input
-            ref={inputRef}
-            id={`${id ?? reactId}-search`}
-            type="search"
-            value={valorInput}
-            onChange={(e) => {
-              setQuery(e.target.value)
-              setOpen(true)
-            }}
-            onFocus={abrirLista}
-            disabled={disabled}
-            placeholder={placeholder}
-            className={`${inputClass} ${disabled ? 'opacity-60' : ''}`}
-            autoComplete="off"
-            role="combobox"
-            aria-expanded={open}
-            aria-controls={listboxId}
-            aria-autocomplete="list"
-          />
-          {puedeLimpiarInput && (
-            <button
-              type="button"
-              aria-label="Borrar búsqueda"
-              className={btnLimpiar}
-              onClick={limpiar}
-            >
-              <IconX className="h-3.5 w-3.5" />
-            </button>
-          )}
-          {!onVerDetalle && (query || seleccionado) && !disabled && (
-            <button
-              type="button"
-              aria-label={query ? 'Borrar búsqueda' : 'Quitar selección'}
-              className={btnLimpiar}
-              onClick={limpiar}
-            >
-              <IconX className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
+      {mostrarBotonDetalle && (
+        <button
+          type="button"
+          onClick={onVerDetalle}
+          className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+        >
+          {verDetalleLabel}
+        </button>
       )}
 
       {required && (

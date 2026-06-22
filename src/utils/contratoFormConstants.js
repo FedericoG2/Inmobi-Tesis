@@ -12,7 +12,7 @@ export const formContratoInicial = {
   inquilino_id: '',
   propiedad_id: '',
   fecha_inicio: '',
-  duracion_anios: '2',
+  duracion_anios: '',
   fecha_fin: '',
   monto_alquiler: '',
   monto_alquiler_display: '',

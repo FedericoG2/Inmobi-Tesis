@@ -102,13 +102,6 @@ export function validarEmail(valor) {
   return null
 }
 
-export const TIPOS_GARANTIA_INQUILINO = [
-  'Propietaria',
-  'Recibos de Sueldo',
-  'Aval Bancario',
-  'Otro',
-]
-
 export function validarEmailOpcional(valor) {
   const v = (valor ?? '').trim()
   if (!v) return null
@@ -120,13 +113,6 @@ export function validarTelefonoOpcional(valor) {
   const v = (valor ?? '').trim()
   if (!v) return null
   return validarTelefono(valor)
-}
-
-export function validarTipoGarantia(valor) {
-  if (!TIPOS_GARANTIA_INQUILINO.includes(valor)) {
-    return 'Seleccioná un tipo de garantía válido'
-  }
-  return null
 }
 
 export function validarTextoOpcional(valor, { maxLength = 500, etiqueta = 'El texto' } = {}) {

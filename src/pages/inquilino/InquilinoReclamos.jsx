@@ -1,6 +1,13 @@
 import { useState } from 'react'
 import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
 import { usePortalInquilino } from '../../contexts/PortalInquilinoContext'
+import {
+  badgeCategoria,
+  badgePrioridad,
+  CATEGORIAS_RECLAMO,
+  PILL_SOLID_CLASS,
+  PRIORIDADES_RECLAMO,
+} from '../../utils/reclamosUi'
 
 const estadoStyles = {
   Pendiente: { bg: 'bg-amber-100', text: 'text-amber-700' },
@@ -8,7 +15,7 @@ const estadoStyles = {
   Resuelto: { bg: 'bg-emerald-100', text: 'text-emerald-700' },
 }
 
-const formInicial = { titulo: '', descripcion: '' }
+const formInicial = { titulo: '', descripcion: '', categoria: 'Plomeria', prioridad: 'Media' }
 
 const formatFecha = (fechaStr) => {
   if (!fechaStr) return ''
@@ -50,7 +57,12 @@ export default function InquilinoReclamos() {
   const abrirFormEditar = (reclamo) => {
     limpiarSubmitError()
     setReclamoEditando(reclamo)
-    setForm({ titulo: reclamo.titulo ?? '', descripcion: reclamo.descripcion ?? '' })
+    setForm({
+      titulo: reclamo.titulo ?? '',
+      descripcion: reclamo.descripcion ?? '',
+      categoria: reclamo.categoria ?? 'Plomeria',
+      prioridad: reclamo.prioridad ?? 'Media',
+    })
     setShowForm(true)
   }
 
@@ -64,6 +76,10 @@ export default function InquilinoReclamos() {
 
   const handleChange = (field) => (e) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }))
+  }
+
+  const handleDirectChange = (field, value) => {
+    setForm((prev) => ({ ...prev, [field]: value }))
   }
 
   const handleSubmit = async (e) => {
@@ -104,7 +120,7 @@ export default function InquilinoReclamos() {
   }
 
   const inputClass =
-    'w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
+    'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
 
   return (
     <div className="relative space-y-5 pb-4">
@@ -142,13 +158,15 @@ export default function InquilinoReclamos() {
         {reclamos.map((r) => {
           const estilo = estadoStyles[r.estado] ?? { bg: 'bg-slate-100', text: 'text-slate-600' }
           const esPendiente = r.estado === 'Pendiente'
+          const catBadge = badgeCategoria(r.categoria)
+          const prioBadge = badgePrioridad(r.prioridad)
 
           return (
             <li key={r.id} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-slate-800">{r.titulo}</p>
-                  <p className="mt-0.5 text-xs text-slate-400">{formatFecha(r.created_at)}</p>
+                  <p className="mt-0.5 text-xs text-slate-400">{formatFecha(r.fecha_creacion)}</p>
                 </div>
                 <span
                   className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${estilo.bg} ${estilo.text}`}
@@ -156,6 +174,17 @@ export default function InquilinoReclamos() {
                   {r.estado}
                 </span>
               </div>
+
+              {(catBadge || prioBadge) && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {catBadge && (
+                    <span className={`${PILL_SOLID_CLASS} ${catBadge.className}`}>{catBadge.label}</span>
+                  )}
+                  {prioBadge && (
+                    <span className={`${PILL_SOLID_CLASS} ${prioBadge.className}`}>{prioBadge.label}</span>
+                  )}
+                </div>
+              )}
 
               {r.descripcion && (
                 <p className="mt-2 line-clamp-2 text-sm text-slate-600">{r.descripcion}</p>
@@ -188,24 +217,33 @@ export default function InquilinoReclamos() {
         })}
       </ul>
 
-      {/* FAB */}
-      <button
-        type="button"
-        onClick={abrirFormCrear}
-        disabled={!contratoActivo}
-        aria-label="Nuevo reclamo"
-        title={!contratoActivo ? 'Necesitás un contrato activo para crear reclamos' : 'Nuevo reclamo'}
-        className="fixed bottom-[5.5rem] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-2xl font-light text-white shadow-lg transition hover:bg-indigo-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        +
-      </button>
+      {/* FAB — alineado al contenedor y por encima de la bottom nav */}
+      {!showForm && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(6.25rem+env(safe-area-inset-bottom,0px))] z-40 px-4">
+          <div className="mx-auto flex max-w-lg justify-end">
+            <button
+              type="button"
+              onClick={abrirFormCrear}
+              disabled={!contratoActivo}
+              aria-label="Nuevo reclamo"
+              title={!contratoActivo ? 'Necesitás un contrato activo para crear reclamos' : 'Nuevo reclamo'}
+              className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg transition hover:bg-indigo-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
-      {/* Bottom sheet form */}
+      {/* Modal formulario */}
       {showForm && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40"
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 px-4 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))]"
           role="dialog"
           aria-modal="true"
+          aria-labelledby="reclamo-form-title"
         >
           <button
             type="button"
@@ -213,16 +251,18 @@ export default function InquilinoReclamos() {
             className="absolute inset-0"
             onClick={cerrarForm}
           />
-          <div className="relative z-10 w-full max-w-lg rounded-t-2xl bg-white p-6 pb-8 shadow-2xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-800">
+          <div className="relative z-10 max-h-[min(85vh,40rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-slate-100">
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-200" aria-hidden="true" />
+
+            <div className="relative mb-5 text-center">
+              <h3 id="reclamo-form-title" className="text-lg font-bold text-slate-800">
                 {reclamoEditando ? 'Editar reclamo' : 'Nuevo reclamo'}
               </h3>
               <button
                 type="button"
                 onClick={cerrarForm}
                 disabled={submitting}
-                className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100"
+                className="absolute right-0 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100"
                 aria-label="Cerrar"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -232,12 +272,67 @@ export default function InquilinoReclamos() {
             </div>
 
             {!reclamoEditando && contratoActivo?.propiedades?.direccion && (
-              <p className="mb-4 rounded-xl bg-indigo-50 px-3 py-2 text-xs font-medium text-indigo-700">
-                Propiedad: {contratoActivo.propiedades.direccion}
+              <p className="mb-5 rounded-xl bg-indigo-50 px-4 py-2.5 text-center text-xs font-medium leading-relaxed text-indigo-700">
+                {contratoActivo.propiedades.direccion}
               </p>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="mx-auto w-full max-w-md space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Tipo de problema <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {CATEGORIAS_RECLAMO.map((cat) => {
+                    const seleccionada = form.categoria === cat.id
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        disabled={submitting}
+                        onClick={() => handleDirectChange('categoria', cat.id)}
+                        className={`flex items-center gap-2 rounded-xl border p-2.5 text-left text-sm transition ${
+                          seleccionada
+                            ? 'border-indigo-600 bg-indigo-50 font-semibold text-indigo-700 ring-2 ring-indigo-100'
+                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50'
+                        }`}
+                      >
+                        <span className="text-base" aria-hidden="true">{cat.icon}</span>
+                        <span className="truncate">{cat.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Urgencia <span className="text-red-500">*</span>
+                </label>
+                <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1">
+                  {PRIORIDADES_RECLAMO.map((prio) => {
+                    const seleccionada = form.prioridad === prio
+                    let estiloActivo = 'bg-white text-slate-900 shadow-sm font-semibold'
+                    if (seleccionada && prio === 'Urgente') estiloActivo = 'bg-red-500 text-white shadow-sm font-semibold'
+                    if (seleccionada && prio === 'Alta') estiloActivo = 'bg-amber-500 text-white shadow-sm font-semibold'
+
+                    return (
+                      <button
+                        key={prio}
+                        type="button"
+                        disabled={submitting}
+                        onClick={() => handleDirectChange('prioridad', prio)}
+                        className={`flex-1 rounded-lg py-2 text-center text-xs transition ${
+                          seleccionada ? estiloActivo : 'text-slate-600 hover:text-slate-900 disabled:opacity-50'
+                        }`}
+                      >
+                        {prio}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">
                   Título <span className="text-red-500">*</span>
@@ -264,7 +359,7 @@ export default function InquilinoReclamos() {
                   rows={4}
                   value={form.descripcion}
                   onChange={handleChange('descripcion')}
-                  className={inputClass}
+                  className={`${inputClass} resize-none`}
                   placeholder="Describí el problema con el mayor detalle posible..."
                   disabled={submitting}
                 />

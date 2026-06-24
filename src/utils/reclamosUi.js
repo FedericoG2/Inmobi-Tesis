@@ -1,5 +1,17 @@
 /** Pills sólidos (mismo patrón que tipo/estado en Propiedades). */
 
+export const CATEGORIAS_RECLAMO = [
+  { id: 'Plomeria', label: 'Plomería', icon: '🚰' },
+  { id: 'Electricidad', label: 'Electricidad', icon: '⚡' },
+  { id: 'Albañilería', label: 'Albañilería', icon: '🧱' },
+  { id: 'Cerrajeria', label: 'Cerrajería', icon: '🔑' },
+  { id: 'Pintura', label: 'Pintura', icon: '🖌️' },
+  { id: 'Estructural', label: 'Estructural', icon: '🏠' },
+  { id: 'Gas', label: 'Gas', icon: '🔥' },
+]
+
+export const PRIORIDADES_RECLAMO = ['Baja', 'Media', 'Alta', 'Urgente']
+
 export const BADGE_CATEGORIA = {
   Plomeria: { label: 'Plomería', className: 'bg-sky-600 text-white' },
   Electricidad: { label: 'Electricidad', className: 'bg-amber-500 text-white' },

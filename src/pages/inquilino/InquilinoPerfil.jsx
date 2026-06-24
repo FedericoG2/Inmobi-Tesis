@@ -1,6 +1,5 @@
 import { useAuth } from '../../contexts/AuthContext'
 import { usePortalInquilino } from '../../contexts/PortalInquilinoContext'
-import { supabase } from '../../supabaseClient'
 import { formatearDniCuit } from '../../utils/normalizarContacto'
 
 function InfoFila({ label, value }) {
@@ -15,10 +14,6 @@ function InfoFila({ label, value }) {
 export default function InquilinoPerfil() {
   const { user } = useAuth()
   const { inquilino, loading, error } = usePortalInquilino()
-
-  const handleSignOut = () => {
-    supabase?.auth.signOut()
-  }
 
   if (loading) {
     return (
@@ -51,14 +46,6 @@ export default function InquilinoPerfil() {
           <InfoFila label="Email de acceso" value={user?.email} />
         </ul>
       </div>
-
-      <button
-        type="button"
-        onClick={handleSignOut}
-        className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-      >
-        Cerrar sesión
-      </button>
     </div>
   )
 }

@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
+import ProyeccionAumentoInquilinoCard from '../../components/inquilino/ProyeccionAumentoInquilinoCard'
+import { VigenciaContratoChips } from '../../components/inquilino/ContratoFechasResumen'
+import HistorialMontosInquilino from '../../components/inquilino/HistorialMontosInquilino'
 import { IconDocument } from '../../components/icons/NavIcons'
+import useProyeccionAumentoInquilino from '../../hooks/useProyeccionAumentoInquilino'
 import { usePortalInquilino } from '../../contexts/PortalInquilinoContext'
 import {
   descargarDocumentoPortal,
@@ -7,6 +11,7 @@ import {
   listarDocumentosPortalContrato,
 } from '../../services/portalInquilinoService'
 import { armarResumenAlquilerInquilino } from '../../utils/resumenAlquilerInquilino'
+import { armarHistorialMontosContrato } from '../../utils/historialMontosInquilino'
 
 const CARD_CLASS = 'rounded-2xl bg-white ring-1 ring-slate-100'
 const SECTION_TITLE = 'text-base font-bold text-slate-900'
@@ -31,24 +36,6 @@ const tipoAjusteLabel = {
   ipc: 'IPC (Nivel General)',
   porcentaje_fijo: 'Porcentaje fijo',
   manual: 'Manual',
-}
-
-function IconAlertInfo({ className = '' }) {
-  return (
-    <svg
-      className={`h-4 w-4 shrink-0 ${className}`.trim()}
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.75}
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
-      />
-    </svg>
-  )
 }
 
 function InfoGrupo({ titulo, children }) {
@@ -82,19 +69,10 @@ export default function InquilinoDocumentos() {
 
   const resumen = useMemo(() => armarResumenAlquilerInquilino(contrato), [contrato])
 
-  const progresoContrato =
-    resumen?.mesContratoActual != null && resumen?.mesContratoTotal
-      ? Math.round((resumen.mesContratoActual / resumen.mesContratoTotal) * 100)
-      : null
+  const historialMontos = useMemo(() => armarHistorialMontosContrato(contrato), [contrato])
 
-  const vigenciaLinea = contrato
-    ? [
-        `${formatFecha(contrato.fecha_inicio)} – ${formatFecha(contrato.fecha_fin)}`,
-        contrato.dia_vencimiento ? `Vence el día ${contrato.dia_vencimiento}` : null,
-      ]
-        .filter(Boolean)
-        .join(' · ')
-    : null
+  const { propuesta, loading: proyeccionLoading, error: proyeccionError } =
+    useProyeccionAumentoInquilino(contrato, resumen)
 
   useEffect(() => {
     if (!contrato?.id) {
@@ -190,35 +168,37 @@ export default function InquilinoDocumentos() {
                 {formatMonto(contrato.monto_alquiler)}
               </p>
 
-              <p className="mt-1 text-sm text-slate-500">{vigenciaLinea}</p>
+              <VigenciaContratoChips
+                fechaInicio={contrato.fecha_inicio}
+                fechaFin={contrato.fecha_fin}
+                diaVencimiento={contrato.dia_vencimiento}
+                formatFecha={formatFecha}
+              />
 
-              {progresoContrato != null && (
-                <div className="mt-4">
-                  <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full bg-indigo-500 transition-all"
-                      style={{ width: `${progresoContrato}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {resumen.hayAumentoEnPeriodo && resumen.aumentoMesNombre && (
+              {resumen.hayAumentoEnPeriodo && (
                 <div className="mt-4 border-t border-slate-100 pt-4">
-                  <div className="flex items-center gap-2 rounded-xl bg-amber-50 px-2.5 py-2 ring-1 ring-amber-200/80">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
-                      <IconAlertInfo />
-                    </div>
-                    <p className="min-w-0 flex-1 text-xs leading-tight text-slate-800">
-                      <span className="font-semibold text-amber-900">
-                        Aumento en {resumen.aumentoMesNombre}.
-                      </span>{' '}
-                      Monto a confirmar con la inmobiliaria.
-                    </p>
-                  </div>
+                  <ProyeccionAumentoInquilinoCard
+                    propuesta={propuesta}
+                    loading={proyeccionLoading}
+                    error={proyeccionError}
+                    mesAumento={resumen.aumentoMesNombre}
+                  />
                 </div>
               )}
             </div>
+          </section>
+
+          <section className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5V18h1.5M3 12V13.5h1.5M3 7.5V9H4.5M7.5 6h9a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3h-9a3 3 0 0 1-3-3V9a3 3 0 0 1 3-3Z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m9 14 2 2 4-4" />
+                </svg>
+              </span>
+              <h2 className={SECTION_TITLE}>Historial de montos</h2>
+            </div>
+            <HistorialMontosInquilino filas={historialMontos} />
           </section>
 
           <section className="space-y-3">

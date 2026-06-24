@@ -1,28 +1,43 @@
 import { NavLink } from 'react-router-dom'
-import { IconDocument, IconHome, IconWrench } from '../icons/NavIcons'
+import { IconDocument, IconHome, IconUser, IconWrench } from '../icons/NavIcons'
 
 const navItems = [
-  { to: '/inquilino/dashboard', label: 'Inicio', icon: IconHome },
+  { to: '/inquilino/dashboard', label: 'Inicio', icon: IconHome, end: true },
+  { to: '/inquilino/contrato', label: 'Contrato', icon: IconDocument },
   { to: '/inquilino/reclamos', label: 'Reclamos', icon: IconWrench },
-  { to: '/inquilino/documentos', label: 'Docs', icon: IconDocument },
+  { to: '/inquilino/perfil', label: 'Perfil', icon: IconUser },
 ]
 
 export default function InquilinoBottomNav() {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/95 px-4 pb-3 backdrop-blur-md">
-      <div className="mx-auto flex max-w-lg items-center justify-around py-2">
-        {navItems.map(({ to, label, icon: Icon }) => (
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 pointer-events-none"
+      aria-label="Navegación principal"
+    >
+      <div className="pointer-events-auto mx-auto flex max-w-lg items-center justify-between gap-1 rounded-full bg-white px-2 py-2 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/80">
+        {navItems.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
+            end={end}
             className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 rounded-xl px-4 py-2 text-xs font-medium transition-colors ${
-                isActive ? 'text-indigo-600' : 'text-slate-400'
+              `flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-2 py-1.5 text-[10px] font-semibold transition-colors ${
+                isActive ? 'text-indigo-600' : 'text-slate-500'
               }`
             }
           >
-            <Icon className="h-6 w-6" />
-            <span>{label}</span>
+            {({ isActive }) => (
+              <>
+                <span
+                  className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
+                    isActive ? 'bg-indigo-100' : 'bg-transparent'
+                  }`}
+                >
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span className="truncate leading-none">{label}</span>
+              </>
+            )}
           </NavLink>
         ))}
       </div>

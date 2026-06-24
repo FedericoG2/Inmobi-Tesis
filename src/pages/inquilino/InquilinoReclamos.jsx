@@ -195,7 +195,7 @@ export default function InquilinoReclamos() {
         disabled={!contratoActivo}
         aria-label="Nuevo reclamo"
         title={!contratoActivo ? 'Necesitás un contrato activo para crear reclamos' : 'Nuevo reclamo'}
-        className="fixed bottom-24 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-2xl font-light text-white shadow-lg transition hover:bg-indigo-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+        className="fixed bottom-[5.5rem] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-2xl font-light text-white shadow-lg transition hover:bg-indigo-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
       >
         +
       </button>

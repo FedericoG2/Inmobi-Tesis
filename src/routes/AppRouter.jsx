@@ -18,6 +18,7 @@ const AdminAumentos = lazy(() => import('../pages/admin/AdminAumentos'))
 const InquilinoDashboard = lazy(() => import('../pages/inquilino/InquilinoDashboard'))
 const InquilinoReclamos = lazy(() => import('../pages/inquilino/InquilinoReclamos'))
 const InquilinoDocumentos = lazy(() => import('../pages/inquilino/InquilinoDocumentos'))
+const InquilinoPerfil = lazy(() => import('../pages/inquilino/InquilinoPerfil'))
 
 function PageLoader() {
   return (
@@ -73,7 +74,9 @@ export default function AppRouter() {
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<InquilinoDashboard />} />
                 <Route path="reclamos" element={<InquilinoReclamos />} />
+                <Route path="contrato" element={<InquilinoDocumentos />} />
                 <Route path="documentos" element={<InquilinoDocumentos />} />
+                <Route path="perfil" element={<InquilinoPerfil />} />
               </Route>
             </Route>
           </Route>

@@ -8,7 +8,9 @@ const SELECT_RECLAMO_PORTAL = `
   titulo,
   descripcion,
   estado,
-  created_at,
+  prioridad,
+  categoria,
+  fecha_creacion,
   propiedad_id,
   inquilino_id,
   propiedades ( direccion )
@@ -49,11 +51,21 @@ export async function listarContratosActivosInquilino(inquilinoId) {
       activo,
       estado,
       propiedad_id,
-      propiedades ( id, direccion, tipo )
+      propiedades ( id, direccion, tipo ),
+      aumentos (
+        id,
+        fecha_aplicacion,
+        monto_anterior,
+        monto_nuevo,
+        porcentaje_aplicado,
+        indice_tipo,
+        modo
+      )
     `)
     .eq('inquilino_id', inquilinoId)
     .eq('estado', 'activo')
     .order('fecha_inicio', { ascending: false })
+    .order('fecha_aplicacion', { foreignTable: 'aumentos', ascending: true })
 
   return { data, error }
 }
@@ -67,7 +79,7 @@ export async function listarReclamosInquilino(inquilinoId) {
     .from('reclamos')
     .select(SELECT_RECLAMO_PORTAL)
     .eq('inquilino_id', inquilinoId)
-    .order('created_at', { ascending: false })
+    .order('fecha_creacion', { ascending: false })
 
   return { data, error }
 }
@@ -92,6 +104,10 @@ export async function crearReclamoPortal(datos) {
     return { data: null, error: { message: 'La descripción del reclamo es obligatoria' } }
   }
 
+  if (!datos.categoria) {
+    return { data: null, error: { message: 'Seleccioná una categoría para el reclamo' } }
+  }
+
   const { data, error } = await supabase
     .from('reclamos')
     .insert({
@@ -99,6 +115,8 @@ export async function crearReclamoPortal(datos) {
       propiedad_id: datos.propiedad_id,
       titulo: datos.titulo.trim(),
       descripcion: datos.descripcion.trim(),
+      categoria: datos.categoria,
+      prioridad: datos.prioridad ?? 'Media',
       estado: 'Pendiente',
     })
     .select(SELECT_RECLAMO_PORTAL)
@@ -124,11 +142,17 @@ export async function actualizarReclamoPortal(id, datos, inquilinoId) {
     return { data: null, error: { message: 'La descripción del reclamo es obligatoria' } }
   }
 
+  if (!datos.categoria) {
+    return { data: null, error: { message: 'Seleccioná una categoría para el reclamo' } }
+  }
+
   const { data, error } = await supabase
     .from('reclamos')
     .update({
       titulo: datos.titulo.trim(),
       descripcion: datos.descripcion.trim(),
+      categoria: datos.categoria,
+      prioridad: datos.prioridad ?? 'Media',
     })
     .eq('id', id)
     .eq('inquilino_id', inquilinoId)
@@ -154,6 +178,26 @@ export async function listarDocumentosPortalContrato(contratoId) {
 
 export async function descargarDocumentoPortal(urlArchivo) {
   return obtenerUrlDescargaDocumento(urlArchivo)
+}
+
+export async function obtenerProyeccionAumentoPortal(contratoId) {
+  if (!supabase) {
+    return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
+  }
+
+  if (!contratoId) {
+    return { data: null, error: { message: 'Contrato no especificado' } }
+  }
+
+  const { data, error } = await supabase.rpc('calcular_proyeccion_aumento_portal', {
+    p_contrato_id: contratoId,
+  })
+
+  if (error) {
+    return { data: null, error: { message: error.message } }
+  }
+
+  return { data, error: null }
 }
 
 /**

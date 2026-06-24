@@ -58,17 +58,37 @@ export function etiquetaFechaAumento(fechaIso, hoy = hoyIsoLocal()) {
 
 /**
  * Traduce una propuesta del RPC a lenguaje simple para la UI.
+ * @param {object} propuesta
+ * @param {string} [hoy]
+ * @param {{ portal?: boolean }} [opciones]
  */
-export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal()) {
+export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal(), opciones = {}) {
+  const { portal = false } = opciones
   const fechaAumento = propuesta.fecha_hasta ?? propuesta.fecha_proximo_aumento
+
+  if (propuesta.ya_aplicado || propuesta.estado === 'aplicado') {
+    return {
+      etiqueta: 'aplicado',
+      etiquetaTexto: 'Confirmado',
+      etiquetaEstado: 'Confirmado',
+      observacion: portal
+        ? 'Este aumento ya está registrado en tu contrato.'
+        : 'Aumento ya aplicado al contrato.',
+      montoMostrar: propuesta.monto_propuesto,
+      montoEsAproximado: false,
+      puedeConfirmar: false,
+      tono: 'emerald',
+    }
+  }
 
   if (propuesta.estado === 'falta_indice') {
     return {
       etiqueta: 'sin_indices',
       etiquetaTexto: 'Sin Índices',
       etiquetaEstado: 'Sin Índices',
-      observacion:
-        'El sistema no pudo recuperar los datos necesarios para el cálculo. Requiere revisión manual.',
+      observacion: portal
+        ? 'Todavía no hay datos suficientes para estimar el aumento. Consultá con la inmobiliaria.'
+        : 'El sistema no pudo recuperar los datos necesarios para el cálculo. Requiere revisión manual.',
       montoMostrar: null,
       montoEsAproximado: false,
       puedeConfirmar: false,
@@ -78,8 +98,9 @@ export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal()) {
 
   if (propuesta.confirmable) {
     const dias = diasHastaFecha(fechaAumento, hoy)
-    const observacion =
-      dias != null && dias < 0
+    const observacion = portal
+      ? 'Cálculo con índices oficiales de cierre. La inmobiliaria confirmará el nuevo monto.'
+      : dias != null && dias < 0
         ? `Pendiente de confirmar desde el ${formatFechaAumento(fechaAumento)}.`
         : 'Cálculo con valores oficiales de cierre. Podés confirmar y actualizar el contrato.'
     return {
@@ -89,7 +110,7 @@ export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal()) {
       observacion,
       montoMostrar: propuesta.monto_propuesto,
       montoEsAproximado: false,
-      puedeConfirmar: true,
+      puedeConfirmar: !portal,
       tono: 'emerald',
     }
   }
@@ -105,12 +126,19 @@ export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal()) {
     etiqueta: 'proyectado',
     etiquetaTexto: 'Proyectado',
     etiquetaEstado: 'Proyectado',
-    observacion: `Estimación del nuevo alquiler${detalleIpc}. Los índices definitivos del período aún no están publicados.`,
+    observacion: portal
+      ? `Estimación del aumento del alquiler${detalleIpc}. Puede variar cuando se publiquen los índices definitivos.`
+      : `Estimación del aumento del alquiler${detalleIpc}. Los índices definitivos del período aún no están publicados.`,
     montoMostrar: propuesta.monto_propuesto,
     montoEsAproximado: Boolean(propuesta.es_aproximado),
     puedeConfirmar: false,
     tono: 'indigo',
   }
+}
+
+/** Alias explícito para el portal del inquilino. */
+export function interpretarPropuestaAumentoPortal(propuesta, hoy = hoyIsoLocal()) {
+  return interpretarPropuestaAumento(propuesta, hoy, { portal: true })
 }
 
 /** Mensaje para el botón confirmar cuando está deshabilitado. */

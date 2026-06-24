@@ -1,18 +1,14 @@
 import { Link } from 'react-router-dom'
 import { useMemo } from 'react'
+import ProyeccionAumentoInquilinoCard from '../../components/inquilino/ProyeccionAumentoInquilinoCard'
+import { PeriodoPagoChips } from '../../components/inquilino/ContratoFechasResumen'
 import { IconDocument, IconUser } from '../../components/icons/NavIcons'
+import useProyeccionAumentoInquilino from '../../hooks/useProyeccionAumentoInquilino'
 import { usePortalInquilino } from '../../contexts/PortalInquilinoContext'
 import { armarResumenAlquilerInquilino } from '../../utils/resumenAlquilerInquilino'
+import { formatMontoInquilino } from '../../utils/proyeccionAumentoInquilino'
 
-const formatMonto = (monto) => {
-  if (monto == null || monto === '') return '—'
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(Number(monto))
-}
+const formatMonto = formatMontoInquilino
 
 function IconBuilding({ className = '' }) {
   return (
@@ -22,24 +18,6 @@ function IconBuilding({ className = '' }) {
         strokeLinecap="round"
         strokeLinejoin="round"
         d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"
-      />
-    </svg>
-  )
-}
-
-function IconAlertInfo({ className = '' }) {
-  return (
-    <svg
-      className={`h-5 w-5 shrink-0 ${className}`.trim()}
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.75}
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
       />
     </svg>
   )
@@ -105,6 +83,9 @@ export default function InquilinoDashboard() {
     [contratoActivo]
   )
 
+  const { propuesta, loading: proyeccionLoading, error: proyeccionError } =
+    useProyeccionAumentoInquilino(contratoActivo, resumen)
+
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -163,21 +144,19 @@ export default function InquilinoDashboard() {
               {formatMonto(resumen.monto)}
             </p>
 
-            <p className="mt-1 text-sm text-slate-500">{resumen.periodoResumenLine}</p>
+            <PeriodoPagoChips
+              periodoLabel={resumen.periodoLabel}
+              vencimientoCorto={resumen.vencimientoCorto}
+            />
 
-            {resumen.hayAumentoEnPeriodo && resumen.aumentoMesNombre && (
+            {resumen.hayAumentoEnPeriodo && (
               <div className="mt-4 border-t border-slate-100 pt-4">
-                <div className="flex items-center gap-2 rounded-xl bg-amber-50 px-2.5 py-2 ring-1 ring-amber-200/80">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
-                    <IconAlertInfo className="h-4 w-4" />
-                  </div>
-                  <p className="min-w-0 flex-1 text-xs leading-tight text-slate-800">
-                    <span className="font-semibold text-amber-900">
-                      Aumento en {resumen.aumentoMesNombre}.
-                    </span>{' '}
-                    Monto a confirmar con la inmobiliaria.
-                  </p>
-                </div>
+                <ProyeccionAumentoInquilinoCard
+                  propuesta={propuesta}
+                  loading={proyeccionLoading}
+                  error={proyeccionError}
+                  mesAumento={resumen.aumentoMesNombre}
+                />
               </div>
             )}
           </div>

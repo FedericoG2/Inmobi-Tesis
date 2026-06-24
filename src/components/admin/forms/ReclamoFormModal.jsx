@@ -5,20 +5,13 @@ import {
   buscarContratoActivoPorInquilino,
   inquilinosConContratoActivo,
 } from '../../../utils/contratoActivo'
+import { CATEGORIAS_RECLAMO, PRIORIDADES_RECLAMO } from '../../../utils/reclamosUi'
 
 const estados = ['Pendiente', 'En Proceso', 'Resuelto']
-const prioridades = ['Baja', 'Media', 'Alta', 'Urgente']
 
 // Mapeo estético para mantener tus strings exactos de categoría pero con íconos visuales
-const CATEGORIAS_OPTIONS = [
-  { id: 'Plomeria', label: 'Plomería', icon: '🚰' },
-  { id: 'Electricidad', label: 'Electricidad', icon: '⚡' },
-  { id: 'Albañilería', label: 'Albañilería', icon: '🧱' },
-  { id: 'Cerrajeria', label: 'Cerrajería', icon: '🔑' },
-  { id: 'Pintura', label: 'Pintura', icon: '🖌️' },
-  { id: 'Estructural', label: 'Estructural', icon: '🏠' },
-  { id: 'Gas', label: 'Gas', icon: '🔥' },
-]
+const CATEGORIAS_OPTIONS = CATEGORIAS_RECLAMO
+const prioridades = PRIORIDADES_RECLAMO
 
 const formInicial = {
   inquilino_id: '',

@@ -84,6 +84,7 @@ export function armarResumenAlquilerInquilino(contrato, hoy = hoyIsoLocal()) {
     periodoLabel: `${MESES_CAPITALIZADOS[periodo.month - 1]} ${periodo.year}`,
     vencimientoLabel: `Vence el ${periodo.diaVencimiento} de ${MESES[periodo.month - 1]} de ${periodo.year}`,
     periodoResumenLine: `${MESES_CAPITALIZADOS[periodo.month - 1]} ${periodo.year} · Vence el ${String(periodo.diaVencimiento).padStart(2, '0')}/${String(periodo.month).padStart(2, '0')}`,
+    vencimientoCorto: `${String(periodo.diaVencimiento).padStart(2, '0')}/${String(periodo.month).padStart(2, '0')}`,
     monto: contrato.monto_alquiler,
     hayAumentoEnPeriodo,
     aumentoLabel,

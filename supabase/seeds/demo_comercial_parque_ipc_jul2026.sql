@@ -13,14 +13,16 @@ WHERE contrato_id IN (
 DELETE FROM public.contratos
 WHERE observaciones = 'Contrato demo — Comercial del Parque IPC cronograma jul 2026';
 
+-- NOTA: no se carga junio 2026 a propósito. El IPC de junio recién se publica
+-- a mediados de julio, así el aumento del 01/07/2026 queda como "Provisorio"
+-- (valor estimado) tal como pasaría en la realidad.
 INSERT INTO public.indices (indice, anio, mes, valor, fuente)
 VALUES
   ('ipc', 2026, 1, 2.3, 'seed-parque-ipc-jul2026'),
   ('ipc', 2026, 2, 2.5, 'seed-parque-ipc-jul2026'),
   ('ipc', 2026, 3, 3.1, 'seed-parque-ipc-jul2026'),
   ('ipc', 2026, 4, 2.7, 'seed-parque-ipc-jul2026'),
-  ('ipc', 2026, 5, 2.0, 'seed-parque-ipc-jul2026'),
-  ('ipc', 2026, 6, 1.8, 'seed-parque-ipc-jul2026')
+  ('ipc', 2026, 5, 2.0, 'seed-parque-ipc-jul2026')
 ON CONFLICT (indice, anio, mes) WHERE anio IS NOT NULL
 DO UPDATE SET valor = EXCLUDED.valor, fuente = EXCLUDED.fuente, fecha_sync = now();
 

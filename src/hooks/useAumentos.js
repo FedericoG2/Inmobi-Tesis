@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { syncIndices, obtenerUltimosIndicesArgly } from '../services/arglyService'
-import { calcularAumentosPendientes, confirmarAumentos } from '../services/aumentosService'
+import {
+  calcularAumentosPendientes,
+  confirmarAumentos,
+  generarComprobantesAumentos,
+} from '../services/aumentosService'
 
 function formatearErroresConfirmacion(errores) {
   if (!Array.isArray(errores) || errores.length === 0) return ''
@@ -24,7 +28,7 @@ export function useAumentos() {
 
     if (syncError) {
       setSyncWarning(
-        `No se pudieron actualizar índices (${syncError.message}). Se usan los datos guardados.`
+        'No pudimos actualizar los índices en este momento. Mostramos los últimos guardados; volvé a intentar más tarde.'
       )
     } else {
       setSyncWarning(null)
@@ -53,11 +57,6 @@ export function useAumentos() {
 
     if (indicesResult.error) {
       setIndicesResumen({ icl: null, ipc: null })
-      setSyncWarning((prev) =>
-        prev
-          ? `${prev} No se pudieron consultar los índices en Argly (${indicesResult.error.message}).`
-          : `No se pudieron consultar los índices en Argly (${indicesResult.error.message}).`
-      )
     } else {
       setIndicesResumen({
         icl: indicesResult.data?.icl ?? null,
@@ -107,6 +106,18 @@ export function useAumentos() {
         setSyncWarning(
           `Se confirmaron ${confirmados} aumento(s). ${errores.length} no se aplicaron: ${formatearErroresConfirmacion(errores)}`
         )
+      }
+
+      // Genera el comprobante PDF de cada aumento confirmado (best-effort).
+      const confirmadas = propuestasSeleccionadas.filter(
+        (p) => !failedIds.has(Number(p.contrato_id))
+      )
+      const { fallidos } = await generarComprobantesAumentos(confirmadas)
+      if (fallidos > 0) {
+        setSyncWarning((prev) => {
+          const aviso = `No se pudo generar el comprobante de ${fallidos} aumento(s).`
+          return prev ? `${prev} ${aviso}` : aviso
+        })
       }
 
       await cargarAumentos()

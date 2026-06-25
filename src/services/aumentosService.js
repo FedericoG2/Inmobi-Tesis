@@ -1,5 +1,12 @@
 import { supabase } from '../supabaseClient'
 import { activarContratosProgramados } from './contratosService'
+import { subirComprobanteAumento } from './documentosService'
+
+/** Aplica los aumentos acordados cuya fecha ya llegó (fallback del cron diario). */
+async function aplicarAumentosProgramados() {
+  if (!supabase) return
+  await supabase.rpc('aplicar_aumentos_programados')
+}
 
 function hoyIsoLocal() {
   const d = new Date()
@@ -49,7 +56,7 @@ export async function listarColaAumentos({ diasProximos = 30 } = {}) {
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
 
-  await activarContratosProgramados()
+  await Promise.all([activarContratosProgramados(), aplicarAumentosProgramados()])
 
   const hoy = hoyIsoLocal()
   const limite = sumarDiasIso(hoy, diasProximos)
@@ -93,7 +100,7 @@ export async function calcularAumentosPendientes({ incluirProximos = false, dias
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
 
-  await activarContratosProgramados()
+  await Promise.all([activarContratosProgramados(), aplicarAumentosProgramados()])
 
   const { data, error } = await supabase.rpc('calcular_aumentos_pendientes', {
     incluir_proximos: incluirProximos,
@@ -129,4 +136,56 @@ export async function confirmarAumentos(propuestas) {
   }
 
   return { data, error: null }
+}
+
+/**
+ * Genera y sube un comprobante PDF por cada aumento confirmado.
+ * Best-effort: no interrumpe el flujo si alguno falla.
+ * @returns {Promise<{ generados: number, fallidos: number }>}
+ */
+export async function generarComprobantesAumentos(propuestas) {
+  if (!supabase || !Array.isArray(propuestas) || propuestas.length === 0) {
+    return { generados: 0, fallidos: 0 }
+  }
+
+  const ids = [...new Set(propuestas.map((p) => p.contrato_id).filter(Boolean))]
+  const { data: contratos } = await supabase
+    .from('contratos')
+    .select('id, propiedad_id')
+    .in('id', ids)
+
+  const propiedadPorContrato = new Map(
+    (contratos ?? []).map((c) => [Number(c.id), c.propiedad_id])
+  )
+
+  // Carga diferida: jspdf solo se descarga cuando realmente se genera un comprobante.
+  const { generarComprobanteAumentoPdf } = await import('../utils/comprobanteAumentoPdf')
+
+  let generados = 0
+  let fallidos = 0
+
+  for (const propuesta of propuestas) {
+    const propiedadId = propiedadPorContrato.get(Number(propuesta.contrato_id))
+    if (!propiedadId) {
+      fallidos += 1
+      continue
+    }
+
+    try {
+      const { blob, filename } = generarComprobanteAumentoPdf(propuesta)
+      const { error } = await subirComprobanteAumento({
+        contratoId: propuesta.contrato_id,
+        propiedadId,
+        blob,
+        filename,
+        nombre: filename,
+      })
+      if (error) fallidos += 1
+      else generados += 1
+    } catch {
+      fallidos += 1
+    }
+  }
+
+  return { generados, fallidos }
 }

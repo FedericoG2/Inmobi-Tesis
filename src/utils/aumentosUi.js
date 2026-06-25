@@ -81,6 +81,23 @@ export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal(), opci
     }
   }
 
+  if (propuesta.programado || propuesta.ya_acordado || propuesta.estado === 'programado') {
+    const aproximado = Boolean(propuesta.es_aproximado)
+    const fechaLabel = formatFechaAumento(fechaAumento)
+    return {
+      etiqueta: 'acordado',
+      etiquetaTexto: 'Acordado',
+      etiquetaEstado: 'Acordado',
+      observacion: portal
+        ? `Tu nuevo alquiler rige desde el ${fechaLabel}.${aproximado ? ' El valor podría ajustarse al publicarse el índice final.' : ''}`
+        : `Aumento acordado: el nuevo monto rige desde el ${fechaLabel}. Se aplica automáticamente en esa fecha.`,
+      montoMostrar: propuesta.monto_acordado ?? propuesta.monto_propuesto,
+      montoEsAproximado: aproximado,
+      puedeConfirmar: false,
+      tono: 'sky',
+    }
+  }
+
   if (propuesta.estado === 'falta_indice') {
     return {
       etiqueta: 'sin_indices',
@@ -97,21 +114,40 @@ export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal(), opci
   }
 
   if (propuesta.confirmable) {
+    const aproximado = Boolean(propuesta.es_aproximado)
     const dias = diasHastaFecha(fechaAumento, hoy)
-    const observacion = portal
-      ? 'Cálculo con índices oficiales de cierre. La inmobiliaria confirmará el nuevo monto.'
-      : dias != null && dias < 0
-        ? `Pendiente de confirmar desde el ${formatFechaAumento(fechaAumento)}.`
-        : 'Cálculo con valores oficiales de cierre. Podés confirmar y actualizar el contrato.'
+    const detalleIpc =
+      aproximado && propuesta.ipc_meses != null && propuesta.ipc_meses_esperados != null
+        ? ` (${propuesta.ipc_meses}/${propuesta.ipc_meses_esperados} meses IPC publicados)`
+        : ''
+
+    const esFuturo = dias != null && dias > 0
+    let observacion
+    if (aproximado) {
+      observacion = portal
+        ? `Estimación del aumento del alquiler${detalleIpc}. El valor final puede variar al publicarse el índice.`
+        : esFuturo
+          ? `Valor aproximado${detalleIpc}. Podés acordarlo ahora: el monto queda fijo y se aplica el ${formatFechaAumento(fechaAumento)}.`
+          : `Valor aproximado${detalleIpc}: el índice del período aún no se publicó. Podés confirmarlo igual y el monto queda registrado.`
+    } else {
+      observacion = portal
+        ? 'Cálculo con índices oficiales de cierre. La inmobiliaria confirmará el nuevo monto.'
+        : dias != null && dias < 0
+          ? `Pendiente de confirmar desde el ${formatFechaAumento(fechaAumento)}.`
+          : esFuturo
+            ? `Cálculo con valores oficiales. Podés acordarlo ahora: se aplica automáticamente el ${formatFechaAumento(fechaAumento)}.`
+            : 'Cálculo con valores oficiales de cierre. Podés confirmar y actualizar el contrato.'
+    }
+
     return {
-      etiqueta: 'listo',
-      etiquetaTexto: 'Definitivo',
-      etiquetaEstado: 'Definitivo',
+      etiqueta: aproximado ? 'provisorio' : 'listo',
+      etiquetaTexto: aproximado ? 'Provisorio' : 'Definitivo',
+      etiquetaEstado: aproximado ? 'Provisorio' : 'Definitivo',
       observacion,
       montoMostrar: propuesta.monto_propuesto,
-      montoEsAproximado: false,
+      montoEsAproximado: aproximado,
       puedeConfirmar: !portal,
-      tono: 'emerald',
+      tono: aproximado ? 'amber' : 'emerald',
     }
   }
 
@@ -146,7 +182,9 @@ export function mensajeConfirmarDeshabilitado(ui) {
   if (!ui) return 'No se puede confirmar'
   if (ui.puedeConfirmar) return 'Confirmar aumento'
   if (ui.etiqueta === 'sin_indices') return 'Sin índices: requiere revisión manual'
-  return 'Solo confirmable en estado Definitivo'
+  if (ui.etiqueta === 'acordado') return 'Ya acordado: se aplica en la fecha'
+  if (ui.etiqueta === 'proyectado') return 'Se podrá confirmar desde la fecha del aumento'
+  return 'No disponible para confirmar'
 }
 
 export const BADGE_INDICADOR = {
@@ -158,6 +196,7 @@ export const TONO_SITUACION = {
   emerald: 'bg-emerald-50 text-emerald-800 ring-emerald-100',
   amber: 'bg-amber-50 text-amber-800 ring-amber-100',
   indigo: 'bg-indigo-50 text-indigo-800 ring-indigo-100',
+  sky: 'bg-sky-50 text-sky-800 ring-sky-100',
   slate: 'bg-slate-100 text-slate-600 ring-slate-200',
 }
 
@@ -172,6 +211,60 @@ export function badgeIndicador(tipo) {
 const formatMontoDetalle = (monto) => {
   if (monto == null) return '—'
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(Number(monto))
+}
+
+function mesSiguiente(anio, mes) {
+  if (mes >= 12) return { anio: anio + 1, mes: 1 }
+  return { anio, mes: mes + 1 }
+}
+
+function isoDia15(anio, mes) {
+  return `${anio}-${String(mes).padStart(2, '0')}-15`
+}
+
+/**
+ * Estima cuándo se publica el índice que falta (no es un dato oficial).
+ * IPC: ~día 15 del mes siguiente al primer mes sin publicar (INDEC).
+ * ICL: ~día 15 del mes de cierre (BCRA/CER actualiza a mitad de mes).
+ */
+export function estimarProximaPublicacion(propuesta) {
+  const tipo = (propuesta.tipo_ajuste ?? propuesta.indice_tipo ?? '').toLowerCase()
+
+  if (tipo === 'ipc') {
+    const detalle = Array.isArray(propuesta.ipc_detalle) ? propuesta.ipc_detalle : []
+    const faltante = detalle.find((m) => !m.publicado)
+    if (!faltante) return null
+    const sig = mesSiguiente(Number(faltante.anio), Number(faltante.mes))
+    return isoDia15(sig.anio, sig.mes)
+  }
+
+  if (tipo === 'icl') {
+    const fechaHasta = propuesta.fecha_hasta ?? propuesta.fecha_proximo_aumento
+    if (!fechaHasta) return null
+    const [y, m] = fechaHasta.split('-').map(Number)
+    return isoDia15(y, m)
+  }
+
+  return null
+}
+
+/**
+ * Advertencia estilo calculadora oficial cuando el valor es aproximado.
+ * Devuelve null si la propuesta no es aproximada.
+ */
+export function advertenciaAproximado(propuesta) {
+  if (!propuesta?.es_aproximado) return null
+
+  const fechaHasta = propuesta.fecha_hasta ?? propuesta.fecha_proximo_aumento
+  const estimada = estimarProximaPublicacion(propuesta)
+
+  return {
+    fechaReferencia: fechaHasta,
+    fechaReferenciaLabel: formatFechaAumento(fechaHasta),
+    proximaPublicacion: estimada,
+    proximaPublicacionLabel: estimada ? formatFechaAumento(estimada) : null,
+    texto: `Este valor es aproximado: todavía no se publicó el índice correspondiente a la fecha ${formatFechaAumento(fechaHasta)}. El monto final se conocerá al publicarse el índice y puede variar.`,
+  }
 }
 
 /**
@@ -218,6 +311,8 @@ export function detalleCalculoAumento(propuesta, hoy = hoyIsoLocal()) {
     }
   }
 
+  const ipcDetalle = Array.isArray(propuesta.ipc_detalle) ? propuesta.ipc_detalle : []
+
   return {
     ui,
     tipo,
@@ -230,6 +325,20 @@ export function detalleCalculoAumento(propuesta, hoy = hoyIsoLocal()) {
     },
     filasIndice,
     formula,
+    ipcDetalle,
+    iclValores:
+      tipo === 'icl'
+        ? {
+            inicio: propuesta.indice_valor_inicio,
+            fin: propuesta.indice_valor_fin,
+            proporcion:
+              propuesta.indice_valor_inicio && propuesta.indice_valor_fin
+                ? Number(propuesta.indice_valor_fin) / Number(propuesta.indice_valor_inicio)
+                : null,
+          }
+        : null,
+    ipcFactor: propuesta.ipc_factor != null ? Number(propuesta.ipc_factor) : null,
+    advertencia: advertenciaAproximado(propuesta),
     variacionPct: propuesta.variacion_pct,
     montoActual: propuesta.monto_actual,
     montoPropuesto: propuesta.monto_propuesto,

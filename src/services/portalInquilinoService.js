@@ -189,6 +189,10 @@ export async function obtenerProyeccionAumentoPortal(contratoId) {
     return { data: null, error: { message: 'Contrato no especificado' } }
   }
 
+  // Aplica los aumentos acordados cuya fecha ya llegó (respaldo del cron diario)
+  // para que el inquilino vea el monto vigente correcto.
+  await supabase.rpc('aplicar_aumentos_programados')
+
   const { data, error } = await supabase.rpc('calcular_proyeccion_aumento_portal', {
     p_contrato_id: contratoId,
   })

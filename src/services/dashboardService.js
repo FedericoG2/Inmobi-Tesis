@@ -7,10 +7,15 @@ export async function obtenerDashboardAdmin() {
     return { data: null, error: { message: MSG_SUPABASE } }
   }
 
-  const [kpisRes, aumentosRes, urgentesRes] = await Promise.all([
+  const [kpisRes, aumentosRes, vencidosRes, urgentesRes] = await Promise.all([
     supabase.from('dashboard_admin_kpis').select('*').single(),
     supabase
       .from('dashboard_admin_aumentos_proximos')
+      .select('*')
+      .order('fecha_proximo_aumento', { ascending: true })
+      .limit(5),
+    supabase
+      .from('dashboard_admin_aumentos_vencidos')
       .select('*')
       .order('fecha_proximo_aumento', { ascending: true })
       .limit(5),
@@ -21,7 +26,7 @@ export async function obtenerDashboardAdmin() {
       .limit(5),
   ])
 
-  const error = kpisRes.error ?? aumentosRes.error ?? urgentesRes.error
+  const error = kpisRes.error ?? aumentosRes.error ?? vencidosRes.error ?? urgentesRes.error
 
   if (error) {
     return { data: null, error: { message: error.message } }
@@ -31,6 +36,7 @@ export async function obtenerDashboardAdmin() {
     data: {
       kpis: kpisRes.data,
       aumentosProximos: aumentosRes.data ?? [],
+      aumentosVencidos: vencidosRes.data ?? [],
       reclamosUrgentes: urgentesRes.data ?? [],
     },
     error: null,

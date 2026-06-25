@@ -39,6 +39,18 @@ function IconCheck({ className = 'h-3.5 w-3.5' }) {
   )
 }
 
+function IconClipboardCheck({ className = 'h-3.5 w-3.5' }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9 12.75 11.25 15 15 9.75M9 3.75H6.75A2.25 2.25 0 0 0 4.5 6v12a2.25 2.25 0 0 0 2.25 2.25h10.5A2.25 2.25 0 0 0 19.5 18V6a2.25 2.25 0 0 0-2.25-2.25H15m-6 0V4.5A1.5 1.5 0 0 1 10.5 3h3a1.5 1.5 0 0 1 1.5 1.5v-.75m-6 0h6"
+      />
+    </svg>
+  )
+}
+
 const btnBase =
   'inline-flex h-8 w-8 items-center justify-center rounded-full border bg-white transition hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-40'
 
@@ -48,8 +60,15 @@ export default function AumentoRowActions({
   puedeConfirmar,
   confirmDisabledLabel = 'Confirmar aumento',
   disabled = false,
+  revisado = false,
+  onToggleRevisado,
 }) {
-  const confirmLabel = puedeConfirmar ? 'Confirmar aumento' : confirmDisabledLabel
+  const confirmHabilitado = puedeConfirmar && revisado
+  const confirmLabel = !puedeConfirmar
+    ? confirmDisabledLabel
+    : revisado
+      ? 'Confirmar aumento'
+      : 'Marcá el cálculo como revisado primero'
 
   return (
     <div className="flex items-center justify-center gap-1.5">
@@ -63,12 +82,26 @@ export default function AumentoRowActions({
           <IconEye />
         </ActionButton>
       )}
+      {onConfirm && puedeConfirmar && onToggleRevisado && (
+        <ActionButton
+          label={revisado ? 'Revisado — clic para desmarcar' : 'Marcar cálculo como revisado'}
+          className={`${btnBase} ${
+            revisado
+              ? 'border-emerald-500 bg-emerald-50 text-emerald-600'
+              : 'border-amber-400 text-amber-600 hover:bg-amber-50'
+          }`}
+          onClick={onToggleRevisado}
+          disabled={disabled}
+        >
+          <IconClipboardCheck />
+        </ActionButton>
+      )}
       {onConfirm && (
         <ActionButton
           label={confirmLabel}
           className={`${btnBase} border-indigo-400 text-indigo-600 hover:bg-indigo-50 disabled:border-slate-300 disabled:text-slate-400`}
           onClick={onConfirm}
-          disabled={disabled || !puedeConfirmar}
+          disabled={disabled || !confirmHabilitado}
         >
           <IconCheck />
         </ActionButton>

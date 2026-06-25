@@ -29,8 +29,6 @@ import {
   formatValorIpc,
   hoyIsoLocal,
   interpretarPropuestaAumento,
-  mensajeConfirmarDeshabilitado,
-  TONO_SITUACION,
 } from '../../utils/aumentosUi'
 
 const DIAS_VENTANA = 30
@@ -41,7 +39,6 @@ const COL_FECHA = 'w-[7.25rem]'
 const COL_MONTO_ACTUAL = 'w-[9rem]'
 const COL_MONTO_AJUSTADO = 'w-[10rem]'
 const COL_INDICE = 'w-[5.25rem]'
-const COL_ESTADO = 'w-[7.75rem]'
 
 const FILTRO_AUMENTOS = [
   { value: 'todos', label: 'Todos' },
@@ -90,6 +87,16 @@ export default function AdminAumentos() {
   const [detalleOpen, setDetalleOpen] = useState(false)
   const [propuestaDetalle, setPropuestaDetalle] = useState(null)
   const [ayudaOpen, setAyudaOpen] = useState(false)
+  const [revisados, setRevisados] = useState(() => new Set())
+
+  const toggleRevisado = (contratoId) => {
+    setRevisados((prev) => {
+      const next = new Set(prev)
+      if (next.has(contratoId)) next.delete(contratoId)
+      else next.add(contratoId)
+      return next
+    })
+  }
 
   const {
     propuestas,
@@ -166,6 +173,18 @@ export default function AdminAumentos() {
     [propuestasConUi]
   )
 
+  const listosRevisados = useMemo(
+    () => listosParaConfirmar.filter((p) => revisados.has(p.contrato_id)),
+    [listosParaConfirmar, revisados]
+  )
+
+  const vencidosSinConfirmar = useMemo(
+    () => propuestasConUi.filter((p) => p.fechaAumento < hoy && !p.ya_acordado),
+    [propuestasConUi, hoy]
+  )
+
+  const indicesNoDisponibles = !loading && !indicesResumen.icl && !indicesResumen.ipc
+
   const mensajeVacio = useMemo(() => {
     if (loading) return 'Calculando aumentos…'
     if (propuestasConUi.length === 0) {
@@ -212,13 +231,23 @@ export default function AdminAumentos() {
     abrirConfirm([propuesta])
   }
 
-  const mensajeConfirm =
-    confirmTarget.length === 1
-      ? `¿Confirmar el aumento de ${confirmTarget[0].inquilino_nombre ?? 'este contrato'}? El monto pasará a ${formatMonto(confirmTarget[0].monto_propuesto)}.`
-      : `¿Confirmar ${confirmTarget.length} aumento(s)? Se actualizarán los montos de los contratos y quedará registro en el historial.`
+  const mensajeConfirm = (() => {
+    if (confirmTarget.length === 1) {
+      const t = confirmTarget[0]
+      const fecha = t.fecha_hasta ?? t.fecha_proximo_aumento
+      const nombre = t.inquilino_nombre ?? 'este contrato'
+      const monto = formatMonto(t.monto_propuesto)
+      if (fecha && fecha > hoy) {
+        return `¿Acordar el aumento de ${nombre}? Quedará registrado en ${monto} y se aplicará automáticamente el ${formatFechaAumento(fecha)}.`
+      }
+      return `¿Confirmar el aumento de ${nombre}? El monto pasará a ${monto}.`
+    }
+    return `¿Confirmar ${confirmTarget.length} aumento(s)? Los que ya vencieron se aplican ahora; los anticipados quedan acordados para su fecha. Queda registro en el historial.`
+  })()
 
   const handleActualizar = () => {
     limpiarError()
+    setRevisados(new Set())
     cargarAumentos({ diasProximos: DIAS_VENTANA })
   }
 
@@ -229,15 +258,15 @@ export default function AdminAumentos() {
     return {
       icl: {
         value: loading ? '…' : formatValorIcl(icl?.valor),
-        label: icl
-          ? `ICL · Argly (${formatFechaAumento(icl.fecha)})`
-          : 'ICL · sin datos en Argly',
+        label: 'Último ICL disponible',
+        hint: icl ? `Fuente Argly · al ${formatFechaAumento(icl.fecha)}` : 'Sin datos en Argly',
       },
       ipc: {
         value: loading ? '…' : formatValorIpc(ipc?.valor),
-        label: ipc
-          ? `IPC · Argly (${formatPeriodoIpc(ipc.anio, ipc.mes)})`
-          : 'IPC · sin datos en Argly',
+        label: 'Último IPC disponible',
+        hint: ipc
+          ? `Fuente Argly · ${formatPeriodoIpc(ipc.anio, ipc.mes)}`
+          : 'Sin datos en Argly',
       },
     }
   }, [indicesResumen, loading])
@@ -263,12 +292,14 @@ export default function AdminAumentos() {
             <StatCard
               label={indicadoresIndices.icl.label}
               value={indicadoresIndices.icl.value}
+              hint={indicadoresIndices.icl.hint}
               icon="chart"
               theme="slate"
             />
             <StatCard
               label={indicadoresIndices.ipc.label}
               value={indicadoresIndices.ipc.value}
+              hint={indicadoresIndices.ipc.hint}
               icon="chart"
               theme="violet"
             />
@@ -276,9 +307,28 @@ export default function AdminAumentos() {
         }
         alerts={
           <>
+            {vencidosSinConfirmar.length > 0 && !loading && (
+              <Card className="border border-red-200 bg-red-50">
+                <p className="text-sm font-semibold text-red-800">
+                  {vencidosSinConfirmar.length} aumento{vencidosSinConfirmar.length > 1 ? 's' : ''}{' '}
+                  vencido{vencidosSinConfirmar.length > 1 ? 's' : ''} sin confirmar
+                </p>
+                <p className="mt-0.5 text-xs text-red-700/90">
+                  Ya pasó la fecha del ajuste. Revisá el cálculo y confirmá para no atrasar el alquiler.
+                </p>
+              </Card>
+            )}
             {error && (
               <Card className="border border-red-200 bg-red-50">
                 <p className="text-sm text-red-700">{error}</p>
+              </Card>
+            )}
+            {indicesNoDisponibles && !error && (
+              <Card className="border border-amber-200 bg-amber-50">
+                <p className="text-sm font-semibold text-amber-800">Índices no disponibles</p>
+                <p className="mt-0.5 text-xs text-amber-700/90">
+                  No pudimos obtener los índices en este momento. Intentá nuevamente más tarde.
+                </p>
               </Card>
             )}
             {syncWarning && !error && (
@@ -336,14 +386,14 @@ export default function AdminAumentos() {
 
             <AdminNuevoButton
               label={
-                listosParaConfirmar.length > 0
-                  ? `CONFIRMAR TODOS (${listosParaConfirmar.length})`
-                  : 'CONFIRMAR TODOS'
+                listosRevisados.length > 0
+                  ? `CONFIRMAR REVISADOS (${listosRevisados.length})`
+                  : 'CONFIRMAR REVISADOS'
               }
-              onClick={() => abrirConfirm(listosParaConfirmar)}
+              onClick={() => abrirConfirm(listosRevisados)}
               variant="primary"
               className="!h-10 whitespace-nowrap"
-              disabled={loading || confirmando || listosParaConfirmar.length === 0}
+              disabled={loading || confirmando || listosRevisados.length === 0}
             />
           </div>
         </div>
@@ -367,20 +417,17 @@ export default function AdminAumentos() {
               <AdminTableHeaderCell className={`${COL_INDICE} !text-center`}>
                 Índice
               </AdminTableHeaderCell>
-              <AdminTableHeaderCell className={`${COL_ESTADO} !text-center`}>
-                Estado
-              </AdminTableHeaderCell>
               <AdminTableActionsHeaderCell />
             </AdminTableRow>
           </AdminTableHead>
           <AdminTableBody>
             {loading ? (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={8}>Calculando aumentos…</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={7}>Calculando aumentos…</AdminTableEmptyCell>
               </AdminTableRow>
             ) : listadoFiltrado.length === 0 ? (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={8}>{mensajeVacio}</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={7}>{mensajeVacio}</AdminTableEmptyCell>
               </AdminTableRow>
             ) : (
               listadoPagina.map((p) => {
@@ -415,7 +462,14 @@ export default function AdminAumentos() {
                     </AdminTableCell>
                     <AdminTableCell className={`${COL_MONTO_AJUSTADO} !text-right`}>
                       {ui.montoMostrar == null ? (
-                        <span className="block whitespace-nowrap tabular-nums text-slate-400">—</span>
+                        <div className="flex flex-col items-end text-right">
+                          <span className="block whitespace-nowrap tabular-nums text-slate-400">
+                            —
+                          </span>
+                          <span className="whitespace-nowrap text-[11px] font-medium text-slate-400">
+                            Sin índices disponibles
+                          </span>
+                        </div>
                       ) : (
                         <div className="flex flex-col items-end text-right">
                           <span className="whitespace-nowrap tabular-nums font-semibold text-emerald-700">
@@ -425,6 +479,14 @@ export default function AdminAumentos() {
                           {p.variacion_pct != null && (
                             <span className="text-xs font-medium tabular-nums text-emerald-600/90">
                               (+{p.variacion_pct}%)
+                            </span>
+                          )}
+                          {ui.etiqueta === 'acordado' && (
+                            <span
+                              title={ui.observacion}
+                              className="whitespace-nowrap text-[11px] font-medium text-sky-600"
+                            >
+                              Acordado · aplica {formatFechaAumento(p.fechaAumento)}
                             </span>
                           )}
                         </div>
@@ -437,20 +499,9 @@ export default function AdminAumentos() {
                         {indicador.label}
                       </span>
                     </AdminTableCell>
-                    <AdminTableCell className={`${COL_ESTADO} !text-center`}>
-                      <span
-                        title={ui.observacion}
-                        className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset ${TONO_SITUACION[ui.tono] ?? TONO_SITUACION.slate}`}
-                      >
-                        {ui.etiquetaEstado ?? ui.etiquetaTexto}
-                      </span>
-                    </AdminTableCell>
                     <AdminTableActionsCell>
                       <AumentoRowActions
                         onView={() => abrirDetalle(p)}
-                        onConfirm={() => abrirConfirm([p])}
-                        puedeConfirmar={ui.puedeConfirmar}
-                        confirmDisabledLabel={mensajeConfirmarDeshabilitado(ui)}
                         disabled={loading || confirmando}
                       />
                     </AdminTableActionsCell>
@@ -476,6 +527,10 @@ export default function AdminAumentos() {
         onClose={cerrarDetalle}
         onConfirmar={confirmarDesdeDetalle}
         confirmando={confirmando}
+        revisado={propuestaDetalle ? revisados.has(propuestaDetalle.contrato_id) : false}
+        onToggleRevisado={
+          propuestaDetalle ? () => toggleRevisado(propuestaDetalle.contrato_id) : undefined
+        }
       />
 
       <AdminAlertModal
@@ -496,8 +551,14 @@ export default function AdminAumentos() {
               oficiales de ICL e IPC publicados.
             </p>
             <p>
-              <span className="font-medium text-slate-800">Acciones:</span> ícono del ojo para ver el
-              desglose y la fórmula del cálculo.
+              <span className="font-medium text-slate-800">Acciones:</span> tocá el ícono del ojo para
+              abrir el detalle. Ahí ves el desglose y la fórmula, marcás &quot;Cálculo revisado&quot;
+              y confirmás el aumento.
+            </p>
+            <p>
+              <span className="font-medium text-slate-800">Anticipado:</span> podés acordar un aumento
+              antes de su fecha. El alquiler vigente no cambia hasta ese día; se aplica solo cuando
+              llega la fecha.
             </p>
           </div>
 
@@ -510,10 +571,24 @@ export default function AdminAumentos() {
                   Valores oficiales de cierre. Permite confirmar y actualizar el contrato.
                 </p>
               </div>
+              <div className="rounded-lg border border-amber-100 bg-amber-50/80 px-3 py-2">
+                <p className="text-xs font-semibold text-amber-800">Provisorio</p>
+                <p className="mt-0.5 text-xs leading-snug text-amber-900/80">
+                  El índice del período aún no se publicó. Se puede confirmar igual (como la
+                  calculadora); el monto queda fijo.
+                </p>
+              </div>
+              <div className="rounded-lg border border-sky-100 bg-sky-50/80 px-3 py-2">
+                <p className="text-xs font-semibold text-sky-800">Acordado</p>
+                <p className="mt-0.5 text-xs leading-snug text-sky-900/80">
+                  Aumento confirmado por adelantado. El monto queda fijo y se aplica solo el día de
+                  la fecha.
+                </p>
+              </div>
               <div className="rounded-lg border border-indigo-100 bg-indigo-50/80 px-3 py-2">
                 <p className="text-xs font-semibold text-indigo-800">Proyectado</p>
                 <p className="mt-0.5 text-xs leading-snug text-indigo-900/80">
-                  Estimación; índices definitivos del período aún no publicados.
+                  Estimación sin índices definitivos. Solo vista previa.
                 </p>
               </div>
               <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">

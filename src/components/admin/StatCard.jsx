@@ -99,7 +99,7 @@ const ICONS = {
   calendar: IconCalendar,
 }
 
-export default function StatCard({ label, value, icon, theme = 'indigo' }) {
+export default function StatCard({ label, value, icon, theme = 'indigo', hint }) {
   const t = THEMES[theme] ?? THEMES.indigo
   const Icon = ICONS[icon] ?? IconBuilding
 
@@ -114,6 +114,7 @@ export default function StatCard({ label, value, icon, theme = 'indigo' }) {
         <p className={`text-3xl font-bold tracking-tight ${t.valueColor}`}>{value}</p>
       </div>
       <p className="mt-3 text-sm font-medium text-slate-700">{label}</p>
+      {hint ? <p className="mt-0.5 text-xs text-slate-400">{hint}</p> : null}
     </div>
   )
 }

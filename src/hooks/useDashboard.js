@@ -5,6 +5,7 @@ import { obtenerDashboardAdmin } from '../services/dashboardService'
 export function useDashboard() {
   const [kpis, setKpis] = useState(null)
   const [aumentosProximos, setAumentosProximos] = useState([])
+  const [aumentosVencidos, setAumentosVencidos] = useState([])
   const [reclamosUrgentes, setReclamosUrgentes] = useState([])
   const [ipcAnual, setIpcAnual] = useState([])
   const [ipcAnio, setIpcAnio] = useState(new Date().getFullYear())
@@ -28,10 +29,12 @@ export function useDashboard() {
       setError(dashboardResult.error.message)
       setKpis(null)
       setAumentosProximos([])
+      setAumentosVencidos([])
       setReclamosUrgentes([])
     } else {
       setKpis(dashboardResult.data.kpis)
       setAumentosProximos(dashboardResult.data.aumentosProximos)
+      setAumentosVencidos(dashboardResult.data.aumentosVencidos ?? [])
       setReclamosUrgentes(dashboardResult.data.reclamosUrgentes)
     }
 
@@ -55,6 +58,7 @@ export function useDashboard() {
   return {
     kpis,
     aumentosProximos,
+    aumentosVencidos,
     reclamosUrgentes,
     ipcAnual,
     ipcAnio,

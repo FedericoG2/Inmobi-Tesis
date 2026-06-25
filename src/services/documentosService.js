@@ -2,6 +2,7 @@ import { supabase } from '../supabaseClient'
 
 export const BUCKET_CONTRATOS = 'contratos'
 export const CATEGORIA_CONTRATO_LEGAL = 'Contrato Firmado'
+export const CATEGORIA_COMPROBANTE_AUMENTO = 'Comprobante de Aumento'
 
 const COLUMNAS_DOCUMENTO = `
   id,
@@ -130,6 +131,62 @@ export async function subirDocumentoContrato({
       propiedad_id: Number(propiedadId),
       nombre: archivo.name,
       categoria,
+      url_archivo: storagePath,
+      visible_para_inquilino: Boolean(visibleParaInquilino),
+    })
+    .select(COLUMNAS_DOCUMENTO)
+    .single()
+
+  if (error) {
+    await supabase.storage.from(BUCKET_CONTRATOS).remove([storagePath])
+    return { data: null, error }
+  }
+
+  return { data, error: null }
+}
+
+/**
+ * Sube un comprobante de aumento (PDF generado) y lo registra como documento
+ * del contrato, visible para el inquilino.
+ */
+export async function subirComprobanteAumento({
+  contratoId,
+  propiedadId,
+  blob,
+  filename,
+  nombre,
+  visibleParaInquilino = true,
+}) {
+  if (!supabase) {
+    return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
+  }
+
+  if (!blob || !contratoId || !propiedadId) {
+    return { data: null, error: { message: 'Faltan datos para subir el comprobante' } }
+  }
+
+  const nombreArchivo = sanitizarNombreArchivo(filename ?? 'comprobante-aumento.pdf')
+  const storagePath = `${contratoId}/${Date.now()}-${nombreArchivo}`
+
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET_CONTRATOS)
+    .upload(storagePath, blob, {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: 'application/pdf',
+    })
+
+  if (uploadError) {
+    return { data: null, error: { message: uploadError.message ?? 'No se pudo subir el comprobante' } }
+  }
+
+  const { data, error } = await supabase
+    .from('documentos')
+    .insert({
+      contrato_id: Number(contratoId),
+      propiedad_id: Number(propiedadId),
+      nombre: nombre ?? 'Comprobante de aumento',
+      categoria: CATEGORIA_COMPROBANTE_AUMENTO,
       url_archivo: storagePath,
       visible_para_inquilino: Boolean(visibleParaInquilino),
     })

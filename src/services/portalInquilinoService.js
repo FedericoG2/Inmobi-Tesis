@@ -1,5 +1,6 @@
 import { supabase } from '../supabaseClient'
 import { listarDocumentosVisiblesInquilino, obtenerUrlDescargaDocumento, etiquetaTipoArchivo } from './documentosService'
+import { sinErrores, validarCamposReclamo } from '../utils/validarReclamo'
 
 export { etiquetaTipoArchivo }
 
@@ -96,12 +97,10 @@ export async function crearReclamoPortal(datos) {
     }
   }
 
-  if (!datos.titulo?.trim()) {
-    return { data: null, error: { message: 'El título del reclamo es obligatorio' } }
-  }
-
-  if (!datos.descripcion?.trim()) {
-    return { data: null, error: { message: 'La descripción del reclamo es obligatoria' } }
+  const erroresCampos = validarCamposReclamo(datos)
+  if (!sinErrores(erroresCampos)) {
+    const primer = erroresCampos.titulo ?? erroresCampos.descripcion
+    return { data: null, error: { message: primer } }
   }
 
   if (!datos.categoria) {
@@ -113,6 +112,7 @@ export async function crearReclamoPortal(datos) {
     .insert({
       inquilino_id: datos.inquilino_id,
       propiedad_id: datos.propiedad_id,
+      contrato_id: datos.contrato_id ?? null,
       titulo: datos.titulo.trim(),
       descripcion: datos.descripcion.trim(),
       categoria: datos.categoria,

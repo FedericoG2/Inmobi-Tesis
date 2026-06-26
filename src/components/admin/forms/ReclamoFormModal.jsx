@@ -1,21 +1,40 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@tremor/react'
 import AdminFormModalHeader from '../AdminFormModalHeader'
+import InquilinoPickerModal from './InquilinoPickerModal'
+import InquilinoDetalleModal from '../InquilinoDetalleModal'
+import PropiedadDetalleModal from '../PropiedadDetalleModal'
 import {
   buscarContratoActivoPorInquilino,
+  contratosActivosPorInquilino,
   inquilinosConContratoActivo,
 } from '../../../utils/contratoActivo'
 import { CATEGORIAS_RECLAMO, PRIORIDADES_RECLAMO } from '../../../utils/reclamosUi'
-
-const estados = ['Pendiente', 'En Proceso', 'Resuelto']
+import {
+  ESTADO_LABEL,
+  FLUJO_ESTADOS,
+  RECLAMO_LIMITES,
+  esTransicionEstadoValida,
+  sinErrores,
+  validarReclamoAdmin,
+} from '../../../utils/validarReclamo'
 
 // Mapeo estético para mantener tus strings exactos de categoría pero con íconos visuales
 const CATEGORIAS_OPTIONS = CATEGORIAS_RECLAMO
 const prioridades = PRIORIDADES_RECLAMO
 
+// Color del botón activo según la prioridad seleccionada
+const COLOR_PRIORIDAD_ACTIVA = {
+  Baja: 'bg-blue-500 text-white shadow-sm font-semibold',
+  Media: 'bg-emerald-500 text-white shadow-sm font-semibold',
+  Alta: 'bg-amber-500 text-white shadow-sm font-semibold',
+  Urgente: 'bg-red-600 text-white shadow-sm font-semibold',
+}
+
 const formInicial = {
   inquilino_id: '',
   propiedad_id: '',
+  contrato_id: '',
   titulo: '',
   descripcion: '',
   estado: 'Pendiente',
@@ -29,10 +48,25 @@ const inputClass =
 const readOnlyClass =
   'w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500 outline-none cursor-not-allowed'
 
+// Barra compacta para mostrar la selección ya hecha (inquilino / propiedad)
+const displayBarClass =
+  'flex items-center justify-between gap-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm'
+
+const verDetalleLinkClass =
+  'text-xs font-semibold text-indigo-600 transition hover:text-indigo-700 hover:underline'
+
+const inputErrorClass = 'border-red-400 focus:border-red-500 focus:ring-red-100'
+
+function MensajeError({ children }) {
+  if (!children) return null
+  return <p className="text-xs font-medium text-red-600">{children}</p>
+}
+
 function formDesdeReclamo(reclamo) {
   return {
     inquilino_id: String(reclamo.inquilino_id ?? ''),
     propiedad_id: String(reclamo.propiedad_id ?? ''),
+    contrato_id: String(reclamo.contrato_id ?? ''),
     titulo: reclamo.titulo ?? '',
     descripcion: reclamo.descripcion ?? '',
     estado: reclamo.estado ?? 'Pendiente',
@@ -52,49 +86,142 @@ export default function ReclamoFormModal({
   inquilinosLoading,
   contratos,
   contratosLoading,
+  propiedades = [],
 }) {
   const [form, setForm] = useState(formInicial)
+  const [errores, setErrores] = useState({})
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [detalleInquilinoOpen, setDetalleInquilinoOpen] = useState(false)
+  const [detallePropiedadOpen, setDetallePropiedadOpen] = useState(false)
   const esEdicion = Boolean(reclamo)
+
+  // Al editar, solo se puede avanzar el estado (no retroceder).
+  const estadoOriginal = reclamo?.estado ?? 'Pendiente'
+  const opcionesEstado = FLUJO_ESTADOS
 
   const inquilinosElegibles = useMemo(
     () => inquilinosConContratoActivo(inquilinos, contratos),
     [inquilinos, contratos]
   )
 
+  const contratosDelInquilino = useMemo(
+    () => contratosActivosPorInquilino(contratos, form.inquilino_id),
+    [contratos, form.inquilino_id]
+  )
+
+  const multiplesContratos = contratosDelInquilino.length > 1
+
+  const inquilinoSeleccionado = useMemo(
+    () => inquilinosElegibles.find((i) => String(i.id) === String(form.inquilino_id)) ?? null,
+    [inquilinosElegibles, form.inquilino_id]
+  )
+
+  const propiedadSeleccionada = useMemo(
+    () => propiedades.find((p) => String(p.id) === String(form.propiedad_id)) ?? null,
+    [propiedades, form.propiedad_id]
+  )
+
   useEffect(() => {
     if (!open) {
       setForm(formInicial)
+      setErrores({})
       return
     }
     setForm(esEdicion ? formDesdeReclamo(reclamo) : formInicial)
+    setErrores({})
   }, [open, reclamo, esEdicion])
 
   if (!open) return null
 
+  const limpiarError = (field) => {
+    setErrores((prev) => {
+      if (!prev[field]) return prev
+      const siguiente = { ...prev }
+      delete siguiente[field]
+      return siguiente
+    })
+  }
+
   const handleChange = (field) => (e) => {
-    setForm((prev) => ({ ...prev, [field]: e.target.value }))
+    const { value } = e.target
+    setForm((prev) => ({ ...prev, [field]: value }))
+    limpiarError(field)
   }
 
   // Modificado sutilmente para aceptar cambios directos de estado de botones customizados
   const handleDirectChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }))
+    limpiarError(field)
   }
 
-  const handleInquilinoChange = (e) => {
-    const inquilinoId = e.target.value
-    const contrato = buscarContratoActivoPorInquilino(contratos, inquilinoId)
+  const seleccionarInquilino = (inquilinoId) => {
+    const activos = contratosActivosPorInquilino(contratos, inquilinoId)
+    // Si tiene un único contrato activo, se asocia automáticamente.
+    // Si tiene varios, queda vacío hasta que el admin elija la propiedad.
+    const unico = activos.length === 1 ? activos[0] : null
 
     setForm((prev) => ({
       ...prev,
-      inquilino_id: inquilinoId,
-      propiedad_id: contrato ? String(contrato.propiedad_id) : '',
+      inquilino_id: String(inquilinoId ?? ''),
+      propiedad_id: unico ? String(unico.propiedad_id) : '',
+      contrato_id: unico ? String(unico.id) : '',
       estado: 'Pendiente',
     }))
+    setErrores((prev) => {
+      const siguiente = { ...prev }
+      delete siguiente.inquilino_id
+      if (unico) delete siguiente.propiedad_id
+      return siguiente
+    })
+  }
+
+  const handleSelectInquilino = (inquilino) => {
+    seleccionarInquilino(inquilino.id)
+    setPickerOpen(false)
+  }
+
+  const limpiarInquilino = () => {
+    setForm((prev) => ({
+      ...prev,
+      inquilino_id: '',
+      propiedad_id: '',
+      contrato_id: '',
+    }))
+  }
+
+  const handleContratoChange = (e) => {
+    const contratoId = e.target.value
+    const contrato = contratosDelInquilino.find((c) => String(c.id) === String(contratoId))
+    setForm((prev) => ({
+      ...prev,
+      contrato_id: contratoId,
+      propiedad_id: contrato ? String(contrato.propiedad_id) : '',
+    }))
+    limpiarError('propiedad_id')
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    const ok = await onSubmit(form)
+
+    const erroresValidacion = validarReclamoAdmin(form)
+
+    // Al editar, no se puede retroceder de estado.
+    if (esEdicion && !esTransicionEstadoValida(estadoOriginal, form.estado)) {
+      erroresValidacion.estado = 'No se puede volver a un estado anterior.'
+    }
+
+    if (!sinErrores(erroresValidacion)) {
+      setErrores(erroresValidacion)
+      return
+    }
+
+    setErrores({})
+    const payload = {
+      ...form,
+      titulo: form.titulo.trim(),
+      descripcion: form.descripcion.trim(),
+    }
+    const ok = await onSubmit(payload)
     if (ok) onClose()
   }
 
@@ -107,7 +234,7 @@ export default function ReclamoFormModal({
   const formDeshabilitado = esEdicion ? false : formDeshabilitadoCrear
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       {/* Backdrop de cierre */}
       <button
         type="button"
@@ -117,14 +244,14 @@ export default function ReclamoFormModal({
       />
 
       {/* Contenedor principal del modal */}
-      <div className="relative z-10 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl">
+      <div className="relative z-10 flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl">
         <AdminFormModalHeader title={esEdicion ? 'Editar Reclamo' : 'Nuevo Reclamo'} />
 
         <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
-          <div className="custom-scrollbar flex-1 space-y-5 overflow-y-auto p-6">
+          <div className="custom-scrollbar flex-1 space-y-4 overflow-y-auto p-5">
             
             {/* SECCIÓN: INQUILINO Y PROPIEDAD VINCULADA */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <div className="flex flex-col gap-4">
               {/* INQUILINO */}
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="inquilino_id" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
@@ -144,28 +271,54 @@ export default function ReclamoFormModal({
                   <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 border border-amber-200">
                     No hay inquilinos con contrato activo.
                   </p>
+                ) : inquilinoSeleccionado ? (
+                  <>
+                    <div className={displayBarClass}>
+                      <span className="truncate text-slate-900">{inquilinoSeleccionado.nombre_completo}</span>
+                      <button
+                        type="button"
+                        onClick={limpiarInquilino}
+                        className="shrink-0 rounded-md p-0.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                        aria-label="Quitar inquilino seleccionado"
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDetalleInquilinoOpen(true)}
+                      className={`mt-1 self-start ${verDetalleLinkClass}`}
+                    >
+                      Ver detalle del inquilino
+                    </button>
+                  </>
                 ) : (
-                  <select
-                    id="inquilino_id"
-                    required
-                    value={form.inquilino_id}
-                    onChange={handleInquilinoChange}
-                    className={inputClass}
+                  <button
+                    type="button"
+                    onClick={() => setPickerOpen(true)}
+                    className={`flex items-center justify-between gap-2 ${inputClass} text-left`}
                   >
-                    <option value="">Seleccioná un inquilino</option>
-                    {inquilinosElegibles.map((i) => (
-                      <option key={i.id} value={i.id}>
-                        {i.nombre_completo}
-                      </option>
-                    ))}
-                  </select>
+                    <span className="text-slate-400">Seleccioná un inquilino</span>
+                    <svg
+                      className="h-4 w-4 shrink-0 text-slate-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </button>
                 )}
+                <MensajeError>{errores.inquilino_id}</MensajeError>
               </div>
 
-              {/* PROPIEDAD VINCULADA */}
+              {/* PROPIEDAD DEL RECLAMO */}
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="propiedad_vinculada" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Propiedad vinculada
+                  Propiedad del Reclamo
                 </label>
                 {esEdicion ? (
                   <input
@@ -190,15 +343,51 @@ export default function ReclamoFormModal({
                   <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 border border-amber-200">
                     Este inquilino no tiene un contrato activo.
                   </p>
+                ) : multiplesContratos ? (
+                  <>
+                    <select
+                      id="propiedad_vinculada"
+                      required
+                      value={form.contrato_id}
+                      onChange={handleContratoChange}
+                      className={inputClass}
+                    >
+                      <option value="">Seleccioná una propiedad</option>
+                      {contratosDelInquilino.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.propiedades?.direccion ?? `Contrato #${c.id}`}
+                        </option>
+                      ))}
+                    </select>
+                    {form.propiedad_id && propiedadSeleccionada && (
+                      <button
+                        type="button"
+                        onClick={() => setDetallePropiedadOpen(true)}
+                        className={`mt-1 self-start ${verDetalleLinkClass}`}
+                      >
+                        Ver detalle de la propiedad
+                      </button>
+                    )}
+                  </>
                 ) : (
-                  <input
-                    id="propiedad_vinculada"
-                    type="text"
-                    readOnly
-                    value={contratoVinculado?.propiedades?.direccion ?? '—'}
-                    className={readOnlyClass}
-                  />
+                  <>
+                    <div className={displayBarClass}>
+                      <span className="truncate text-slate-700">
+                        {contratoVinculado?.propiedades?.direccion ?? '—'}
+                      </span>
+                    </div>
+                    {propiedadSeleccionada && (
+                      <button
+                        type="button"
+                        onClick={() => setDetallePropiedadOpen(true)}
+                        className={`mt-1 self-start ${verDetalleLinkClass}`}
+                      >
+                        Ver detalle de la propiedad
+                      </button>
+                    )}
+                  </>
                 )}
+                <MensajeError>{errores.propiedad_id}</MensajeError>
               </div>
             </div>
 
@@ -211,12 +400,15 @@ export default function ReclamoFormModal({
                 id="titulo"
                 type="text"
                 required
+                maxLength={RECLAMO_LIMITES.TITULO_MAX}
                 value={form.titulo}
                 onChange={handleChange('titulo')}
-                className={inputClass}
+                className={`${inputClass} ${errores.titulo ? inputErrorClass : ''}`}
                 placeholder="Ej: Pérdida de presión de agua"
                 disabled={formDeshabilitado}
+                aria-invalid={Boolean(errores.titulo)}
               />
+              <MensajeError>{errores.titulo}</MensajeError>
             </div>
 
             {/* DESCRIPCIÓN */}
@@ -227,13 +419,21 @@ export default function ReclamoFormModal({
               <textarea
                 id="descripcion"
                 required
-                rows={3}
+                rows={2}
+                maxLength={RECLAMO_LIMITES.DESCRIPCION_MAX}
                 value={form.descripcion}
                 onChange={handleChange('descripcion')}
-                className={`${inputClass} resize-none`}
+                className={`${inputClass} resize-none ${errores.descripcion ? inputErrorClass : ''}`}
                 placeholder="Describí el problema con precisión..."
                 disabled={formDeshabilitado}
+                aria-invalid={Boolean(errores.descripcion)}
               />
+              <div className="flex items-center justify-between gap-2">
+                <MensajeError>{errores.descripcion}</MensajeError>
+                <span className="ml-auto text-[11px] text-slate-400">
+                  {form.descripcion.length}/{RECLAMO_LIMITES.DESCRIPCION_MAX}
+                </span>
+              </div>
             </div>
 
            
@@ -262,66 +462,73 @@ export default function ReclamoFormModal({
                   )
                 })}
               </div>
+              <MensajeError>{errores.categoria}</MensajeError>
             </div>
 
-            
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                Prioridad asignada
-              </label>
-              <div className="flex rounded-xl bg-slate-100 p-1 border border-slate-200">
-                {prioridades.map((prio) => {
-                  const esSeleccionado = form.prioridad === prio
-                  let estiloActivo = 'bg-white text-slate-900 shadow-sm font-semibold'
-                  
-                  if (esSeleccionado && prio === 'Urgente') estiloActivo = 'bg-red-500 text-white shadow-sm font-semibold'
-                  if (esSeleccionado && prio === 'Alta') estiloActivo = 'bg-amber-500 text-white shadow-sm font-semibold'
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  Prioridad asignada
+                </label>
+                <div className="flex rounded-xl bg-slate-100 p-1 border border-slate-200">
+                  {prioridades.map((prio) => {
+                    const esSeleccionado = form.prioridad === prio
+                    const estiloActivo =
+                      COLOR_PRIORIDAD_ACTIVA[prio] ?? 'bg-white text-slate-900 shadow-sm font-semibold'
 
-                  return (
-                    <button
-                      key={prio}
-                      type="button"
-                      disabled={formDeshabilitado}
-                      onClick={() => handleDirectChange('prioridad', prio)}
-                      className={`flex-1 rounded-lg py-1.5 text-center text-xs transition-all duration-150 ${
-                        esSeleccionado ? estiloActivo : 'text-slate-600 hover:text-slate-900 disabled:opacity-50'
-                      }`}
-                    >
-                      {prio}
-                    </button>
-                  )
-                })}
+                    return (
+                      <button
+                        key={prio}
+                        type="button"
+                        disabled={formDeshabilitado}
+                        onClick={() => handleDirectChange('prioridad', prio)}
+                        className={`flex-1 rounded-lg py-1.5 text-center text-xs transition-all duration-150 ${
+                          esSeleccionado ? estiloActivo : 'text-slate-600 hover:text-slate-900 disabled:opacity-50'
+                        }`}
+                      >
+                        {prio}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
 
-            {/* ESTADO (Solo editable si es edición de reclamo) */}
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="estado" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                Estado del Reclamo
-              </label>
-              {esEdicion ? (
-                <select
-                  id="estado"
-                  required
-                  value={form.estado}
-                  onChange={handleChange('estado')}
-                  className={inputClass}
-                >
-                  {estados.map((estado) => (
-                    <option key={estado} value={estado}>
-                      {estado}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  id="estado"
-                  type="text"
-                  readOnly
-                  value="Pendiente"
-                  className={readOnlyClass}
-                />
-              )}
+              {/* ESTADO (Solo editable si es edición de reclamo) */}
+              <div className="flex flex-col gap-2">
+                <label htmlFor="estado" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  Estado del Reclamo
+                </label>
+                {esEdicion ? (
+                  <>
+                    <select
+                      id="estado"
+                      required
+                      value={form.estado}
+                      onChange={handleChange('estado')}
+                      className={`${inputClass} ${errores.estado ? inputErrorClass : ''}`}
+                      aria-invalid={Boolean(errores.estado)}
+                    >
+                      {opcionesEstado.map((estado) => {
+                        const deshabilitado = !esTransicionEstadoValida(estadoOriginal, estado)
+                        return (
+                          <option key={estado} value={estado} disabled={deshabilitado}>
+                            {ESTADO_LABEL[estado] ?? estado}
+                          </option>
+                        )
+                      })}
+                    </select>
+                    <MensajeError>{errores.estado}</MensajeError>
+                  </>
+                ) : (
+                  <input
+                    id="estado"
+                    type="text"
+                    readOnly
+                    value="Pendiente"
+                    className={readOnlyClass}
+                  />
+                )}
+              </div>
             </div>
 
             {/* ERRORES DE SUBMIT */}
@@ -355,6 +562,31 @@ export default function ReclamoFormModal({
 
         </form>
       </div>
+
+      {!esEdicion && (
+        <InquilinoPickerModal
+          open={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          onSelect={handleSelectInquilino}
+          inquilinos={inquilinosElegibles}
+          contratos={contratos}
+          selectedId={form.inquilino_id}
+        />
+      )}
+
+      <InquilinoDetalleModal
+        open={detalleInquilinoOpen}
+        inquilino={inquilinoSeleccionado}
+        onClose={() => setDetalleInquilinoOpen(false)}
+        apilado
+      />
+
+      <PropiedadDetalleModal
+        open={detallePropiedadOpen}
+        propiedad={propiedadSeleccionada}
+        onClose={() => setDetallePropiedadOpen(false)}
+        apilado
+      />
     </div>
   )
 }

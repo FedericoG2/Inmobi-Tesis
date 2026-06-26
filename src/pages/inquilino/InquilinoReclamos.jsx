@@ -8,6 +8,7 @@ import {
   PILL_SOLID_CLASS,
   PRIORIDADES_RECLAMO,
 } from '../../utils/reclamosUi'
+import { RECLAMO_LIMITES } from '../../utils/validarReclamo'
 
 const estadoStyles = {
   Pendiente: { bg: 'bg-amber-100', text: 'text-amber-700' },
@@ -91,6 +92,7 @@ export default function InquilinoReclamos() {
       ok = await crearReclamo({
         ...form,
         propiedad_id: contratoActivo?.propiedad_id ?? null,
+        contrato_id: contratoActivo?.id ?? null,
       })
     }
     if (ok) cerrarForm()
@@ -340,7 +342,7 @@ export default function InquilinoReclamos() {
                 <input
                   type="text"
                   required
-                  maxLength={100}
+                  maxLength={RECLAMO_LIMITES.TITULO_MAX}
                   value={form.titulo}
                   onChange={handleChange('titulo')}
                   className={inputClass}
@@ -355,7 +357,7 @@ export default function InquilinoReclamos() {
                 </label>
                 <textarea
                   required
-                  maxLength={500}
+                  maxLength={RECLAMO_LIMITES.DESCRIPCION_MAX}
                   rows={4}
                   value={form.descripcion}
                   onChange={handleChange('descripcion')}

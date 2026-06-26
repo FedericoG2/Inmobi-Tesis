@@ -38,6 +38,7 @@ export function useReclamos() {
       const { error: createError } = await crearReclamo({
         inquilino_id: Number(datos.inquilino_id),
         propiedad_id: Number(datos.propiedad_id),
+        contrato_id: datos.contrato_id ? Number(datos.contrato_id) : null,
         titulo: datos.titulo,
         descripcion: datos.descripcion,
         categoria: datos.categoria,

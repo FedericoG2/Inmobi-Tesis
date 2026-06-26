@@ -18,6 +18,7 @@ import ReclamoFormModal from '../../components/admin/forms/ReclamoFormModal'
 import TableRowActions from '../../components/admin/TableRowActions'
 import { useInquilinos } from '../../hooks/useInquilinos'
 import { useContratos } from '../../hooks/useContratos'
+import { usePropiedades } from '../../hooks/usePropiedades'
 import { useReclamos } from '../../hooks/useReclamos'
 import {
   badgeCategoria,
@@ -97,6 +98,7 @@ export default function AdminReclamos() {
  
   const { inquilinos, loading: inquilinosLoading } = useInquilinos()
   const { contratos, loading: contratosLoading } = useContratos()
+  const { propiedades } = usePropiedades()
 
   const cantidadUrgentes = (reclamos || []).filter(
     r => r.prioridad === 'Urgente' && r.estado !== 'Resuelto'
@@ -361,6 +363,7 @@ export default function AdminReclamos() {
         inquilinosLoading={inquilinosLoading}
         contratos={contratos}
         contratosLoading={contratosLoading}
+        propiedades={propiedades}
       />
 
       <AdminConfirmModal

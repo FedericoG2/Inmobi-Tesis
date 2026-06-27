@@ -29,6 +29,11 @@ const THEMES = {
     iconColor: 'text-slate-600',
     valueColor: 'text-slate-700',
   },
+  red: {
+    iconBg: 'bg-red-100',
+    iconColor: 'text-red-600',
+    valueColor: 'text-red-700',
+  },
 }
 
 function IconBuilding({ className }) {
@@ -91,12 +96,38 @@ function IconCalendar({ className }) {
   )
 }
 
+function IconAlert({ className }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
+      />
+    </svg>
+  )
+}
+
+function IconCheckCircle({ className }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+      />
+    </svg>
+  )
+}
+
 const ICONS = {
   building: IconBuilding,
   chart: IconChart,
   clipboard: IconClipboard,
   wrench: IconWrench,
   calendar: IconCalendar,
+  alert: IconAlert,
+  check: IconCheckCircle,
 }
 
 export default function StatCard({ label, value, icon, theme = 'indigo', hint }) {

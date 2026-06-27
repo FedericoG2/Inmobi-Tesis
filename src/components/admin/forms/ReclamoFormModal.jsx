@@ -1,27 +1,24 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@tremor/react'
 import AdminFormModalHeader from '../AdminFormModalHeader'
 import InquilinoPickerModal from './InquilinoPickerModal'
 import InquilinoDetalleModal from '../InquilinoDetalleModal'
 import PropiedadDetalleModal from '../PropiedadDetalleModal'
+import { subirAdjuntoReclamo, validarImagenReclamo } from '../../../services/documentosService'
 import {
   buscarContratoActivoPorInquilino,
   contratosActivosPorInquilino,
   inquilinosConContratoActivo,
 } from '../../../utils/contratoActivo'
 import { CATEGORIAS_RECLAMO, PRIORIDADES_RECLAMO } from '../../../utils/reclamosUi'
-import {
-  ESTADO_LABEL,
-  FLUJO_ESTADOS,
-  RECLAMO_LIMITES,
-  esTransicionEstadoValida,
-  sinErrores,
-  validarReclamoAdmin,
-} from '../../../utils/validarReclamo'
+import { RECLAMO_LIMITES, sinErrores, validarReclamoAdmin } from '../../../utils/validarReclamo'
 
 // Mapeo estético para mantener tus strings exactos de categoría pero con íconos visuales
 const CATEGORIAS_OPTIONS = CATEGORIAS_RECLAMO
 const prioridades = PRIORIDADES_RECLAMO
+
+// Tope de imágenes por reclamo (cada una se valida a 10 MB en el service).
+const MAX_IMAGENES = 5
 
 // Color del botón activo según la prioridad seleccionada
 const COLOR_PRIORIDAD_ACTIVA = {
@@ -37,7 +34,6 @@ const formInicial = {
   contrato_id: '',
   titulo: '',
   descripcion: '',
-  estado: 'Pendiente',
   prioridad: 'Media',
   categoria: 'Plomeria', 
 }
@@ -62,6 +58,18 @@ function MensajeError({ children }) {
   return <p className="text-xs font-medium text-red-600">{children}</p>
 }
 
+function IconInfo({ className = 'h-4 w-4' }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M11.25 11.25l.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
+      />
+    </svg>
+  )
+}
+
 function formDesdeReclamo(reclamo) {
   return {
     inquilino_id: String(reclamo.inquilino_id ?? ''),
@@ -69,7 +77,6 @@ function formDesdeReclamo(reclamo) {
     contrato_id: String(reclamo.contrato_id ?? ''),
     titulo: reclamo.titulo ?? '',
     descripcion: reclamo.descripcion ?? '',
-    estado: reclamo.estado ?? 'Pendiente',
     prioridad: reclamo.prioridad ?? 'Media',
     categoria: reclamo.categoria ?? 'Plomeria', 
   }
@@ -93,11 +100,14 @@ export default function ReclamoFormModal({
   const [pickerOpen, setPickerOpen] = useState(false)
   const [detalleInquilinoOpen, setDetalleInquilinoOpen] = useState(false)
   const [detallePropiedadOpen, setDetallePropiedadOpen] = useState(false)
+  const [imagenes, setImagenes] = useState([])
+  const [imagenesError, setImagenesError] = useState(null)
+  const [subiendoImagenes, setSubiendoImagenes] = useState(false)
+  // Una vez guardado el reclamo en este intento, recordamos su destino para que
+  // un reintento de subida no vuelva a crear/actualizar el reclamo.
+  const [guardado, setGuardado] = useState(null)
+  const imagenInputRef = useRef(null)
   const esEdicion = Boolean(reclamo)
-
-  // Al editar, solo se puede avanzar el estado (no retroceder).
-  const estadoOriginal = reclamo?.estado ?? 'Pendiente'
-  const opcionesEstado = FLUJO_ESTADOS
 
   const inquilinosElegibles = useMemo(
     () => inquilinosConContratoActivo(inquilinos, contratos),
@@ -121,14 +131,29 @@ export default function ReclamoFormModal({
     [propiedades, form.propiedad_id]
   )
 
+  const previews = useMemo(
+    () => imagenes.map((file) => ({ file, url: URL.createObjectURL(file) })),
+    [imagenes]
+  )
+
+  useEffect(() => () => previews.forEach((p) => URL.revokeObjectURL(p.url)), [previews])
+
   useEffect(() => {
     if (!open) {
       setForm(formInicial)
       setErrores({})
+      setImagenes([])
+      setImagenesError(null)
+      setSubiendoImagenes(false)
+      setGuardado(null)
       return
     }
     setForm(esEdicion ? formDesdeReclamo(reclamo) : formInicial)
     setErrores({})
+    setImagenes([])
+    setImagenesError(null)
+    setSubiendoImagenes(false)
+    setGuardado(null)
   }, [open, reclamo, esEdicion])
 
   if (!open) return null
@@ -165,7 +190,6 @@ export default function ReclamoFormModal({
       inquilino_id: String(inquilinoId ?? ''),
       propiedad_id: unico ? String(unico.propiedad_id) : '',
       contrato_id: unico ? String(unico.id) : '',
-      estado: 'Pendiente',
     }))
     setErrores((prev) => {
       const siguiente = { ...prev }
@@ -200,15 +224,41 @@ export default function ReclamoFormModal({
     limpiarError('propiedad_id')
   }
 
+  const handleAgregarImagenes = (event) => {
+    const files = Array.from(event.target.files ?? [])
+    if (event.target) event.target.value = ''
+    if (files.length === 0) return
+
+    setImagenesError(null)
+    const aceptadas = []
+    for (const file of files) {
+      const validacion = validarImagenReclamo(file)
+      if (validacion.error) {
+        setImagenesError(validacion.error.message)
+        continue
+      }
+      aceptadas.push(file)
+    }
+
+    setImagenes((prev) => {
+      const combinado = [...prev, ...aceptadas]
+      if (combinado.length > MAX_IMAGENES) {
+        setImagenesError(`Podés adjuntar hasta ${MAX_IMAGENES} imágenes.`)
+        return combinado.slice(0, MAX_IMAGENES)
+      }
+      return combinado
+    })
+  }
+
+  const quitarImagen = (index) => {
+    setImagenes((prev) => prev.filter((_, i) => i !== index))
+    setImagenesError(null)
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
 
     const erroresValidacion = validarReclamoAdmin(form)
-
-    // Al editar, no se puede retroceder de estado.
-    if (esEdicion && !esTransicionEstadoValida(estadoOriginal, form.estado)) {
-      erroresValidacion.estado = 'No se puede volver a un estado anterior.'
-    }
 
     if (!sinErrores(erroresValidacion)) {
       setErrores(erroresValidacion)
@@ -216,13 +266,56 @@ export default function ReclamoFormModal({
     }
 
     setErrores({})
-    const payload = {
-      ...form,
-      titulo: form.titulo.trim(),
-      descripcion: form.descripcion.trim(),
+
+    // 1) Guardar el reclamo (solo si todavía no se guardó en este intento).
+    let destino = guardado
+    if (!destino) {
+      const payload = {
+        ...form,
+        titulo: form.titulo.trim(),
+        descripcion: form.descripcion.trim(),
+      }
+      const resultado = await onSubmit(payload)
+      if (!resultado) return
+
+      destino = esEdicion
+        ? { id: reclamo.id, propiedad_id: reclamo.propiedad_id }
+        : {
+            id: resultado.id,
+            propiedad_id: resultado.propiedad_id ?? Number(form.propiedad_id),
+          }
+      setGuardado(destino)
     }
-    const ok = await onSubmit(payload)
-    if (ok) onClose()
+
+    // 2) Subir imágenes (best-effort). Si alguna falla, queda para reintentar
+    //    sin volver a crear/actualizar el reclamo.
+    if (imagenes.length === 0) {
+      onClose()
+      return
+    }
+
+    setSubiendoImagenes(true)
+    setImagenesError(null)
+    const fallidas = []
+    for (const file of imagenes) {
+      const { error } = await subirAdjuntoReclamo({
+        reclamoId: destino.id,
+        propiedadId: destino.propiedad_id,
+        archivo: file,
+      })
+      if (error) fallidas.push(file)
+    }
+    setSubiendoImagenes(false)
+
+    if (fallidas.length > 0) {
+      setImagenes(fallidas)
+      setImagenesError(
+        `No se pudieron subir ${fallidas.length} imagen(es). Tocá "Reintentar" para volver a intentarlo.`
+      )
+      return
+    }
+
+    onClose()
   }
 
   const sinInquilinosElegibles = !inquilinosLoading && inquilinosElegibles.length === 0
@@ -244,7 +337,7 @@ export default function ReclamoFormModal({
       />
 
       {/* Contenedor principal del modal */}
-      <div className="relative z-10 flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl">
+      <div className="relative z-10 flex max-h-[96vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl">
         <AdminFormModalHeader title={esEdicion ? 'Editar Reclamo' : 'Nuevo Reclamo'} />
 
         <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
@@ -436,6 +529,59 @@ export default function ReclamoFormModal({
               </div>
             </div>
 
+            {/* IMÁGENES (OPCIONAL) */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+                Imágenes{' '}
+                <span className="font-normal normal-case text-slate-400">
+                  (opcional · hasta {MAX_IMAGENES})
+                </span>
+              </label>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                {previews.map((p, idx) => (
+                  <div
+                    key={p.url}
+                    className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
+                  >
+                    <img src={p.url} alt={p.file.name} className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => quitarImagen(idx)}
+                      disabled={subiendoImagenes}
+                      aria-label={`Quitar ${p.file.name}`}
+                      className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-md bg-white/90 text-red-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-red-50 disabled:opacity-60"
+                    >
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+                {imagenes.length < MAX_IMAGENES && (
+                  <button
+                    type="button"
+                    onClick={() => imagenInputRef.current?.click()}
+                    disabled={formDeshabilitado || subiendoImagenes}
+                    className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 transition hover:border-indigo-400 hover:text-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    <span className="text-[11px] font-medium">Agregar</span>
+                  </button>
+                )}
+              </div>
+              <input
+                ref={imagenInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                multiple
+                className="hidden"
+                onChange={handleAgregarImagenes}
+              />
+              <MensajeError>{imagenesError}</MensajeError>
+            </div>
+
            
             <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
@@ -465,71 +611,42 @@ export default function ReclamoFormModal({
               <MensajeError>{errores.categoria}</MensajeError>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Prioridad asignada
-                </label>
-                <div className="flex rounded-xl bg-slate-100 p-1 border border-slate-200">
-                  {prioridades.map((prio) => {
-                    const esSeleccionado = form.prioridad === prio
-                    const estiloActivo =
-                      COLOR_PRIORIDAD_ACTIVA[prio] ?? 'bg-white text-slate-900 shadow-sm font-semibold'
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Prioridad asignada
+              </label>
+              <div className="flex rounded-xl bg-slate-100 p-1 border border-slate-200">
+                {prioridades.map((prio) => {
+                  const esSeleccionado = form.prioridad === prio
+                  const estiloActivo =
+                    COLOR_PRIORIDAD_ACTIVA[prio] ?? 'bg-white text-slate-900 shadow-sm font-semibold'
 
-                    return (
-                      <button
-                        key={prio}
-                        type="button"
-                        disabled={formDeshabilitado}
-                        onClick={() => handleDirectChange('prioridad', prio)}
-                        className={`flex-1 rounded-lg py-1.5 text-center text-xs transition-all duration-150 ${
-                          esSeleccionado ? estiloActivo : 'text-slate-600 hover:text-slate-900 disabled:opacity-50'
-                        }`}
-                      >
-                        {prio}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* ESTADO (Solo editable si es edición de reclamo) */}
-              <div className="flex flex-col gap-2">
-                <label htmlFor="estado" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Estado del Reclamo
-                </label>
-                {esEdicion ? (
-                  <>
-                    <select
-                      id="estado"
-                      required
-                      value={form.estado}
-                      onChange={handleChange('estado')}
-                      className={`${inputClass} ${errores.estado ? inputErrorClass : ''}`}
-                      aria-invalid={Boolean(errores.estado)}
+                  return (
+                    <button
+                      key={prio}
+                      type="button"
+                      disabled={formDeshabilitado}
+                      onClick={() => handleDirectChange('prioridad', prio)}
+                      className={`flex-1 rounded-lg py-1.5 text-center text-xs transition-all duration-150 ${
+                        esSeleccionado ? estiloActivo : 'text-slate-600 hover:text-slate-900 disabled:opacity-50'
+                      }`}
                     >
-                      {opcionesEstado.map((estado) => {
-                        const deshabilitado = !esTransicionEstadoValida(estadoOriginal, estado)
-                        return (
-                          <option key={estado} value={estado} disabled={deshabilitado}>
-                            {ESTADO_LABEL[estado] ?? estado}
-                          </option>
-                        )
-                      })}
-                    </select>
-                    <MensajeError>{errores.estado}</MensajeError>
-                  </>
-                ) : (
-                  <input
-                    id="estado"
-                    type="text"
-                    readOnly
-                    value="Pendiente"
-                    className={readOnlyClass}
-                  />
-                )}
+                      {prio}
+                    </button>
+                  )
+                })}
               </div>
             </div>
+
+            {esEdicion && (
+              <div className="flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
+                <IconInfo className="mt-0.5 h-4 w-4 shrink-0 text-sky-500" />
+                <p>
+                  La gestión de los estados del reclamo y el seguimiento se hace desde la
+                  funcionalidad <span className="font-semibold">Gestionar</span>.
+                </p>
+              </div>
+            )}
 
             {/* ERRORES DE SUBMIT */}
             {submitError && (
@@ -545,18 +662,18 @@ export default function ReclamoFormModal({
               type="button" 
               variant="secondary" 
               onClick={onClose} 
-              disabled={submitting}
+              disabled={submitting || subiendoImagenes}
               className="rounded-xl"
             >
-              Cancelar
+              {guardado ? 'Cerrar' : 'Cancelar'}
             </Button>
             <Button 
               type="submit" 
-              loading={submitting} 
-              disabled={submitting || formDeshabilitado}
+              loading={submitting || subiendoImagenes} 
+              disabled={submitting || subiendoImagenes || formDeshabilitado}
               className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-sm shadow-indigo-100"
             >
-              {esEdicion ? 'Guardar cambios' : 'Guardar'}
+              {guardado ? 'Reintentar' : esEdicion ? 'Guardar cambios' : 'Guardar'}
             </Button>
           </div>
 

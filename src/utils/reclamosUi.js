@@ -44,6 +44,14 @@ export function badgeCategoria(categoria) {
   }
 }
 
+const CATEGORIA_INFO = Object.fromEntries(CATEGORIAS_RECLAMO.map((c) => [c.id, c]))
+
+/** Devuelve { id, label, icon } de la categoría (mismo set que el formulario). */
+export function infoCategoria(categoria) {
+  if (!categoria) return null
+  return CATEGORIA_INFO[categoria] ?? { id: categoria, label: categoria, icon: '🛠️' }
+}
+
 export function badgePrioridad(prioridad) {
   if (!prioridad) return null
   return BADGE_PRIORIDAD[prioridad] ?? {

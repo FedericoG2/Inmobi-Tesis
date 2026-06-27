@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Button } from '@tremor/react'
 import { detalleCalculoAumento, formatPeriodoIpc, hoyIsoLocal } from '../../utils/aumentosUi'
 
@@ -156,14 +157,68 @@ export default function AumentoDetalleModal({
   propuesta,
   onClose,
   onConfirmar,
+  onVerHistorial,
+  onVerComprobante,
   confirmando = false,
   revisado = false,
   onToggleRevisado,
 }) {
+  const detalleTmp = propuesta ? detalleCalculoAumento(propuesta, hoyIsoLocal()) : null
+  const montoSugerido = detalleTmp?.ui?.montoMostrar ?? null
+
+  const [montoEditado, setMontoEditado] = useState('')
+  const [notas, setNotas] = useState('')
+  const [editando, setEditando] = useState(false)
+
+  useEffect(() => {
+    if (open && propuesta) {
+      setMontoEditado(montoSugerido != null ? String(Math.round(Number(montoSugerido))) : '')
+      setNotas('')
+      setEditando(false)
+    }
+  }, [open, propuesta?.contrato_id, montoSugerido])
+
   if (!open || !propuesta) return null
 
-  const detalle = detalleCalculoAumento(propuesta, hoyIsoLocal())
+  const detalle = detalleTmp
   const { ui, badge, periodo, formula, advertencia } = detalle
+
+  const montoNum =
+    montoEditado === '' || Number.isNaN(Number(montoEditado)) ? null : Number(montoEditado)
+  const montoValido = montoNum != null && montoNum >= 0
+  const esManual =
+    montoValido && montoSugerido != null && Math.round(montoNum) !== Math.round(Number(montoSugerido))
+
+  const variacionEditada =
+    montoValido && detalle.montoActual != null && Number(detalle.montoActual) > 0
+      ? Math.round(((montoNum / Number(detalle.montoActual)) - 1) * 10000) / 100
+      : detalle.variacionPct
+
+  const redondear = (multiplo) => {
+    const base = montoValido ? montoNum : montoSugerido
+    if (base == null) return
+    setEditando(true)
+    setMontoEditado(String(Math.round(Number(base) / multiplo) * multiplo))
+  }
+
+  const cancelarEdicion = () => {
+    setEditando(false)
+    setMontoEditado(montoSugerido != null ? String(Math.round(Number(montoSugerido))) : '')
+  }
+
+  const estaConfirmado = Boolean(propuesta.ya_acordado || propuesta.ya_aplicado)
+
+  const handleConfirmar = () => {
+    if (!onConfirmar) return
+    const propuestaFinal = {
+      ...propuesta,
+      monto_propuesto: montoValido ? montoNum : propuesta.monto_propuesto,
+      variacion_pct: variacionEditada,
+      modo: esManual ? 'manual' : propuesta.modo ?? 'calculado',
+      notas: notas.trim() || null,
+    }
+    onConfirmar(propuestaFinal)
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -211,23 +266,110 @@ export default function AumentoDetalleModal({
             </div>
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 px-4 py-3">
               <p className="text-xs font-medium text-emerald-700">Monto ajustado</p>
-              <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-800">
-                {ui.montoMostrar == null ? (
-                  '—'
-                ) : (
-                  <>
-                    {ui.montoEsAproximado ? '~' : ''}
-                    {formatMonto(ui.montoMostrar)}
-                  </>
-                )}
-              </p>
-              {detalle.variacionPct != null && (
-                <p className="text-xs font-medium tabular-nums text-emerald-600">
-                  (+{detalle.variacionPct}%)
-                </p>
+              {ui.puedeConfirmar && editando ? (
+                <>
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <span className="text-sm font-semibold text-emerald-700">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      inputMode="numeric"
+                      value={montoEditado}
+                      onChange={(e) => setMontoEditado(e.target.value)}
+                      disabled={confirmando}
+                      className="w-full rounded-lg border border-emerald-200 bg-white px-2 py-1 text-lg font-semibold tabular-nums text-emerald-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 disabled:opacity-50"
+                    />
+                  </div>
+                  {variacionEditada != null && (
+                    <p className="mt-1 text-xs font-medium tabular-nums text-emerald-600">
+                      (+{variacionEditada}%)
+                    </p>
+                  )}
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => redondear(1000)}
+                      disabled={confirmando}
+                      className="rounded-md border border-emerald-200 bg-white px-2 py-0.5 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-50"
+                    >
+                      Redondear al mil
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => redondear(100)}
+                      disabled={confirmando}
+                      className="rounded-md border border-emerald-200 bg-white px-2 py-0.5 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-50"
+                    >
+                      A la centena
+                    </button>
+                    <button
+                      type="button"
+                      onClick={cancelarEdicion}
+                      disabled={confirmando}
+                      className="rounded-md px-2 py-0.5 text-[11px] font-medium text-slate-500 underline-offset-2 transition hover:underline disabled:opacity-50"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                  {montoSugerido != null && (
+                    <p className="mt-1.5 text-[11px] text-slate-500">
+                      {esManual ? 'Monto manual · ' : ''}Sugerido: {ui.montoEsAproximado ? '~' : ''}
+                      {formatMonto(Math.round(Number(montoSugerido)))}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-800">
+                    {ui.montoMostrar == null ? (
+                      '—'
+                    ) : (
+                      <>
+                        {ui.montoEsAproximado ? '~' : ''}
+                        {formatMonto(montoValido ? montoNum : ui.montoMostrar)}
+                      </>
+                    )}
+                  </p>
+                  {variacionEditada != null && (
+                    <p className="text-xs font-medium tabular-nums text-emerald-600">
+                      (+{variacionEditada}%)
+                    </p>
+                  )}
+                  {ui.puedeConfirmar && (
+                    <button
+                      type="button"
+                      onClick={() => setEditando(true)}
+                      disabled={confirmando}
+                      className="mt-2 inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-white px-2 py-0.5 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-50"
+                    >
+                      Editar o redondear monto
+                    </button>
+                  )}
+                  {ui.puedeConfirmar && esManual && (
+                    <span className="ml-2 text-[11px] font-medium text-amber-600">Monto manual</span>
+                  )}
+                </>
               )}
             </div>
           </div>
+
+          {ui.puedeConfirmar && (
+            <div className="mt-4 rounded-xl border border-slate-200 px-4 py-3">
+              <label htmlFor="aumento-notas" className="mb-1.5 block">
+                <SeccionTitulo>Notas (opcional)</SeccionTitulo>
+              </label>
+              <textarea
+                id="aumento-notas"
+                rows={2}
+                value={notas}
+                onChange={(e) => setNotas(e.target.value)}
+                disabled={confirmando}
+                placeholder="Aclaraciones del aumento (ej.: monto pactado, redondeo acordado con el inquilino…)"
+                className="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:opacity-50"
+              />
+            </div>
+          )}
 
           <div className="mt-4 grid gap-x-6 gap-y-2 rounded-xl border border-slate-200 px-4 py-3 sm:grid-cols-2">
             <Dato
@@ -268,8 +410,20 @@ export default function AumentoDetalleModal({
         </div>
 
         <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-3">
+          <div className="mr-auto flex items-center gap-2">
+            {onVerHistorial && (
+              <Button variant="light" onClick={() => onVerHistorial(propuesta)} disabled={confirmando}>
+                Ver historial
+              </Button>
+            )}
+            {estaConfirmado && onVerComprobante && (
+              <Button variant="light" onClick={() => onVerComprobante(propuesta)} disabled={confirmando}>
+                Ver comprobante
+              </Button>
+            )}
+          </div>
           {ui.puedeConfirmar && onConfirmar && onToggleRevisado && (
-            <label className="mr-auto flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
+            <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
               <input
                 type="checkbox"
                 checked={revisado}
@@ -286,8 +440,8 @@ export default function AumentoDetalleModal({
           {ui.puedeConfirmar && onConfirmar && (
             <Button
               loading={confirmando}
-              disabled={confirmando || !revisado}
-              onClick={() => onConfirmar(propuesta)}
+              disabled={confirmando || !revisado || !montoValido}
+              onClick={handleConfirmar}
               className="!border-indigo-500 !bg-indigo-600 !text-white hover:!bg-indigo-700"
             >
               Confirmar aumento

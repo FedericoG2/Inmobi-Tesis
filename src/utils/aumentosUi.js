@@ -34,12 +34,85 @@ export function formatFechaAumento(fecha) {
   return `${day}/${month}/${year}`
 }
 
+/** Período del aumento como MM/AAAA (sin el día). */
+export function formatPeriodoMesAnio(fecha) {
+  if (!fecha) return '—'
+  const [year, month] = fecha.split('-')
+  return `${month}/${year}`
+}
+
 export function diasHastaFecha(fechaIso, hoy = hoyIsoLocal()) {
   if (!fechaIso) return null
   const [y1, m1, d1] = hoy.split('-').map(Number)
   const [y2, m2, d2] = fechaIso.split('-').map(Number)
   const ms = new Date(y2, m2 - 1, d2).getTime() - new Date(y1, m1 - 1, d1).getTime()
   return Math.round(ms / 86400000)
+}
+
+export const MESES_LARGOS = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+]
+
+/** Capitaliza la primera letra (para etiquetas tipo "Julio"). */
+export function capitalizar(texto) {
+  if (!texto) return texto
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
+
+/** Clave YYYY-MM del mes de una fecha ISO. */
+export function claveMes(fechaIso) {
+  if (!fechaIso) return null
+  return fechaIso.slice(0, 7)
+}
+
+function infoMes(anio, mes) {
+  return {
+    anio,
+    mes,
+    clave: `${anio}-${String(mes).padStart(2, '0')}`,
+    nombre: MESES_LARGOS[mes - 1] ?? String(mes),
+    etiqueta: `${capitalizar(MESES_LARGOS[mes - 1] ?? String(mes))} ${anio}`,
+  }
+}
+
+/** Info del mes en curso. */
+export function mesActualInfo(hoy = hoyIsoLocal()) {
+  const [y, m] = hoy.split('-').map(Number)
+  return infoMes(y, m)
+}
+
+/** Info del mes siguiente al actual. */
+export function mesProximoInfo(hoy = hoyIsoLocal()) {
+  const [y, m] = hoy.split('-').map(Number)
+  const anio = m >= 12 ? y + 1 : y
+  const mes = m >= 12 ? 1 : m + 1
+  return infoMes(anio, mes)
+}
+
+/** Último día (ISO) del mes próximo. */
+export function ultimoDiaMesProximoIso(hoy = hoyIsoLocal()) {
+  const { anio, mes } = mesProximoInfo(hoy)
+  const d = new Date(anio, mes, 0)
+  const yy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yy}-${mm}-${dd}`
+}
+
+/** Días desde hoy hasta el fin del mes próximo (para cubrir todo el período). */
+export function diasHastaFinMesProximo(hoy = hoyIsoLocal()) {
+  return diasHastaFecha(ultimoDiaMesProximoIso(hoy), hoy)
 }
 
 export function etiquetaFechaAumento(fechaIso, hoy = hoyIsoLocal()) {
@@ -54,6 +127,17 @@ export function etiquetaFechaAumento(fechaIso, hoy = hoyIsoLocal()) {
   if (dias === 1) return 'Mañana'
   if (dias <= 30) return `En ${dias} días`
   return formatFechaAumento(fechaIso)
+}
+
+/** Subtítulo relativo para la columna de fecha: "Aumento en 5 días", "Aumenta hoy", etc. */
+export function etiquetaAumentoRelativa(fechaIso, hoy = hoyIsoLocal()) {
+  const dias = diasHastaFecha(fechaIso, hoy)
+  if (dias == null) return ''
+  if (dias === 0) return 'Aumenta hoy'
+  if (dias === 1) return 'Aumento mañana'
+  if (dias > 1) return `Aumento en ${dias} días`
+  const n = Math.abs(dias)
+  return `Venció hace ${n} ${n === 1 ? 'día' : 'días'}`
 }
 
 /**
@@ -206,6 +290,17 @@ export const TONO_BADGE = TONO_SITUACION
 export function badgeIndicador(tipo) {
   const key = (tipo ?? '').toLowerCase()
   return BADGE_INDICADOR[key] ?? { label: (tipo ?? '—').toUpperCase(), className: 'bg-slate-500 text-white' }
+}
+
+/** Chip de índice estilo categoría de reclamos: ícono + sigla. */
+export const CHIP_INDICADOR = {
+  ipc: { label: 'IPC', icon: '📈' },
+  icl: { label: 'ICL', icon: '🏠' },
+}
+
+export function chipIndicador(tipo) {
+  const key = (tipo ?? '').toLowerCase()
+  return CHIP_INDICADOR[key] ?? { label: (tipo ?? '—').toUpperCase(), icon: '📄' }
 }
 
 const formatMontoDetalle = (monto) => {

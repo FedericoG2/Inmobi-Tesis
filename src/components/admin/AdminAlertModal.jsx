@@ -9,6 +9,7 @@ export default function AdminAlertModal({
   compact = false,
   wide = false,
   variant = 'warning',
+  apilado = false,
 }) {
   if (!open) return null
 
@@ -24,7 +25,7 @@ export default function AdminAlertModal({
       : 'max-w-md'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className={`fixed inset-0 ${apilado ? 'z-[70]' : 'z-50'} flex items-center justify-center p-4`}>
       <button
         type="button"
         aria-label="Cerrar alerta"

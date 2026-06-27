@@ -51,11 +51,24 @@ function IconClipboardCheck({ className = 'h-3.5 w-3.5' }) {
   )
 }
 
+function IconHistory({ className = 'h-3.5 w-3.5' }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+      />
+    </svg>
+  )
+}
+
 const btnBase =
   'inline-flex h-8 w-8 items-center justify-center rounded-full border bg-white transition hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-40'
 
 export default function AumentoRowActions({
   onView,
+  onHistory,
   onConfirm,
   puedeConfirmar,
   confirmDisabledLabel = 'Confirmar aumento',
@@ -80,6 +93,16 @@ export default function AumentoRowActions({
           disabled={disabled}
         >
           <IconEye />
+        </ActionButton>
+      )}
+      {onHistory && (
+        <ActionButton
+          label="Ver historial de aumentos"
+          className={`${btnBase} border-indigo-300 text-indigo-600 hover:bg-indigo-50`}
+          onClick={onHistory}
+          disabled={disabled}
+        >
+          <IconHistory />
         </ActionButton>
       )}
       {onConfirm && puedeConfirmar && onToggleRevisado && (

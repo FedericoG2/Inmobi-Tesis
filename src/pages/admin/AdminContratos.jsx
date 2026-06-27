@@ -5,6 +5,7 @@ import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
 import AdminListLayout from '../../components/admin/AdminListLayout'
 import AdminNuevoButton from '../../components/admin/AdminNuevoButton'
 import AdminTablePagination from '../../components/admin/AdminTablePagination'
+import StatCard from '../../components/admin/StatCard'
 import {
   AdminTable,
   AdminTableBody,
@@ -29,12 +30,15 @@ import {
   colorEstadoContrato,
   esContratoPlazoVencido,
   etiquetaEstadoContrato,
+  hoyIsoLocal,
   mensajeConfirmacionFinalizarContrato,
 } from '../../utils/contratoVigencia'
 
 const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
 
 const FILAS_POR_PAGINA = 4
+
+const VENCE_PRONTO_DIAS = 60
 
 const FILTRO_ESTADO = [
   { value: 'activos', label: 'Activos' },
@@ -69,6 +73,23 @@ function normalizarBusqueda(texto) {
 
 const formatMonto = (monto) =>
   new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(monto)
+
+const formatMontoCompacto = (monto) =>
+  new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    maximumFractionDigits: 0,
+  }).format(monto || 0)
+
+const sumarDiasIso = (iso, dias) => {
+  const [year, month, day] = iso.split('-').map(Number)
+  const fecha = new Date(year, month - 1, day)
+  fecha.setDate(fecha.getDate() + dias)
+  const y = fecha.getFullYear()
+  const m = String(fecha.getMonth() + 1).padStart(2, '0')
+  const d = String(fecha.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
 
 const formatFecha = (fecha) => {
   if (!fecha) return '—'
@@ -127,6 +148,27 @@ export default function AdminContratos() {
     }),
     [contratos]
   )
+
+  const resumen = useMemo(() => {
+    const hoy = hoyIsoLocal()
+    const limiteVencimiento = sumarDiasIso(hoy, VENCE_PRONTO_DIAS)
+    const activos = contratos.filter((c) => c.estado === 'activo')
+    const ingresoMensual = activos.reduce(
+      (acc, c) => acc + (Number(c.monto_alquiler) || 0),
+      0
+    )
+    const porVencer = activos.filter(
+      (c) => c.fecha_fin && c.fecha_fin >= hoy && c.fecha_fin <= limiteVencimiento
+    ).length
+    const vencidos = contratos.filter((c) => esContratoPlazoVencido(c)).length
+
+    return {
+      activos: activos.length,
+      ingresoMensual,
+      porVencer,
+      vencidos,
+    }
+  }, [contratos])
 
   const contratosFiltrados = useMemo(() => {
     let items = contratos
@@ -312,13 +354,45 @@ export default function AdminContratos() {
     <>
       <AdminListLayout
         title="Contratos de Alquiler"
-        subtitle=""
+        subtitle="Gestión de la cartera de alquileres: vigencia, ajustes y ciclo de vida de cada contrato."
         alerts={
           error ? (
             <Card className="border border-red-200 bg-red-50">
               <p className="text-sm text-red-700">Error al cargar contratos: {error}</p>
             </Card>
           ) : null
+        }
+        summary={
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              label="Ingreso mensual comprometido"
+              value={loading ? '…' : formatMontoCompacto(resumen.ingresoMensual)}
+              hint="Suma de alquileres de contratos activos"
+              icon="chart"
+              theme="emerald"
+            />
+            <StatCard
+              label="Contratos activos"
+              value={loading ? '…' : resumen.activos}
+              hint="Cartera vigente en curso"
+              icon="building"
+              theme="indigo"
+            />
+            <StatCard
+              label="Por vencer pronto"
+              value={loading ? '…' : resumen.porVencer}
+              hint={`Vencen dentro de ${VENCE_PRONTO_DIAS} días`}
+              icon="calendar"
+              theme={resumen.porVencer > 0 ? 'amber' : 'slate'}
+            />
+            <StatCard
+              label="Vencidos"
+              value={loading ? '…' : resumen.vencidos}
+              hint={resumen.vencidos > 0 ? 'Requieren renovar o finalizar' : 'Sin contratos vencidos'}
+              icon="alert"
+              theme={resumen.vencidos > 0 ? 'red' : 'emerald'}
+            />
+          </div>
         }
       >
         <div className="flex flex-nowrap items-center gap-2 overflow-x-auto border-b border-slate-200 bg-slate-50/70 px-4 py-3 lg:px-6">

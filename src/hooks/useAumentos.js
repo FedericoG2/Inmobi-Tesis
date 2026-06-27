@@ -5,6 +5,7 @@ import {
   confirmarAumentos,
   generarComprobantesAumentos,
 } from '../services/aumentosService'
+import { diasHastaFinMesProximo } from '../utils/aumentosUi'
 
 function formatearErroresConfirmacion(errores) {
   if (!Array.isArray(errores) || errores.length === 0) return ''
@@ -20,11 +21,14 @@ export function useAumentos() {
   const [error, setError] = useState(null)
   const [syncWarning, setSyncWarning] = useState(null)
 
-  const cargarAumentos = useCallback(async ({ diasProximos = 30 } = {}) => {
+  const cargarAumentos = useCallback(async ({ diasProximos } = {}) => {
+    // Por defecto cubre hasta el fin del mes próximo, así el panorama y el
+    // conteo "Aumentan el próximo mes" son completos aunque estemos a comienzo de mes.
+    const dias = diasProximos ?? diasHastaFinMesProximo()
     setLoading(true)
     setError(null)
 
-    const { error: syncError } = await syncIndices({ incluirProximos: true, diasProximos })
+    const { error: syncError } = await syncIndices({ incluirProximos: true, diasProximos: dias })
 
     if (syncError) {
       setSyncWarning(
@@ -37,7 +41,7 @@ export function useAumentos() {
     const [{ data, error: calcError }, indicesResult] = await Promise.all([
       calcularAumentosPendientes({
         incluirProximos: true,
-        diasProximos,
+        diasProximos: dias,
       }),
       obtenerUltimosIndicesArgly(),
     ])

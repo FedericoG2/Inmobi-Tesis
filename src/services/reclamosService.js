@@ -1,9 +1,5 @@
 import { supabase } from '../supabaseClient'
-import {
-  esTransicionEstadoValida,
-  sinErrores,
-  validarCamposReclamo,
-} from '../utils/validarReclamo'
+import { sinErrores, validarCamposReclamo } from '../utils/validarReclamo'
 
 function primerError(errores) {
   const claves = Object.keys(errores)
@@ -84,31 +80,12 @@ export async function actualizarReclamo(id, datos) {
     return { data: null, error: { message: primerError(erroresCampos) } }
   }
 
-  // Validación de respaldo: no permitir retroceder de estado.
-  if (datos.estado) {
-    const { data: actual, error: errorActual } = await supabase
-      .from('reclamos')
-      .select('estado')
-      .eq('id', id)
-      .single()
-
-    if (errorActual) {
-      return { data: null, error: errorActual }
-    }
-    if (actual && !esTransicionEstadoValida(actual.estado, datos.estado)) {
-      return {
-        data: null,
-        error: { message: 'No se puede volver a un estado anterior del reclamo.' },
-      }
-    }
-  }
-
+  // El estado NO se edita acá: se gestiona con gestionarReclamo() para dejar trazabilidad.
   const { data, error } = await supabase
     .from('reclamos')
     .update({
       titulo: datos.titulo.trim(),
       descripcion: datos.descripcion.trim(),
-      estado: datos.estado,
       prioridad: datos.prioridad,
       categoria: datos.categoria,
     })
@@ -138,4 +115,37 @@ export async function eliminarReclamo(id) {
   const { error } = await supabase.from('reclamos').delete().eq('id', id)
 
   return { error }
-} 
+}
+
+export async function listarEventosReclamo(reclamoId) {
+  if (!supabase) {
+    return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
+  }
+
+  const { data, error } = await supabase
+    .from('reclamo_eventos')
+    .select('id, reclamo_id, estado_anterior, estado_nuevo, comentario, creado_por, fecha_creacion')
+    .eq('reclamo_id', reclamoId)
+    .order('fecha_creacion', { ascending: false })
+    .order('id', { ascending: false })
+
+  return { data, error }
+}
+
+/**
+ * Gestiona un reclamo: cambia el estado y/o agrega una nota, registrando el
+ * evento en la trazabilidad. Pasá `estado` = null para dejar solo un comentario.
+ */
+export async function gestionarReclamo({ reclamoId, estado = null, comentario = null }) {
+  if (!supabase) {
+    return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
+  }
+
+  const { data, error } = await supabase.rpc('gestionar_reclamo', {
+    p_reclamo_id: reclamoId,
+    p_estado_nuevo: estado,
+    p_comentario: comentario,
+  })
+
+  return { data, error }
+}

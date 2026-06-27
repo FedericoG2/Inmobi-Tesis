@@ -19,20 +19,27 @@ export const ESTADO_LABEL = {
 
 /**
  * Estados a los que se puede pasar desde `estadoActual`.
- * Solo permite el estado actual y los posteriores (no se puede retroceder).
+ * "Pendiente" es el estado inicial: desde él se puede ir a cualquiera. Una vez
+ * que el reclamo lo abandona, puede moverse libremente entre el resto de los
+ * estados (incluido reabrir un Resuelto), pero ya no puede volver a "Pendiente".
  */
 export function estadosPermitidos(estadoActual) {
-  const idx = FLUJO_ESTADOS.indexOf(estadoActual)
-  if (idx === -1) return FLUJO_ESTADOS
-  return FLUJO_ESTADOS.slice(idx)
+  if (!FLUJO_ESTADOS.includes(estadoActual)) return FLUJO_ESTADOS
+  if (estadoActual === 'Pendiente') return FLUJO_ESTADOS
+  return FLUJO_ESTADOS.filter((e) => e !== 'Pendiente')
 }
 
-/** true si pasar de `estadoActual` a `estadoNuevo` es una transición válida (no retrocede). */
+/**
+ * true si pasar de `estadoActual` a `estadoNuevo` es una transición válida.
+ * Se permite cualquier cambio (avanzar, retroceder o reabrir) salvo volver a
+ * "Pendiente" una vez que el reclamo ya salió de ese estado inicial.
+ */
 export function esTransicionEstadoValida(estadoActual, estadoNuevo) {
   const actual = FLUJO_ESTADOS.indexOf(estadoActual)
   const nuevo = FLUJO_ESTADOS.indexOf(estadoNuevo)
   if (actual === -1 || nuevo === -1) return false
-  return nuevo >= actual
+  if (estadoActual === estadoNuevo) return true
+  return estadoNuevo !== 'Pendiente'
 }
 
 /**

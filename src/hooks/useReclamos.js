@@ -3,6 +3,7 @@ import {
   actualizarReclamo,
   crearReclamo,
   eliminarReclamo,
+  gestionarReclamo,
   listarReclamos,
 } from '../services/reclamosService'
 
@@ -35,7 +36,7 @@ export function useReclamos() {
       setSubmitting(true)
       setSubmitError(null)
 
-      const { error: createError } = await crearReclamo({
+      const { data, error: createError } = await crearReclamo({
         inquilino_id: Number(datos.inquilino_id),
         propiedad_id: Number(datos.propiedad_id),
         contrato_id: datos.contrato_id ? Number(datos.contrato_id) : null,
@@ -54,7 +55,7 @@ export function useReclamos() {
 
       await refetch()
       setSubmitting(false)
-      return true
+      return data ?? true
     },
     [refetch]
   )
@@ -64,10 +65,9 @@ export function useReclamos() {
       setSubmitting(true)
       setSubmitError(null)
 
-      const { error: updateError } = await actualizarReclamo(id, {
+      const { data, error: updateError } = await actualizarReclamo(id, {
         titulo: datos.titulo,
         descripcion: datos.descripcion,
-        estado: datos.estado,
         prioridad: datos.prioridad,
         categoria: datos.categoria,
       })
@@ -80,7 +80,7 @@ export function useReclamos() {
 
       await refetch()
       setSubmitting(false)
-      return true
+      return data ?? true
     },
     [refetch]
   )
@@ -98,6 +98,24 @@ export function useReclamos() {
 
       await refetch()
       return true
+    },
+    [refetch]
+  )
+
+  const gestionar = useCallback(
+    async ({ reclamoId, estado = null, comentario = null }) => {
+      const { data, error: gestionError } = await gestionarReclamo({
+        reclamoId,
+        estado,
+        comentario,
+      })
+
+      if (gestionError) {
+        return { ok: false, error: gestionError }
+      }
+
+      await refetch()
+      return { ok: true, data }
     },
     [refetch]
   )
@@ -125,6 +143,7 @@ export function useReclamos() {
     submitError,
     limpiarSubmitError,
     eliminar,
+    gestionar,
     actionError,
     limpiarActionError,
   }

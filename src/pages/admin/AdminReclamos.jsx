@@ -1,13 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Card } from '@tremor/react'
 import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
 import AdminListLayout from '../../components/admin/AdminListLayout'
 import AdminNuevoButton from '../../components/admin/AdminNuevoButton'
+import AdminTablePagination from '../../components/admin/AdminTablePagination'
 import {
   AdminTable,
   AdminTableBody,
-  AdminTableActionsCell,
-  AdminTableActionsHeaderCell,
   AdminTableCell,
   AdminTableEmptyCell,
   AdminTableHead,
@@ -15,15 +14,18 @@ import {
   AdminTableRow,
 } from '../../components/admin/AdminDataTable'
 import ReclamoFormModal from '../../components/admin/forms/ReclamoFormModal'
+import ReclamoDetalleModal from '../../components/admin/ReclamoDetalleModal'
+import ReclamoGestionModal from '../../components/admin/ReclamoGestionModal'
+import StatCard from '../../components/admin/StatCard'
 import TableRowActions from '../../components/admin/TableRowActions'
 import { useInquilinos } from '../../hooks/useInquilinos'
 import { useContratos } from '../../hooks/useContratos'
 import { usePropiedades } from '../../hooks/usePropiedades'
 import { useReclamos } from '../../hooks/useReclamos'
 import {
-  badgeCategoria,
   badgeEstado,
   badgePrioridad,
+  infoCategoria,
   PILL_SOLID_CLASS,
 } from '../../utils/reclamosUi'
 
@@ -36,13 +38,25 @@ function ReclamoPill({ badge }) {
   )
 }
 
+function CategoriaChip({ categoria }) {
+  const info = infoCategoria(categoria)
+  if (!info) return <span className="text-slate-400">—</span>
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700">
+      <span className="text-sm leading-none">{info.icon}</span>
+      <span>{info.label}</span>
+    </span>
+  )
+}
+
 const estados = ['Pendiente', 'En Proceso', 'Revision', 'Resuelto']
 const prioridades = ['Baja', 'Media', 'Alta', 'Urgente']
 
-const COL_CATEGORIA = 'w-[8.5rem]'
 const COL_FECHA = 'w-[7.5rem]'
 const COL_PRIORIDAD = 'w-[6.75rem]'
 const COL_ESTADO = 'w-[8.75rem]'
+
+const FILAS_POR_PAGINA = 4
 
 // Opciones consistentes con el formulario
 const CATEGORIAS = [
@@ -56,7 +70,13 @@ const CATEGORIAS = [
 ]
 
 const inputToolbarClass =
-  'h-10 w-full rounded-lg border border-slate-300 bg-white text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
+  'h-10 w-full rounded-lg border border-slate-200 bg-white text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
+
+const selectBaseClass =
+  'h-10 w-full cursor-pointer appearance-none rounded-lg border bg-white pl-3 pr-9 text-sm outline-none transition focus:ring-2 focus:ring-indigo-100 sm:w-44 shrink-0'
+const selectInactivoClass = 'border-slate-200 text-slate-700 focus:border-indigo-500'
+const selectActivoClass =
+  'border-indigo-300 text-indigo-700 font-medium ring-1 ring-indigo-100 focus:border-indigo-500'
 
 function IconSearch({ className = 'h-4 w-4' }) {
   return (
@@ -70,9 +90,59 @@ function IconSearch({ className = 'h-4 w-4' }) {
   )
 }
 
+function IconChevronDown({ className = 'h-4 w-4' }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+    </svg>
+  )
+}
+
+function IconX({ className = 'h-4 w-4' }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+    </svg>
+  )
+}
+
+function FilterSelect({ id, value, onChange, onClear, ariaLabel, children }) {
+  const activo = Boolean(value)
+  return (
+    <div className="relative shrink-0">
+      <select
+        id={id}
+        value={value}
+        onChange={onChange}
+        aria-label={ariaLabel}
+        className={`${selectBaseClass} ${activo ? selectActivoClass : selectInactivoClass}`}
+      >
+        {children}
+      </select>
+      {activo ? (
+        <button
+          type="button"
+          onClick={onClear}
+          aria-label="Quitar filtro"
+          title="Quitar filtro"
+          className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-indigo-500 transition hover:bg-indigo-100"
+        >
+          <IconX className="h-3.5 w-3.5" />
+        </button>
+      ) : (
+        <IconChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      )}
+    </div>
+  )
+}
+
 export default function AdminReclamos() {
   const [modalOpen, setModalOpen] = useState(false)
   const [reclamoEditando, setReclamoEditando] = useState(null)
+  const [detalleOpen, setDetalleOpen] = useState(false)
+  const [reclamoDetalle, setReclamoDetalle] = useState(null)
+  const [gestionOpen, setGestionOpen] = useState(false)
+  const [reclamoGestion, setReclamoGestion] = useState(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [reclamoAEliminar, setReclamoAEliminar] = useState(null)
   const [eliminando, setEliminando] = useState(false)
@@ -81,6 +151,7 @@ export default function AdminReclamos() {
   const [filtroEstado, setFiltroEstado] = useState('')
   const [filtroPrioridad, setFiltroPrioridad] = useState('')
   const [filtroCategoria, setFiltroCategoria] = useState('')
+  const [paginaActual, setPaginaActual] = useState(1)
 
   const {
     reclamos,
@@ -92,6 +163,7 @@ export default function AdminReclamos() {
     submitError,
     limpiarSubmitError,
     eliminar,
+    gestionar,
     actionError,
     limpiarActionError,
   } = useReclamos()
@@ -100,9 +172,16 @@ export default function AdminReclamos() {
   const { contratos, loading: contratosLoading } = useContratos()
   const { propiedades } = usePropiedades()
 
-  const cantidadUrgentes = (reclamos || []).filter(
-    r => r.prioridad === 'Urgente' && r.estado !== 'Resuelto'
-  ).length
+  const kpis = useMemo(() => {
+    const lista = reclamos || []
+    const noResuelto = (r) => r.estado !== 'Resuelto'
+    return {
+      sinResolver: lista.filter(noResuelto).length,
+      urgentes: lista.filter((r) => r.prioridad === 'Urgente' && noResuelto(r)).length,
+      pendientes: lista.filter((r) => r.estado === 'Pendiente').length,
+      resueltos: lista.filter((r) => r.estado === 'Resuelto').length,
+    }
+  }, [reclamos])
 
   const cerrarModal = () => {
     if (!submitting) {
@@ -123,6 +202,27 @@ export default function AdminReclamos() {
     limpiarActionError()
     setReclamoEditando(reclamo)
     setModalOpen(true)
+  }
+
+  const abrirDetalle = (reclamo) => {
+    setReclamoDetalle(reclamo)
+    setDetalleOpen(true)
+  }
+
+  const cerrarDetalle = () => {
+    setDetalleOpen(false)
+    setReclamoDetalle(null)
+  }
+
+  const abrirGestion = (reclamo) => {
+    limpiarActionError()
+    setReclamoGestion(reclamo)
+    setGestionOpen(true)
+  }
+
+  const cerrarGestion = () => {
+    setGestionOpen(false)
+    setReclamoGestion(null)
   }
 
   const handleSubmit = async (form) => {
@@ -159,47 +259,60 @@ export default function AdminReclamos() {
     ? `Este reclamo ya está marcado como Resuelto. Si lo eliminás, se pierde el registro de esa gestión. ¿Eliminar "${reclamoAEliminar?.titulo}" igualmente?`
     : `¿Eliminar el reclamo "${reclamoAEliminar?.titulo}"? Esta acción no se puede deshacer.`
 
-  // 1. Primero filtramos el array original
-  const reclamosProcesados = (reclamos || []).filter((r) => {
+  // 1. Filtramos y ordenamos cronológicamente (los más antiguos arriba).
+  const reclamosFiltrados = useMemo(() => {
     const busqueda = filtroTexto.toLowerCase()
-    const cumpleTexto =
-      !busqueda ||
-      (r.inquilinos?.nombre_completo ?? '').toLowerCase().includes(busqueda) ||
-      (r.propiedades?.direccion ?? '').toLowerCase().includes(busqueda) ||
-      (r.titulo ?? '').toLowerCase().includes(busqueda) ||
-      (r.categoria ?? '').toLowerCase().includes(busqueda)
+    return (reclamos || [])
+      .filter((r) => {
+        const cumpleTexto =
+          !busqueda ||
+          (r.inquilinos?.nombre_completo ?? '').toLowerCase().includes(busqueda) ||
+          (r.propiedades?.direccion ?? '').toLowerCase().includes(busqueda) ||
+          (r.titulo ?? '').toLowerCase().includes(busqueda) ||
+          (r.categoria ?? '').toLowerCase().includes(busqueda)
 
-    const cumpleEstado = !filtroEstado || r.estado === filtroEstado
-    const cumplePrioridad = !filtroPrioridad || r.prioridad === filtroPrioridad
-    const cumpleCategoria = !filtroCategoria || r.categoria === filtroCategoria
+        const cumpleEstado = !filtroEstado || r.estado === filtroEstado
+        const cumplePrioridad = !filtroPrioridad || r.prioridad === filtroPrioridad
+        const cumpleCategoria = !filtroCategoria || r.categoria === filtroCategoria
 
-    return cumpleTexto && cumpleEstado && cumplePrioridad && cumpleCategoria
-  })
+        return cumpleTexto && cumpleEstado && cumplePrioridad && cumpleCategoria
+      })
+      .sort((a, b) => {
+        const fechaA = a.fecha_creacion ? new Date(a.fecha_creacion).getTime() : 0
+        const fechaB = b.fecha_creacion ? new Date(b.fecha_creacion).getTime() : 0
+        return fechaA - fechaB
+      })
+  }, [reclamos, filtroTexto, filtroEstado, filtroPrioridad, filtroCategoria])
 
-  // 2. Ordenamos cronológicamente: los más antiguos (primeros creados) van arriba
-  const reclamosFiltrados = reclamosProcesados.sort((a, b) => {
-    const fechaA = a.fecha_creacion ? new Date(a.fecha_creacion).getTime() : 0
-    const fechaB = b.fecha_creacion ? new Date(b.fecha_creacion).getTime() : 0
-    return fechaA - fechaB
-  })
+  // 2. Paginado.
+  const totalPaginas = useMemo(
+    () => Math.max(1, Math.ceil(reclamosFiltrados.length / FILAS_POR_PAGINA)),
+    [reclamosFiltrados.length]
+  )
+
+  const reclamosPagina = useMemo(() => {
+    const inicio = (paginaActual - 1) * FILAS_POR_PAGINA
+    return reclamosFiltrados.slice(inicio, inicio + FILAS_POR_PAGINA)
+  }, [reclamosFiltrados, paginaActual])
+
+  useEffect(() => {
+    setPaginaActual(1)
+  }, [filtroTexto, filtroEstado, filtroPrioridad, filtroCategoria])
+
+  useEffect(() => {
+    if (paginaActual > totalPaginas) {
+      setPaginaActual(totalPaginas)
+    }
+  }, [paginaActual, totalPaginas])
 
   return (
     <>
       <AdminListLayout
+        compact
         title="Reclamos"
         subtitle="Tickets de mantenimiento por inquilino y propiedad (contrato activo al crear)"
         alerts={
           <>
-            {cantidadUrgentes > 0 && (
-              <Card className="flex items-center gap-2 border border-red-200 bg-red-50 px-4 py-2.5">
-                <span className="flex h-2 w-2 shrink-0 rounded-full bg-red-600 animate-pulse" />
-                <p className="text-sm font-medium text-red-800">
-                  Atención: hay <span className="font-bold underline">{cantidadUrgentes}</span>{' '}
-                  {cantidadUrgentes === 1 ? 'reclamo urgente' : 'reclamos urgentes'} pendientes de
-                  resolución.
-                </p>
-              </Card>
-            )}
             {error && (
               <Card className="border border-red-200 bg-red-50">
                 <p className="text-sm text-red-700">Error al cargar reclamos: {error}</p>
@@ -212,6 +325,34 @@ export default function AdminReclamos() {
             )}
           </>
         }
+        summary={
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <StatCard
+              label="Sin resolver"
+              value={loading ? '…' : kpis.sinResolver}
+              icon="clipboard"
+              theme="indigo"
+            />
+            <StatCard
+              label="Urgentes"
+              value={loading ? '…' : kpis.urgentes}
+              icon="alert"
+              theme={kpis.urgentes > 0 ? 'red' : 'slate'}
+            />
+            <StatCard
+              label="Pendientes"
+              value={loading ? '…' : kpis.pendientes}
+              icon="wrench"
+              theme="amber"
+            />
+            <StatCard
+              label="Resueltos"
+              value={loading ? '…' : kpis.resueltos}
+              icon="check"
+              theme="emerald"
+            />
+          </div>
+        }
       >
         <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 lg:px-6">
           <div className="relative min-w-0 flex-1 sm:min-w-[12rem]">
@@ -221,43 +362,43 @@ export default function AdminReclamos() {
               type="search"
               value={filtroTexto}
               onChange={(e) => setFiltroTexto(e.target.value)}
-              placeholder="Buscar por inquilino, propiedad o título..."
+              placeholder="Buscar reclamos..."
               className={`${inputToolbarClass} pl-9`}
             />
           </div>
 
-          <select
+          <FilterSelect
             id="filtro-estado-reclamo"
             value={filtroEstado}
             onChange={(e) => setFiltroEstado(e.target.value)}
-            className={`${inputToolbarClass} sm:w-44 shrink-0 cursor-pointer`}
-            aria-label="Filtrar por estado"
+            onClear={() => setFiltroEstado('')}
+            ariaLabel="Filtrar por estado"
           >
             <option value="">Estado: Todos</option>
             {estados.map((e) => (
               <option key={e} value={e}>{e}</option>
             ))}
-          </select>
+          </FilterSelect>
 
-          <select
+          <FilterSelect
             id="filtro-prioridad-reclamo"
             value={filtroPrioridad}
             onChange={(e) => setFiltroPrioridad(e.target.value)}
-            className={`${inputToolbarClass} sm:w-44 shrink-0 cursor-pointer`}
-            aria-label="Filtrar por prioridad"
+            onClear={() => setFiltroPrioridad('')}
+            ariaLabel="Filtrar por prioridad"
           >
             <option value="">Prioridad: Todas</option>
             {prioridades.map((p) => (
               <option key={p} value={p}>{p}</option>
             ))}
-          </select>
+          </FilterSelect>
 
-          <select
+          <FilterSelect
             id="filtro-categoria-reclamo"
             value={filtroCategoria}
             onChange={(e) => setFiltroCategoria(e.target.value)}
-            className={`${inputToolbarClass} sm:w-44 shrink-0 cursor-pointer`}
-            aria-label="Filtrar por categoría"
+            onClear={() => setFiltroCategoria('')}
+            ariaLabel="Filtrar por categoría"
           >
             <option value="">Categoría: Todas</option>
             {CATEGORIAS.map((cat) => (
@@ -265,7 +406,7 @@ export default function AdminReclamos() {
                 {cat.label}
               </option>
             ))}
-          </select>
+          </FilterSelect>
 
           <div className="shrink-0 sm:ml-auto">
             <AdminNuevoButton
@@ -280,50 +421,51 @@ export default function AdminReclamos() {
           <AdminTableHead className="!bg-slate-100/90">
             <AdminTableRow>
               <AdminTableHeaderCell>Inquilino</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Propiedad</AdminTableHeaderCell>
-              <AdminTableHeaderCell className={`${COL_CATEGORIA} !text-center`}>
-                Categoría
-              </AdminTableHeaderCell>
-              <AdminTableHeaderCell>Descripción</AdminTableHeaderCell>
-              <AdminTableHeaderCell className={COL_FECHA}>Fecha de Creación</AdminTableHeaderCell>
+              <AdminTableHeaderCell>Reclamo</AdminTableHeaderCell>
+              <AdminTableHeaderCell className={COL_FECHA}>Fecha</AdminTableHeaderCell>
               <AdminTableHeaderCell className={`${COL_PRIORIDAD} !text-center`}>
                 Prioridad
               </AdminTableHeaderCell>
               <AdminTableHeaderCell className={`${COL_ESTADO} !text-center`}>
                 Estado
               </AdminTableHeaderCell>
-              <AdminTableActionsHeaderCell />
+              <AdminTableHeaderCell className="w-40 whitespace-nowrap text-center">
+                Acciones
+              </AdminTableHeaderCell>
             </AdminTableRow>
           </AdminTableHead>
 
           <AdminTableBody>
             {loading && (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={8}>Cargando reclamos...</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={6}>Cargando reclamos...</AdminTableEmptyCell>
               </AdminTableRow>
             )}
 
             {!loading && !error && reclamosFiltrados.length === 0 && (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={8}>
+                <AdminTableEmptyCell colSpan={6}>
                   {(reclamos || []).length === 0 ? 'No hay reclamos cargados' : 'Ningún reclamo coincide con los filtros'}
                 </AdminTableEmptyCell>
               </AdminTableRow>
             )}
 
             {!loading &&
-              reclamosFiltrados.map((r) => (
+              reclamosPagina.map((r) => (
                 <AdminTableRow key={r.id}>
-                  <AdminTableCell>{r.inquilinos?.nombre_completo ?? '—'}</AdminTableCell>
-                  <AdminTableCell className="max-w-xs">{r.propiedades?.direccion ?? '—'}</AdminTableCell>
-                  <AdminTableCell className={`${COL_CATEGORIA} !text-center`}>
-                    <ReclamoPill badge={badgeCategoria(r.categoria)} />
+                  <AdminTableCell className="max-w-[14rem]">
+                    <p className="font-medium text-slate-900">
+                      {r.inquilinos?.nombre_completo ?? '—'}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">
+                      {r.propiedades?.direccion ?? '—'}
+                    </p>
                   </AdminTableCell>
                   <AdminTableCell className="max-w-sm">
-                    <p className="font-medium text-slate-900">{r.titulo}</p>
-                    {r.descripcion && (
-                      <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{r.descripcion}</p>
-                    )}
+                    <p className="truncate font-medium text-slate-900">{r.titulo}</p>
+                    <span className="mt-1 inline-block">
+                      <CategoriaChip categoria={r.categoria} />
+                    </span>
                   </AdminTableCell>
                   <AdminTableCell className={`${COL_FECHA} tabular-nums`}>
                     {r.fecha_creacion
@@ -340,16 +482,28 @@ export default function AdminReclamos() {
                   <AdminTableCell className={`${COL_ESTADO} !text-center`}>
                     <ReclamoPill badge={badgeEstado(r.estado)} />
                   </AdminTableCell>
-                  <AdminTableActionsCell>
-                    <TableRowActions
-                      onEdit={() => abrirModalEditar(r)}
-                      onDelete={() => handleEliminar(r)}
-                    />
-                  </AdminTableActionsCell>
+                  <AdminTableCell className="w-40">
+                    <div className="flex items-center justify-center gap-2">
+                      <TableRowActions
+                        onView={() => abrirDetalle(r)}
+                        onManage={() => abrirGestion(r)}
+                        onEdit={() => abrirModalEditar(r)}
+                        onDelete={() => handleEliminar(r)}
+                      />
+                    </div>
+                  </AdminTableCell>
                 </AdminTableRow>
               ))}
           </AdminTableBody>
         </AdminTable>
+
+        <AdminTablePagination
+          pagina={paginaActual}
+          totalPaginas={totalPaginas}
+          totalItems={reclamosFiltrados.length}
+          itemsPorPagina={FILAS_POR_PAGINA}
+          onPaginaChange={setPaginaActual}
+        />
       </AdminListLayout>
 
       <ReclamoFormModal
@@ -364,6 +518,25 @@ export default function AdminReclamos() {
         contratos={contratos}
         contratosLoading={contratosLoading}
         propiedades={propiedades}
+      />
+
+      <ReclamoDetalleModal
+        open={detalleOpen}
+        reclamo={reclamoDetalle}
+        onClose={cerrarDetalle}
+        inquilinos={inquilinos}
+        propiedades={propiedades}
+        onManage={(r) => {
+          cerrarDetalle()
+          abrirGestion(r)
+        }}
+      />
+
+      <ReclamoGestionModal
+        open={gestionOpen}
+        reclamo={reclamoGestion}
+        onClose={cerrarGestion}
+        onGestionar={gestionar}
       />
 
       <AdminConfirmModal

@@ -1,6 +1,6 @@
 import { supabase } from '../supabaseClient'
 import { activarContratosProgramados } from './contratosService'
-import { subirComprobanteAumento } from './documentosService'
+import { eliminarComprobanteAumento, subirComprobanteAumento } from './documentosService'
 
 /** Aplica los aumentos acordados cuya fecha ya llegó (fallback del cron diario). */
 async function aplicarAumentosProgramados() {
@@ -95,6 +95,50 @@ export async function listarColaAumentos({ diasProximos = 30 } = {}) {
   }
 }
 
+/**
+ * Historial de aumentos registrados de un contrato (trazabilidad).
+ * Incluye aplicados y acordados/programados (aplicado=false), del más nuevo al más viejo.
+ */
+export async function listarHistorialAumentos(contratoId) {
+  if (!supabase) {
+    return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
+  }
+
+  if (contratoId == null) {
+    return { data: [], error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('aumentos')
+    .select(
+      `
+      id,
+      contrato_id,
+      fecha_aplicacion,
+      monto_anterior,
+      monto_nuevo,
+      porcentaje_aplicado,
+      indice_tipo,
+      indice_valor_inicio,
+      indice_valor_fin,
+      modo,
+      notas,
+      aplicado,
+      detalle_calculo,
+      fecha_creacion
+    `
+    )
+    .eq('contrato_id', contratoId)
+    .order('fecha_aplicacion', { ascending: false })
+    .order('id', { ascending: false })
+
+  if (error) {
+    return { data: null, error: { message: error.message } }
+  }
+
+  return { data: data ?? [], error: null }
+}
+
 export async function calcularAumentosPendientes({ incluirProximos = false, diasProximos = 30 } = {}) {
   if (!supabase) {
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
@@ -127,6 +171,7 @@ export async function confirmarAumentos(propuestas) {
     indice_valor_inicio: p.indice_valor_inicio,
     indice_valor_fin: p.indice_valor_fin,
     porcentaje_aplicado: p.variacion_pct,
+    notas: p.notas ?? null,
   }))
 
   const { data, error } = await supabase.rpc('confirmar_aumentos', { payload })
@@ -158,6 +203,19 @@ export async function generarComprobantesAumentos(propuestas) {
     (contratos ?? []).map((c) => [Number(c.id), c.propiedad_id])
   )
 
+  // Recupera los ids de los aumentos recién registrados para linkear el comprobante.
+  const { data: aumentosRecientes } = await supabase
+    .from('aumentos')
+    .select('id, contrato_id, fecha_aplicacion')
+    .in('contrato_id', ids)
+
+  const aumentoPorClave = new Map(
+    (aumentosRecientes ?? []).map((a) => [
+      `${Number(a.contrato_id)}|${a.fecha_aplicacion}`,
+      a.id,
+    ])
+  )
+
   // Carga diferida: jspdf solo se descarga cuando realmente se genera un comprobante.
   const { generarComprobanteAumentoPdf } = await import('../utils/comprobanteAumentoPdf')
 
@@ -171,11 +229,15 @@ export async function generarComprobantesAumentos(propuestas) {
       continue
     }
 
+    const fechaAplicacion = propuesta.fecha_hasta ?? propuesta.fecha_proximo_aumento
+    const aumentoId = aumentoPorClave.get(`${Number(propuesta.contrato_id)}|${fechaAplicacion}`)
+
     try {
       const { blob, filename } = generarComprobanteAumentoPdf(propuesta)
       const { error } = await subirComprobanteAumento({
         contratoId: propuesta.contrato_id,
         propiedadId,
+        aumentoId,
         blob,
         filename,
         nombre: filename,
@@ -188,4 +250,82 @@ export async function generarComprobantesAumentos(propuestas) {
   }
 
   return { generados, fallidos }
+}
+
+/**
+ * Deshace un aumento (admin). Revierte el contrato si estaba aplicado y borra
+ * el comprobante PDF asociado (best-effort para el comprobante).
+ */
+export async function deshacerAumento(aumento) {
+  if (!supabase) {
+    return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
+  }
+
+  const aumentoId = aumento?.id
+  if (aumentoId == null) {
+    return { data: null, error: { message: 'Aumento inválido' } }
+  }
+
+  const { data, error } = await supabase.rpc('deshacer_aumento', { p_aumento_id: aumentoId })
+
+  if (error) {
+    return { data: null, error: { message: error.message } }
+  }
+
+  // Limpia el comprobante asociado (no interrumpe si falla la limpieza).
+  await eliminarComprobanteAumento({
+    aumentoId,
+    contratoId: aumento.contrato_id,
+    fechaAplicacion: aumento.fecha_aplicacion,
+  })
+
+  return { data, error: null }
+}
+
+/**
+ * Historial global de aumentos (todos los contratos) con datos de inquilino y
+ * propiedad para la tabla filtrable por período. Solo admin (RLS).
+ */
+export async function listarHistorialGlobalAumentos() {
+  if (!supabase) {
+    return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
+  }
+
+  const { data, error } = await supabase
+    .from('aumentos')
+    .select(
+      `
+      id,
+      contrato_id,
+      fecha_aplicacion,
+      monto_anterior,
+      monto_nuevo,
+      porcentaje_aplicado,
+      indice_tipo,
+      modo,
+      notas,
+      aplicado,
+      detalle_calculo,
+      fecha_creacion,
+      contratos (
+        id,
+        inquilinos ( nombre_completo ),
+        propiedades ( direccion )
+      )
+    `
+    )
+    .order('fecha_aplicacion', { ascending: false })
+    .order('id', { ascending: false })
+
+  if (error) {
+    return { data: null, error: { message: error.message } }
+  }
+
+  const items = (data ?? []).map((row) => ({
+    ...row,
+    inquilino_nombre: row.contratos?.inquilinos?.nombre_completo ?? null,
+    propiedad_direccion: row.contratos?.propiedades?.direccion ?? null,
+  }))
+
+  return { data: items, error: null }
 }

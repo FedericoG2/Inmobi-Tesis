@@ -1,4 +1,7 @@
-/** Pills sólidos (mismo patrón que tipo/estado en Propiedades). */
+/** Pills sólidos (prioridad). Chips con borde (categoría y estado). */
+
+export const RECLAMO_CHIP_CLASS =
+  'inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700'
 
 export const CATEGORIAS_RECLAMO = [
   { id: 'Plomeria', label: 'Plomería', icon: '🚰' },
@@ -29,6 +32,15 @@ export const BADGE_PRIORIDAD = {
   Baja: { label: 'Baja', className: 'bg-slate-500 text-white' },
 }
 
+export const ESTADOS_RECLAMO = [
+  { id: 'Pendiente', label: 'Pendiente', icon: '⏳' },
+  { id: 'En Proceso', label: 'En Proceso', icon: '🔧' },
+  { id: 'Revision', label: 'Revisión', icon: '🔍' },
+  { id: 'Resuelto', label: 'Resuelto', icon: '✅' },
+  { id: 'Rechazado', label: 'Rechazado', icon: '🚫' },
+]
+
+/** @deprecated Usar infoEstado + ReclamoEstadoChip para la UI admin. */
 export const BADGE_ESTADO = {
   Pendiente: { label: 'Pendiente', className: 'bg-amber-500 text-white' },
   'En Proceso': { label: 'En Proceso', className: 'bg-blue-600 text-white' },
@@ -45,11 +57,18 @@ export function badgeCategoria(categoria) {
 }
 
 const CATEGORIA_INFO = Object.fromEntries(CATEGORIAS_RECLAMO.map((c) => [c.id, c]))
+const ESTADO_INFO = Object.fromEntries(ESTADOS_RECLAMO.map((e) => [e.id, e]))
 
 /** Devuelve { id, label, icon } de la categoría (mismo set que el formulario). */
 export function infoCategoria(categoria) {
   if (!categoria) return null
   return CATEGORIA_INFO[categoria] ?? { id: categoria, label: categoria, icon: '🛠️' }
+}
+
+/** Devuelve { id, label, icon } del estado (mismo patrón visual que categoría). */
+export function infoEstado(estado) {
+  if (!estado) return null
+  return ESTADO_INFO[estado] ?? { id: estado, label: estado, icon: '📋' }
 }
 
 export function badgePrioridad(prioridad) {

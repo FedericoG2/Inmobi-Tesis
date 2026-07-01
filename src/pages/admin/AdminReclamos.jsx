@@ -17,6 +17,7 @@ import FilterSelect, { toolbarInputClass } from '../../components/admin/FilterSe
 import ReclamoFormModal from '../../components/admin/forms/ReclamoFormModal'
 import ReclamoDetalleModal from '../../components/admin/ReclamoDetalleModal'
 import ReclamoGestionModal from '../../components/admin/ReclamoGestionModal'
+import { ReclamoCategoriaChip, ReclamoEstadoChip } from '../../components/admin/ReclamoChips'
 import StatCard from '../../components/admin/StatCard'
 import TableRowActions from '../../components/admin/TableRowActions'
 import { useInquilinos } from '../../hooks/useInquilinos'
@@ -24,9 +25,7 @@ import { useContratos } from '../../hooks/useContratos'
 import { usePropiedades } from '../../hooks/usePropiedades'
 import { useReclamos } from '../../hooks/useReclamos'
 import {
-  badgeEstado,
   badgePrioridad,
-  infoCategoria,
   PILL_SOLID_CLASS,
 } from '../../utils/reclamosUi'
 
@@ -35,17 +34,6 @@ function ReclamoPill({ badge }) {
   return (
     <span className={`${PILL_SOLID_CLASS} ${badge.className}`}>
       {badge.label}
-    </span>
-  )
-}
-
-function CategoriaChip({ categoria }) {
-  const info = infoCategoria(categoria)
-  if (!info) return <span className="text-slate-400">—</span>
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700">
-      <span className="text-sm leading-none">{info.icon}</span>
-      <span>{info.label}</span>
     </span>
   )
 }
@@ -308,7 +296,7 @@ export default function AdminReclamos() {
               type="search"
               value={filtroTexto}
               onChange={(e) => setFiltroTexto(e.target.value)}
-              placeholder="Buscar reclamos..."
+              placeholder="Buscar reclamos por inquilino o propiedad."
               className={`${toolbarInputClass} pl-9`}
             />
           </div>
@@ -410,7 +398,7 @@ export default function AdminReclamos() {
                   <AdminTableCell className="max-w-sm">
                     <p className="truncate font-medium text-slate-900">{r.titulo}</p>
                     <span className="mt-1 inline-block">
-                      <CategoriaChip categoria={r.categoria} />
+                      <ReclamoCategoriaChip categoria={r.categoria} />
                     </span>
                   </AdminTableCell>
                   <AdminTableCell className={`${COL_FECHA} tabular-nums`}>
@@ -426,7 +414,7 @@ export default function AdminReclamos() {
                     <ReclamoPill badge={badgePrioridad(r.prioridad)} />
                   </AdminTableCell>
                   <AdminTableCell className={`${COL_ESTADO} !text-center`}>
-                    <ReclamoPill badge={badgeEstado(r.estado)} />
+                    <ReclamoEstadoChip estado={r.estado} />
                   </AdminTableCell>
                   <AdminTableCell className="w-40">
                     <div className="flex items-center justify-center gap-2">

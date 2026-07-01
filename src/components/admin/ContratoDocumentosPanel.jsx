@@ -155,7 +155,7 @@ export default function ContratoDocumentosPanel({
                 checked={visibleParaInquilino}
                 onChange={(e) => setVisibleParaInquilino(e.target.checked)}
                 disabled={subiendo}
-                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-200"
+                className="rounded border-slate-300 text-brand-600 focus:ring-brand-200"
               />
               Visible para el inquilino en su portal
             </label>
@@ -204,7 +204,7 @@ export default function ContratoDocumentosPanel({
                   className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 sm:flex-row sm:items-center"
                 >
                   <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
                       <IconDocument />
                     </span>
                     <div className="min-w-0">
@@ -222,14 +222,14 @@ export default function ContratoDocumentosPanel({
                         type="checkbox"
                         checked={Boolean(documento.visible_para_inquilino)}
                         onChange={() => toggleVisibilidad(documento)}
-                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-200"
+                        className="rounded border-slate-300 text-brand-600 focus:ring-brand-200"
                       />
                       Portal inquilino
                     </label>
                     <button
                       type="button"
                       onClick={() => descargar(documento)}
-                      className="text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+                      className="text-xs font-medium text-brand-600 hover:text-brand-800 hover:underline"
                     >
                       Descargar
                     </button>

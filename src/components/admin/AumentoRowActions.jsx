@@ -1,20 +1,15 @@
 function ActionButton({ label, className, children, onClick, disabled = false }) {
   return (
-    <div className="group relative">
-      <button
-        type="button"
-        aria-label={label}
-        title={label}
-        className={className}
-        onClick={onClick}
-        disabled={disabled}
-      >
-        {children}
-      </button>
-      <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
-        {label}
-      </span>
-    </div>
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      className={className}
+      onClick={onClick}
+      disabled={disabled}
+    >
+      {children}
+    </button>
   )
 }
 
@@ -88,7 +83,7 @@ export default function AumentoRowActions({
       {onView && (
         <ActionButton
           label="Ver detalle del cálculo"
-          className={`${btnBase} border-sky-400 text-sky-600 hover:bg-sky-50`}
+          className={`${btnBase} border-slate-300 text-slate-600 hover:bg-slate-50`}
           onClick={onView}
           disabled={disabled}
         >
@@ -98,7 +93,7 @@ export default function AumentoRowActions({
       {onHistory && (
         <ActionButton
           label="Ver historial de aumentos"
-          className={`${btnBase} border-indigo-300 text-indigo-600 hover:bg-indigo-50`}
+          className={`${btnBase} border-brand-300 text-brand-600 hover:bg-brand-50`}
           onClick={onHistory}
           disabled={disabled}
         >
@@ -122,7 +117,7 @@ export default function AumentoRowActions({
       {onConfirm && (
         <ActionButton
           label={confirmLabel}
-          className={`${btnBase} border-indigo-400 text-indigo-600 hover:bg-indigo-50 disabled:border-slate-300 disabled:text-slate-400`}
+          className={`${btnBase} border-brand-300 text-brand-600 hover:bg-brand-50 disabled:border-slate-300 disabled:text-slate-400`}
           onClick={onConfirm}
           disabled={disabled || !confirmHabilitado}
         >

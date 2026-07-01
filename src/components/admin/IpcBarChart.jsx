@@ -9,7 +9,7 @@ import {
   YAxis,
 } from 'recharts'
 
-const BAR_COLORS = ['#c7d2fe', '#a5b4fc', '#818cf8', '#6366f1', '#4f46e5', '#4338ca']
+const BAR_COLORS = ['#e0e7ff', '#c7d2fe', '#a5b4fc', '#818cf8', '#6366f1', '#6366f1']
 
 function IpcTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
@@ -19,18 +19,18 @@ function IpcTooltip({ active, payload, label }) {
   return (
     <div className="rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-md ring-1 ring-slate-100">
       <p className="text-xs font-medium text-slate-500">{label}</p>
-      <p className="text-sm font-bold text-indigo-700">{valor.toFixed(1)}%</p>
+      <p className="text-sm font-bold text-brand-700">{valor.toFixed(1)}%</p>
     </div>
   )
 }
 
-export default function IpcBarChart({ data }) {
+export default function IpcBarChart({ data, height = 288 }) {
   const maxValor = Math.max(...data.map((d) => d.valor), 0)
   const topeEje = Math.ceil((maxValor + 0.5) * 2) / 2
 
   return (
-    <div className="mt-6 rounded-xl bg-gradient-to-b from-indigo-50/40 to-white px-2 pb-2 pt-4 sm:px-4">
-      <ResponsiveContainer width="100%" height={288}>
+    <div className="rounded-xl bg-slate-50/80 px-1 pb-1 pt-2 sm:px-3">
+      <ResponsiveContainer width="100%" height={height}>
         <BarChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: 4 }} barCategoryGap="28%">
           <CartesianGrid stroke="#e2e8f0" strokeDasharray="4 4" vertical={false} />
           <XAxis

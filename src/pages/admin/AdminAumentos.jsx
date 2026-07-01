@@ -22,9 +22,9 @@ import {
   AdminTableRow,
 } from '../../components/admin/AdminDataTable'
 import { useAumentos } from '../../hooks/useAumentos'
-import { useInquilinos } from '../../hooks/useInquilinos'
-import { usePropiedades } from '../../hooks/usePropiedades'
 import { deshacerAumento } from '../../services/aumentosService'
+import { listarInquilinos } from '../../services/inquilinosService'
+import { listarPropiedades } from '../../services/propiedadesService'
 import {
   obtenerComprobanteAumento,
   obtenerUrlDescargaDocumento,
@@ -49,6 +49,12 @@ import {
 
 const FILAS_POR_PAGINA = 4
 
+function clavePropuestaAumento(p) {
+  if (!p) return ''
+  const fecha = p.fechaAumento ?? p.fecha_hasta ?? p.fecha_proximo_aumento ?? p.fecha_aplicacion
+  return `${p.contrato_id}:${fecha ?? ''}`
+}
+
 const COL_CONTRATO = 'w-[19rem]'
 const COL_FECHA = 'w-[9.5rem]'
 const COL_MONTO_ACTUAL = 'w-[13rem]'
@@ -57,7 +63,7 @@ const COL_INDICE = 'w-[6rem]'
 const COL_CONFIRMADO = 'w-[7rem]'
 
 const inputToolbarClass =
-  'h-10 rounded-lg border border-slate-300 bg-white text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:opacity-50'
+  'h-10 rounded-lg border border-slate-300 bg-white text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:opacity-50'
 
 const formatMonto = (monto) => {
   if (monto == null) return '—'
@@ -116,6 +122,8 @@ export default function AdminAumentos() {
   const [deshaciendo, setDeshaciendo] = useState(false)
   const [reloadHistorialToken, setReloadHistorialToken] = useState(0)
   const [avisoComprobante, setAvisoComprobante] = useState(null)
+  const [inquilinos, setInquilinos] = useState([])
+  const [propiedades, setPropiedades] = useState([])
 
   const toggleRevisado = (contratoId) => {
     setRevisados((prev) => {
@@ -138,8 +146,22 @@ export default function AdminAumentos() {
     confirmarSeleccionados,
     limpiarError,
   } = useAumentos()
-  const { inquilinos } = useInquilinos()
-  const { propiedades } = usePropiedades()
+
+  useEffect(() => {
+    if (!detalleOpen) return
+
+    let cancelado = false
+
+    Promise.all([listarInquilinos(), listarPropiedades()]).then(([inqRes, propRes]) => {
+      if (cancelado) return
+      if (!inqRes.error) setInquilinos(inqRes.data ?? [])
+      if (!propRes.error) setPropiedades(propRes.data ?? [])
+    })
+
+    return () => {
+      cancelado = true
+    }
+  }, [detalleOpen])
 
   const hoy = hoyIsoLocal()
   const periodoOperativo = useMemo(() => periodoOperativoInfo(hoy), [hoy])
@@ -251,6 +273,27 @@ export default function AdminAumentos() {
     if (filtro === 'rezagados') return propuestasConUi.filter(esRezagado)
     return propuestasConUi.filter(esPendienteConfirmar)
   }, [propuestasConUi, filtro, listadoConfirmados, esRezagado, esPendienteConfirmar])
+
+  const indiceDetalleEnListado = useMemo(() => {
+    if (!propuestaDetalle) return -1
+    const claveActual = clavePropuestaAumento(propuestaDetalle)
+    return listadoFiltrado.findIndex((p) => clavePropuestaAumento(p) === claveActual)
+  }, [propuestaDetalle, listadoFiltrado])
+
+  const haySiguienteARevisar =
+    indiceDetalleEnListado >= 0 && indiceDetalleEnListado < listadoFiltrado.length - 1
+
+  const hayAnteriorARevisar = indiceDetalleEnListado > 0
+
+  const irSiguienteARevisar = useCallback(() => {
+    if (!haySiguienteARevisar) return
+    setPropuestaDetalle(listadoFiltrado[indiceDetalleEnListado + 1])
+  }, [haySiguienteARevisar, listadoFiltrado, indiceDetalleEnListado])
+
+  const irAnteriorARevisar = useCallback(() => {
+    if (!hayAnteriorARevisar) return
+    setPropuestaDetalle(listadoFiltrado[indiceDetalleEnListado - 1])
+  }, [hayAnteriorARevisar, listadoFiltrado, indiceDetalleEnListado])
 
   useEffect(() => {
     setPaginaActual(1)
@@ -568,13 +611,13 @@ export default function AdminAumentos() {
       >
         <div className="flex flex-nowrap items-center gap-2 overflow-x-auto border-b border-slate-200 bg-slate-50/70 px-4 py-3 lg:px-6">
           <div
-            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3"
+            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3"
             aria-label={`Período operativo: ${periodoOperativo.etiqueta}`}
           >
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-indigo-500">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-brand-500">
               Período operativo
             </span>
-            <span className="whitespace-nowrap text-sm font-semibold text-indigo-900">
+            <span className="whitespace-nowrap text-sm font-semibold text-brand-900">
               {periodoOperativo.etiqueta}
             </span>
           </div>
@@ -595,7 +638,7 @@ export default function AdminAumentos() {
                   onClick={() => setFiltro(value)}
                   className={`inline-flex h-full shrink-0 items-center whitespace-nowrap rounded-md px-2.5 text-xs font-medium transition-colors lg:px-3 ${
                     activo
-                      ? 'bg-indigo-50 text-indigo-700 shadow-sm ring-1 ring-indigo-100'
+                      ? 'bg-brand-50 text-brand-700 shadow-sm ring-1 ring-brand-100'
                       : 'text-slate-600 hover:text-slate-900'
                   } disabled:opacity-50`}
                 >
@@ -651,7 +694,7 @@ export default function AdminAumentos() {
                 Periodo de aumento
               </AdminTableHeaderCell>
               <AdminTableHeaderCell className={`${COL_MONTO_ACTUAL} align-top`}>
-                <span className="block text-right text-indigo-700">Monto actual de alquiler</span>
+                <span className="block text-right text-brand-700">Monto actual de alquiler</span>
               </AdminTableHeaderCell>
               <AdminTableHeaderCell className={`${COL_MONTO_AJUSTADO} align-top`}>
                 <span className="block text-right">Monto ajustado</span>
@@ -705,7 +748,7 @@ export default function AdminAumentos() {
                       </div>
                     </AdminTableCell>
                     <AdminTableCell className={`${COL_MONTO_ACTUAL} !text-right align-top`}>
-                      <span className="block whitespace-nowrap tabular-nums font-medium text-indigo-700">
+                      <span className="block whitespace-nowrap tabular-nums font-medium text-brand-700">
                         {formatMonto(p.monto_actual)}
                       </span>
                     </AdminTableCell>
@@ -735,7 +778,10 @@ export default function AdminAumentos() {
                     </AdminTableCell>
                     <AdminTableCell className={`${COL_INDICE} align-top`}>
                       <div className="flex justify-center">
-                        <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700">
+                        <span
+                          title={indice.tooltip ?? undefined}
+                          className="inline-flex cursor-help items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
+                        >
                           <span className="text-sm leading-none">{indice.icon}</span>
                           {indice.label}
                         </span>
@@ -794,6 +840,10 @@ export default function AdminAumentos() {
         onToggleRevisado={
           propuestaDetalle ? () => toggleRevisado(propuestaDetalle.contrato_id) : undefined
         }
+        onSiguiente={irSiguienteARevisar}
+        haySiguiente={haySiguienteARevisar}
+        onAnterior={irAnteriorARevisar}
+        hayAnterior={hayAnteriorARevisar}
       />
 
       <AumentoHistorialModal
@@ -883,9 +933,9 @@ export default function AdminAumentos() {
                   la fecha.
                 </p>
               </div>
-              <div className="rounded-lg border border-indigo-100 bg-indigo-50/80 px-3 py-2">
-                <p className="text-xs font-semibold text-indigo-800">Proyectado</p>
-                <p className="mt-0.5 text-xs leading-snug text-indigo-900/80">
+              <div className="rounded-lg border border-brand-100 bg-brand-50/80 px-3 py-2">
+                <p className="text-xs font-semibold text-brand-800">Proyectado</p>
+                <p className="mt-0.5 text-xs leading-snug text-brand-900/80">
                   Estimación sin índices definitivos. Solo vista previa.
                 </p>
               </div>

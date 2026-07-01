@@ -1,6 +1,6 @@
 export default function AdminFormModalHeader({ title, titleId, icon }) {
   return (
-    <div className="bg-indigo-600 px-6 py-4">
+    <div className="bg-brand-600 px-6 py-4">
       <div className="flex items-center gap-3">
         {icon ? (
           <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white">

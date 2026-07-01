@@ -135,6 +135,55 @@ export async function obtenerIpcAnualArgly(anio = new Date().getFullYear()) {
   }
 }
 
+/** Últimos ICL/IPC guardados en Supabase (rápido; mismo origen que usa el cálculo). */
+export async function obtenerUltimosIndicesLocal() {
+  if (!supabase) {
+    return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
+  }
+
+  const [iclRes, ipcRes] = await Promise.all([
+    supabase
+      .from('indices')
+      .select('fecha, valor')
+      .eq('indice', 'icl')
+      .order('fecha', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('indices')
+      .select('anio, mes, valor')
+      .eq('indice', 'ipc')
+      .order('anio', { ascending: false })
+      .order('mes', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ])
+
+  if (iclRes.error || ipcRes.error) {
+    return {
+      data: null,
+      error: { message: iclRes.error?.message ?? ipcRes.error?.message ?? 'Error al leer índices' },
+    }
+  }
+
+  return {
+    data: {
+      icl: iclRes.data?.fecha
+        ? { fecha: iclRes.data.fecha, valor: Number(iclRes.data.valor) }
+        : null,
+      ipc:
+        ipcRes.data?.anio != null
+          ? {
+              anio: Number(ipcRes.data.anio),
+              mes: Number(ipcRes.data.mes),
+              valor: Number(ipcRes.data.valor),
+            }
+          : null,
+    },
+    error: null,
+  }
+}
+
 /** Últimos valores publicados en Argly (INDEC/BCRA), sin leer la tabla local. */
 export async function obtenerUltimosIndicesArgly() {
   const hoy = hoyIsoLocal()

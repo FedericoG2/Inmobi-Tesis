@@ -7,6 +7,7 @@ import AdminTablePagination from '../../components/admin/AdminTablePagination'
 import {
   AdminTable,
   AdminTableBody,
+  AdminTableActionsCell,
   AdminTableCell,
   AdminTableEmptyCell,
   AdminTableHead,
@@ -17,26 +18,18 @@ import FilterSelect, { toolbarInputClass } from '../../components/admin/FilterSe
 import ReclamoFormModal from '../../components/admin/forms/ReclamoFormModal'
 import ReclamoDetalleModal from '../../components/admin/ReclamoDetalleModal'
 import ReclamoGestionModal from '../../components/admin/ReclamoGestionModal'
-import { ReclamoCategoriaChip, ReclamoEstadoChip } from '../../components/admin/ReclamoChips'
+import {
+  ReclamoCategoriaChip,
+  ReclamoEstadoChip,
+  ReclamoPrioridadChip,
+} from '../../components/admin/ReclamoChips'
+import ReclamoRowActions from '../../components/admin/ReclamoRowActions'
 import StatCard from '../../components/admin/StatCard'
-import TableRowActions from '../../components/admin/TableRowActions'
 import { useInquilinos } from '../../hooks/useInquilinos'
 import { useContratos } from '../../hooks/useContratos'
 import { usePropiedades } from '../../hooks/usePropiedades'
 import { useReclamos } from '../../hooks/useReclamos'
-import {
-  badgePrioridad,
-  PILL_SOLID_CLASS,
-} from '../../utils/reclamosUi'
-
-function ReclamoPill({ badge }) {
-  if (!badge) return <span className="text-slate-400">—</span>
-  return (
-    <span className={`${PILL_SOLID_CLASS} ${badge.className}`}>
-      {badge.label}
-    </span>
-  )
-}
+import { celdaNombre, celdaNumero } from '../../utils/adminModuleUi'
 
 const estados = ['Pendiente', 'En Proceso', 'Revision', 'Resuelto']
 const prioridades = ['Baja', 'Media', 'Alta', 'Urgente']
@@ -259,36 +252,40 @@ export default function AdminReclamos() {
             )}
           </>
         }
-        summary={
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatCard
-              label="Sin resolver"
-              value={loading ? '…' : kpis.sinResolver}
-              icon="clipboard"
-              theme="indigo"
-            />
-            <StatCard
-              label="Urgentes"
-              value={loading ? '…' : kpis.urgentes}
-              icon="alert"
-              theme={kpis.urgentes > 0 ? 'red' : 'slate'}
-            />
-            <StatCard
-              label="Pendientes"
-              value={loading ? '…' : kpis.pendientes}
-              icon="wrench"
-              theme="amber"
-            />
-            <StatCard
-              label="Resueltos"
-              value={loading ? '…' : kpis.resueltos}
-              icon="check"
-              theme="emerald"
-            />
-          </div>
-        }
       >
-        <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 lg:px-6">
+        <div className="grid grid-cols-2 gap-2 border-b border-slate-200 bg-white p-3 xl:grid-cols-4">
+          <StatCard
+            compact
+            label="Sin resolver"
+            value={loading ? '…' : kpis.sinResolver}
+            icon="clipboard"
+            theme="slate"
+          />
+          <StatCard
+            compact
+            label="Urgentes"
+            value={loading ? '…' : kpis.urgentes}
+            icon="alert"
+            theme={kpis.urgentes > 0 ? 'red' : 'slate'}
+          />
+          <StatCard
+            compact
+            label="Pendientes"
+            value={loading ? '…' : kpis.pendientes}
+            icon="wrench"
+            theme="slate"
+          />
+          <StatCard
+            compact
+            label="Resueltos"
+            value={loading ? '…' : kpis.resueltos}
+            icon="check"
+            theme="emerald"
+          />
+        </div>
+
+        <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-3 lg:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <div className="relative min-w-0 flex-1 sm:min-w-[12rem]">
             <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -346,12 +343,13 @@ export default function AdminReclamos() {
             <AdminNuevoButton
               label="NUEVO RECLAMO"
               onClick={abrirModalCrear}
-              className="w-full sm:w-auto"
+              className="h-10 w-full whitespace-nowrap sm:w-auto"
             />
+          </div>
           </div>
         </div>
 
-        <AdminTable>
+        <AdminTable className="w-full">
           <AdminTableHead className="!bg-slate-100/90">
             <AdminTableRow>
               <AdminTableHeaderCell>Inquilino</AdminTableHeaderCell>
@@ -363,7 +361,7 @@ export default function AdminReclamos() {
               <AdminTableHeaderCell className={`${COL_ESTADO} !text-center`}>
                 Estado
               </AdminTableHeaderCell>
-              <AdminTableHeaderCell className="w-40 whitespace-nowrap text-center">
+              <AdminTableHeaderCell className="w-36 whitespace-nowrap !text-center">
                 Acciones
               </AdminTableHeaderCell>
             </AdminTableRow>
@@ -385,10 +383,12 @@ export default function AdminReclamos() {
             )}
 
             {!loading &&
-              reclamosPagina.map((r) => (
-                <AdminTableRow key={r.id}>
+              reclamosPagina.map((r, index) => {
+                const zebra = index % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'
+                return (
+                <AdminTableRow key={r.id} className={`${zebra} hover:bg-brand-50/40`}>
                   <AdminTableCell className="max-w-[14rem]">
-                    <p className="font-medium text-slate-900">
+                    <p className={`truncate ${celdaNombre}`}>
                       {r.inquilinos?.nombre_completo ?? '—'}
                     </p>
                     <p className="mt-0.5 truncate text-xs text-slate-500">
@@ -396,12 +396,12 @@ export default function AdminReclamos() {
                     </p>
                   </AdminTableCell>
                   <AdminTableCell className="max-w-sm">
-                    <p className="truncate font-medium text-slate-900">{r.titulo}</p>
+                    <p className={`truncate ${celdaNombre}`}>{r.titulo}</p>
                     <span className="mt-1 inline-block">
                       <ReclamoCategoriaChip categoria={r.categoria} />
                     </span>
                   </AdminTableCell>
-                  <AdminTableCell className={`${COL_FECHA} tabular-nums`}>
+                  <AdminTableCell className={`${COL_FECHA} ${celdaNumero}`}>
                     {r.fecha_creacion
                       ? new Date(r.fecha_creacion).toLocaleDateString('es-AR', {
                           day: '2-digit',
@@ -411,23 +411,22 @@ export default function AdminReclamos() {
                       : '—'}
                   </AdminTableCell>
                   <AdminTableCell className={`${COL_PRIORIDAD} !text-center`}>
-                    <ReclamoPill badge={badgePrioridad(r.prioridad)} />
+                    <ReclamoPrioridadChip prioridad={r.prioridad} />
                   </AdminTableCell>
                   <AdminTableCell className={`${COL_ESTADO} !text-center`}>
                     <ReclamoEstadoChip estado={r.estado} />
                   </AdminTableCell>
-                  <AdminTableCell className="w-40">
-                    <div className="flex items-center justify-center gap-2">
-                      <TableRowActions
-                        onView={() => abrirDetalle(r)}
-                        onManage={() => abrirGestion(r)}
-                        onEdit={() => abrirModalEditar(r)}
-                        onDelete={() => handleEliminar(r)}
-                      />
-                    </div>
-                  </AdminTableCell>
+                  <AdminTableActionsCell className="w-36">
+                    <ReclamoRowActions
+                      onView={() => abrirDetalle(r)}
+                      onManage={() => abrirGestion(r)}
+                      onEdit={() => abrirModalEditar(r)}
+                      onDelete={() => handleEliminar(r)}
+                    />
+                  </AdminTableActionsCell>
                 </AdminTableRow>
-              ))}
+                )
+              })}
           </AdminTableBody>
         </AdminTable>
 

@@ -1,15 +1,6 @@
-import { useMemo } from 'react'
-import { usePortalInquilino } from '../../contexts/PortalInquilinoContext'
 import { supabase } from '../../supabaseClient'
 import InquilinoNotificacionesBell from './InquilinoNotificacionesBell'
-
-function inicialesDesdeNombre(nombre) {
-  const partes = (nombre ?? '').trim().split(/\s+/).filter(Boolean)
-  if (partes.length >= 2) {
-    return `${partes[0][0]}${partes[partes.length - 1][0]}`.toUpperCase()
-  }
-  return (nombre ?? 'IN').slice(0, 2).toUpperCase()
-}
+import InquilinoContratoSelector from './InquilinoContratoSelector'
 
 function IconLogout({ className = 'h-5 w-5' }) {
   return (
@@ -23,55 +14,44 @@ function IconLogout({ className = 'h-5 w-5' }) {
   )
 }
 
-function UserAvatar({ iniciales }) {
-  return (
-    <span
-      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-sm font-bold text-white shadow-sm"
-      aria-hidden
-    >
-      {iniciales}
-    </span>
-  )
-}
-
 const actionClassName =
-  'relative flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-slate-600 shadow-sm ring-1 ring-slate-200/80 transition hover:bg-slate-50 hover:text-slate-800'
+  'relative flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 hover:text-slate-800 lg:h-11 lg:w-11 lg:rounded-2xl'
 
 export default function InquilinoHeader() {
-  const { inquilino } = usePortalInquilino()
-
-  const primerNombre = inquilino?.nombre_completo?.split(' ')[0] ?? 'Inquilino'
-  const iniciales = useMemo(
-    () => inicialesDesdeNombre(inquilino?.nombre_completo),
-    [inquilino?.nombre_completo]
-  )
-
   const handleSignOut = () => {
     supabase?.auth.signOut()
   }
 
+  const acciones = (
+    <div className="flex shrink-0 items-center gap-2">
+      <InquilinoNotificacionesBell />
+      <button
+        type="button"
+        onClick={handleSignOut}
+        className={actionClassName}
+        aria-label="Cerrar sesión"
+        title="Cerrar sesión"
+      >
+        <IconLogout />
+      </button>
+    </div>
+  )
+
   return (
-    <header className="sticky top-0 z-40 bg-indigo-50/95 px-4 py-3 backdrop-blur-md">
-      <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <UserAvatar iniciales={iniciales} />
-          <p className="truncate text-base font-bold text-slate-900">Hola, {primerNombre}</p>
+    <>
+      <header className="sticky top-0 z-40 border-b border-brand-100/80 bg-brand-50/95 backdrop-blur-md lg:hidden">
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-end">{acciones}</div>
+          <InquilinoContratoSelector className="mt-3" />
         </div>
+      </header>
 
-        <div className="flex shrink-0 items-center gap-2">
-          <InquilinoNotificacionesBell />
-
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className={actionClassName}
-            aria-label="Cerrar sesión"
-            title="Cerrar sesión"
-          >
-            <IconLogout />
-          </button>
+      <header className="sticky top-0 z-20 hidden border-b border-slate-200 bg-white/95 backdrop-blur-sm lg:block">
+        <div className="flex h-16 items-center justify-end gap-6 px-8">
+          <InquilinoContratoSelector variant="desktop" className="mr-auto min-w-0 flex-1" />
+          {acciones}
         </div>
-      </div>
-    </header>
+      </header>
+    </>
   )
 }

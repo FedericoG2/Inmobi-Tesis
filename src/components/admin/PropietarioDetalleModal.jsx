@@ -2,19 +2,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@tremor/react'
 import { contarPropiedadesPorPropietario } from '../../services/propietariosService'
 import { formatearDniCuit, formatearTelefono } from '../../utils/normalizarContacto'
-
-const BADGE_TIPO = {
-  Física: {
-    label: 'Particular',
-    className: 'bg-violet-600 text-white',
-    avatarClass: 'rounded-full bg-violet-100 text-violet-700',
-  },
-  Jurídica: {
-    label: 'Empresa',
-    className: 'bg-teal-600 text-white',
-    avatarClass: 'rounded-lg bg-teal-100 text-teal-700',
-  },
-}
+import { BADGE_PROPIETARIO_TIPO } from '../../utils/adminModuleUi'
 
 function iniciales(nombre) {
   const partes = (nombre ?? '').trim().split(/\s+/).filter(Boolean)
@@ -158,7 +146,7 @@ export default function PropietarioDetalleModal({ open, propietario, onClose, on
 
   if (!open || !propietario) return null
 
-  const estilo = BADGE_TIPO[propietario.tipo_persona] ?? BADGE_TIPO['Física']
+  const estilo = BADGE_PROPIETARIO_TIPO[propietario.tipo_persona] ?? BADGE_PROPIETARIO_TIPO['Física']
   const esJuridica = propietario.tipo_persona === 'Jurídica'
 
   const textoPropiedades = cargandoPropiedades

@@ -19,12 +19,17 @@ import AdminTablePagination from '../../components/admin/AdminTablePagination'
 import AdminNuevoButton from '../../components/admin/AdminNuevoButton'
 import { usePropietarios } from '../../hooks/usePropietarios'
 import { formatearDniCuit, formatearTelefono } from '../../utils/normalizarContacto'
+import {
+  BADGE_PROPIETARIO_TIPO,
+  celdaNombre,
+  celdaNumero,
+  celdaTexto,
+  inputToolbarClass,
+  selectToolbarClass,
+} from '../../utils/adminModuleUi'
 
 const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
 const FILAS_POR_PAGINA = 4
-
-const inputToolbarClass =
-  'h-10 w-full rounded-lg border border-slate-300 bg-white text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
 
 function IconSearch({ className = 'h-4 w-4' }) {
   return (
@@ -36,17 +41,6 @@ function IconSearch({ className = 'h-4 w-4' }) {
       />
     </svg>
   )
-}
-
-const BADGE_TIPO = {
-  Física: {
-    label: 'Particular',
-    className: 'bg-violet-600 text-white',
-  },
-  Jurídica: {
-    label: 'Empresa',
-    className: 'bg-teal-600 text-white',
-  },
 }
 
 function IconUser({ className = 'h-4 w-4' }) {
@@ -106,10 +100,6 @@ function HeaderLabel({ icon: Icon, children, align = 'center' }) {
     </span>
   )
 }
-
-const celdaTexto = 'text-sm text-slate-700'
-const celdaNombre = 'text-sm font-medium text-slate-900'
-const celdaNumero = 'text-sm tabular-nums text-slate-700 whitespace-nowrap'
 
 export default function AdminPropietarios() {
   const [modalOpen, setModalOpen] = useState(false)
@@ -304,7 +294,7 @@ export default function AdminPropietarios() {
             id="filtro-tipo-propietario"
             value={filtroTipo}
             onChange={(e) => setFiltroTipo(e.target.value)}
-            className={`${inputToolbarClass} sm:w-44 shrink-0 cursor-pointer`}
+            className={selectToolbarClass}
             aria-label="Filtrar por tipo de propietario"
           >
             <option value="">Tipo: Todos</option>
@@ -372,11 +362,11 @@ export default function AdminPropietarios() {
             {!loading &&
               propietariosFiltrados.length > 0 &&
               propietariosPagina.map((p, index) => {
-                const badge = BADGE_TIPO[p.tipo_persona] ?? BADGE_TIPO['Física']
+                const badge = BADGE_PROPIETARIO_TIPO[p.tipo_persona] ?? BADGE_PROPIETARIO_TIPO['Física']
                 const zebra = index % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'
 
                 return (
-                  <AdminTableRow key={p.id ?? p.dni_cuit} className={`${zebra} hover:bg-indigo-50/40`}>
+                  <AdminTableRow key={p.id ?? p.dni_cuit} className={`${zebra} hover:bg-brand-50/40`}>
                     <AdminTableCell className="!text-center">
                       <span
                         className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${badge.className}`}

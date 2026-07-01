@@ -39,10 +39,10 @@ const formInicial = {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100'
+  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100'
 
 const verDetalleLinkClass =
-  'shrink-0 text-xs font-semibold text-indigo-600 transition hover:text-indigo-700 hover:underline'
+  'shrink-0 text-xs font-semibold text-brand-600 transition hover:text-brand-700 hover:underline'
 
 const inputErrorClass = 'border-red-400 focus:border-red-500 focus:ring-red-100'
 
@@ -533,7 +533,7 @@ export default function ReclamoFormModal({
                   <button
                     type="button"
                     onClick={() => setPickerOpen(true)}
-                    className="text-sm font-medium text-indigo-600 transition hover:text-indigo-700 hover:underline"
+                    className="text-sm font-medium text-brand-600 transition hover:text-brand-700 hover:underline"
                   >
                     Seleccioná un inquilino
                   </button>
@@ -612,8 +612,8 @@ export default function ReclamoFormModal({
           <div className="custom-scrollbar flex-1 overflow-y-auto px-6 py-3">
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
               <div className="space-y-3">
-                <div className="rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2">
-                  <label htmlFor="titulo" className="text-[11px] font-medium text-indigo-700">
+                <div className="rounded-lg border border-brand-100 bg-brand-50/60 px-3 py-2">
+                  <label htmlFor="titulo" className="text-[11px] font-medium text-brand-700">
                     Título del reclamo
                   </label>
                   <input
@@ -623,7 +623,7 @@ export default function ReclamoFormModal({
                     maxLength={RECLAMO_LIMITES.TITULO_MAX}
                     value={form.titulo}
                     onChange={handleChange('titulo')}
-                    className={`mt-1 w-full rounded-lg border border-indigo-100 bg-white/90 px-3 py-2 text-base font-semibold text-indigo-950 outline-none transition placeholder:font-normal placeholder:text-indigo-300 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 ${errores.titulo ? inputErrorClass : ''}`}
+                    className={`mt-1 w-full rounded-lg border border-brand-100 bg-white/90 px-3 py-2 text-base font-semibold text-brand-950 outline-none transition placeholder:font-normal placeholder:text-brand-300 focus:border-brand-300 focus:ring-2 focus:ring-brand-100 ${errores.titulo ? inputErrorClass : ''}`}
                     placeholder="Ej: Pérdida de presión de agua"
                     disabled={formDeshabilitado}
                     aria-invalid={Boolean(errores.titulo)}
@@ -640,7 +640,7 @@ export default function ReclamoFormModal({
                     maxLength={RECLAMO_LIMITES.DESCRIPCION_MAX}
                     value={form.descripcion}
                     onChange={handleChange('descripcion')}
-                    className={`w-full resize-none rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2.5 text-sm leading-relaxed text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 ${errores.descripcion ? inputErrorClass : ''}`}
+                    className={`w-full resize-none rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2.5 text-sm leading-relaxed text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 ${errores.descripcion ? inputErrorClass : ''}`}
                     placeholder="Describí el problema con precisión…"
                     disabled={formDeshabilitado}
                     aria-invalid={Boolean(errores.descripcion)}
@@ -708,7 +708,7 @@ export default function ReclamoFormModal({
                           type="button"
                           onClick={() => imagenInputRef.current?.click()}
                           disabled={formDeshabilitado || subiendoImagenes}
-                          className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 transition hover:border-indigo-400 hover:text-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 transition hover:border-brand-400 hover:text-brand-500 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -745,7 +745,7 @@ export default function ReclamoFormModal({
                           onClick={() => handleDirectChange('categoria', cat.id)}
                           className={`flex items-center gap-2 rounded-xl border p-2.5 text-left text-sm transition ${
                             esSeleccionado
-                              ? 'border-indigo-500 bg-indigo-50 text-indigo-800 font-semibold ring-2 ring-indigo-100'
+                              ? 'border-brand-500 bg-brand-50 text-brand-800 font-semibold ring-2 ring-brand-100'
                               : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50'
                           }`}
                         >
@@ -817,7 +817,7 @@ export default function ReclamoFormModal({
               type="submit"
               loading={submitting || subiendoImagenes}
               disabled={submitting || subiendoImagenes || formDeshabilitado}
-              className="border-none bg-indigo-600 text-white hover:bg-indigo-700"
+              className="border-none bg-brand-600 text-white hover:bg-brand-700"
             >
               {guardado ? 'Reintentar' : esEdicion ? 'Guardar cambios' : 'Guardar'}
             </Button>

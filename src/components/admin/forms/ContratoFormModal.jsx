@@ -31,10 +31,10 @@ import InquilinoDetalleModal from '../InquilinoDetalleModal'
 import PropiedadDetalleModal from '../PropiedadDetalleModal'
 
 const inputClass =
-  'w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200'
+  'w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200'
 
 const inputClassSinSpinner =
-  'w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
+  'w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
 
 const formatMonto = (monto) =>
   new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(monto)
@@ -104,9 +104,9 @@ function StepperProgreso({ secciones, activa }) {
               aria-current={i === activa ? 'step' : undefined}
               className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition-colors ${
                 i < activa
-                  ? 'bg-indigo-600 text-white'
+                  ? 'bg-brand-600 text-white'
                   : i === activa
-                    ? 'border-2 border-indigo-600 bg-white text-indigo-700'
+                    ? 'border-2 border-brand-600 bg-white text-brand-700'
                     : 'border-2 border-slate-200 bg-white text-slate-400'
               }`}
             >
@@ -120,7 +120,7 @@ function StepperProgreso({ secciones, activa }) {
             </div>
             <span
               className={`max-w-[4.5rem] text-center text-[10px] font-semibold uppercase leading-tight sm:max-w-none sm:text-xs ${
-                i === activa ? 'text-indigo-700' : i < activa ? 'text-slate-600' : 'text-slate-400'
+                i === activa ? 'text-brand-700' : i < activa ? 'text-slate-600' : 'text-slate-400'
               }`}
             >
               {sec.stepLabel ?? sec.label}
@@ -128,7 +128,7 @@ function StepperProgreso({ secciones, activa }) {
           </div>
           {i < secciones.length - 1 && (
             <div
-              className={`mx-1 mb-5 h-0.5 w-6 sm:mx-2 sm:w-10 ${i < activa ? 'bg-indigo-500' : 'bg-slate-200'}`}
+              className={`mx-1 mb-5 h-0.5 w-6 sm:mx-2 sm:w-10 ${i < activa ? 'bg-brand-500' : 'bg-slate-200'}`}
               aria-hidden
             />
           )}

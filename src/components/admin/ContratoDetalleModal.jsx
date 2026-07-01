@@ -245,7 +245,7 @@ export default function ContratoDetalleModal({
       >
         <div className="shrink-0 border-b border-slate-100 px-6 py-3">
           <div className="flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
+            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-700">
               <IconClipboard className="h-5 w-5" />
             </span>
 
@@ -300,7 +300,7 @@ export default function ContratoDetalleModal({
                         <button
                           type="button"
                           onClick={() => onVerInquilino(inquilino)}
-                          className="shrink-0 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+                          className="shrink-0 text-xs font-medium text-brand-600 hover:text-brand-800 hover:underline"
                         >
                           Ver detalle
                         </button>
@@ -321,7 +321,7 @@ export default function ContratoDetalleModal({
                         <button
                           type="button"
                           onClick={() => onVerPropiedad(propiedad)}
-                          className="shrink-0 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+                          className="shrink-0 text-xs font-medium text-brand-600 hover:text-brand-800 hover:underline"
                         >
                           Ver detalle
                         </button>

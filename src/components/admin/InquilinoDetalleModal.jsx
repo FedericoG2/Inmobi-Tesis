@@ -2,19 +2,10 @@ import { useEffect, useState } from 'react'
 import { Button } from '@tremor/react'
 import { contarDependenciasInquilino } from '../../services/inquilinosService'
 import { formatearDniCuit } from '../../utils/normalizarContacto'
-
-const ESTILO_TIPO = {
-  Física: {
-    label: 'Particular',
-    iconClass: 'rounded-full bg-violet-100 text-violet-700 text-sm font-bold',
-    badgeClass: 'bg-violet-600 text-white',
-  },
-  Jurídica: {
-    label: 'Empresa',
-    iconClass: 'rounded-lg bg-teal-100 text-teal-700',
-    badgeClass: 'bg-teal-600 text-white',
-  },
-}
+import {
+  BADGE_INQUILINO_PORTAL,
+  BADGE_PERSONA_TIPO,
+} from '../../utils/adminModuleUi'
 
 function iniciales(nombre) {
   const partes = (nombre ?? '').trim().split(/\s+/).filter(Boolean)
@@ -123,15 +114,15 @@ function IconWrench({ className = 'h-4 w-4' }) {
 function DetalleFila({ label, value, icon: Icon, className = '', truncateValue = true }) {
   return (
     <div
-      className={`flex items-center gap-2.5 rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2 ${className}`}
+      className={`flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 ${className}`}
     >
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white text-slate-400 ring-1 ring-slate-100">
-        <Icon className="h-3.5 w-3.5" />
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-slate-400 ring-1 ring-slate-100">
+        <Icon className="h-4 w-4" />
       </span>
       <div className="min-w-0">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
         <p
-          className={`text-sm font-medium leading-tight text-slate-800 ${
+          className={`text-sm font-medium text-slate-800 ${
             truncateValue ? 'truncate' : 'break-words'
           }`}
           title={truncateValue && typeof value === 'string' ? value : undefined}
@@ -208,8 +199,11 @@ export default function InquilinoDetalleModal({ open, inquilino, onClose, onEdit
 
   if (!open || !inquilino) return null
 
-  const estiloTipo = ESTILO_TIPO[inquilino.tipo_persona] ?? ESTILO_TIPO['Física']
+  const estiloTipo = BADGE_PERSONA_TIPO[inquilino.tipo_persona] ?? BADGE_PERSONA_TIPO['Física']
   const esJuridica = inquilino.tipo_persona === 'Jurídica'
+  const badgePortal = inquilino.perfil_id
+    ? BADGE_INQUILINO_PORTAL.activo
+    : BADGE_INQUILINO_PORTAL.inactivo
 
   const textoContratos = cargandoDeps ? 'Consultando...' : etiquetaContratos(dependencias)
   const textoReclamos = cargandoDeps
@@ -238,10 +232,10 @@ export default function InquilinoDetalleModal({ open, inquilino, onClose, onEdit
         aria-labelledby="inquilino-detalle-titulo"
         className="relative z-10 w-full max-w-2xl rounded-2xl border border-slate-100 bg-white shadow-xl"
       >
-        <div className="border-b border-slate-100 px-6 py-3">
+        <div className="border-b border-slate-100 px-6 py-4">
           <div className="flex items-center gap-3">
             <span
-              className={`inline-flex h-10 w-10 shrink-0 items-center justify-center text-sm ${estiloTipo.iconClass}`}
+              className={`inline-flex h-12 w-12 shrink-0 items-center justify-center text-sm font-bold ${estiloTipo.avatarClass}`}
             >
               {esJuridica ? <IconBuilding className="h-5 w-5" /> : iniciales(inquilino.nombre_completo)}
             </span>
@@ -249,30 +243,28 @@ export default function InquilinoDetalleModal({ open, inquilino, onClose, onEdit
             <div className="min-w-0 flex-1">
               <h2
                 id="inquilino-detalle-titulo"
-                className="truncate text-base font-semibold text-slate-900"
+                className="truncate text-lg font-semibold text-slate-900"
               >
                 {inquilino.nombre_completo}
               </h2>
-              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
                 <span
-                  className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${estiloTipo.badgeClass}`}
+                  className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${estiloTipo.className}`}
                 >
                   {estiloTipo.label}
                 </span>
                 <span
-                  className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                    inquilino.perfil_id ? 'bg-emerald-600 text-white' : 'bg-slate-400 text-white'
-                  }`}
+                  className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${badgePortal.className}`}
                 >
-                  {inquilino.perfil_id ? 'Portal activo' : 'Sin acceso'}
+                  {badgePortal.label}
                 </span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="px-6 py-3">
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="px-6 py-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <DetalleFila
               label={esJuridica ? 'CUIT' : 'DNI / CUIT'}
               value={formatearDniCuit(inquilino.dni_cuit)}

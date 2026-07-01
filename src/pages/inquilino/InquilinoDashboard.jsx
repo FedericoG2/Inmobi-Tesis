@@ -7,6 +7,8 @@ import useProyeccionAumentoInquilino from '../../hooks/useProyeccionAumentoInqui
 import { usePortalInquilino } from '../../contexts/PortalInquilinoContext'
 import { armarResumenAlquilerInquilino } from '../../utils/resumenAlquilerInquilino'
 import { formatMontoInquilino } from '../../utils/proyeccionAumentoInquilino'
+import { portalBadge, portalCardClass, portalEmptyState, portalErrorState, portalLoadingState, portalMontoLg, portalPageShell, portalSection, portalSectionTitle } from '../../utils/portalInquilinoUi'
+import PortalPageHeader from '../../components/inquilino/PortalPageHeader'
 
 const formatMonto = formatMontoInquilino
 
@@ -49,7 +51,7 @@ const quickActions = [
     title: 'Detalles del contrato',
     subtitle: 'Fechas, montos y documentación',
     icon: IconDocument,
-    iconClass: 'bg-indigo-100 text-indigo-600',
+    iconClass: 'bg-brand-100 text-brand-600',
   },
   {
     to: '/inquilino/reclamos',
@@ -88,59 +90,56 @@ export default function InquilinoDashboard() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <p className="text-sm text-slate-500">Cargando tu información...</p>
+      <div className={portalLoadingState}>
+        <p>Cargando tu información...</p>
       </div>
     )
   }
 
   if (error) {
-    return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
-        {error}
-      </div>
-    )
+    return <div className={portalErrorState}>{error}</div>
   }
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-bold text-slate-800">Resumen de tu Alquiler</h1>
+    <div className={portalPageShell}>
+      <PortalPageHeader
+        title="Resumen de tu Alquiler"
+        subtitle="Estado de tu contrato, próximo pago y accesos rápidos"
+      />
 
       {!contratoActivo || !resumen ? (
-        <div className="rounded-2xl bg-white px-5 py-8 text-center shadow-sm ring-1 ring-slate-100">
+        <div className={portalEmptyState}>
           <p className="text-sm font-medium text-slate-600">No tenés un contrato activo actualmente.</p>
           <p className="mt-1 text-xs text-slate-400">Contactá a la inmobiliaria para más información.</p>
         </div>
       ) : (
-        <>
-          <div className="overflow-hidden rounded-2xl bg-indigo-600 shadow-sm">
-            <div className="flex items-center gap-3 px-4 py-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-indigo-500/60 text-indigo-100">
+        <div className="grid gap-4 lg:grid-cols-12 lg:gap-5">
+          <div className="overflow-hidden rounded-xl bg-gradient-to-br from-brand-600 to-brand-700 shadow-sm lg:col-span-5">
+            <div className="flex items-center gap-4 px-4 py-4 lg:px-5 lg:py-5">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-white/15 text-brand-100 lg:h-16 lg:w-16">
                 <IconBuilding />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-200">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-200 lg:text-xs">
                   Propiedad
                 </p>
-                <p className="mt-1 line-clamp-2 text-sm font-semibold leading-snug text-white">
+                <p className="mt-1 line-clamp-3 text-sm font-semibold leading-snug text-white lg:text-base">
                   {contratoActivo.propiedades?.direccion ?? '—'}
                 </p>
-                <p className="mt-0.5 text-xs text-indigo-200">{contratoActivo.propiedades?.tipo}</p>
+                <p className="mt-1 text-xs text-brand-200">{contratoActivo.propiedades?.tipo}</p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-2xl bg-white px-5 py-5 ring-1 ring-slate-100">
+          <div className={`${portalCardClass} px-4 py-4 lg:col-span-7 lg:px-5 lg:py-5`}>
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-medium text-slate-500">Próximo pago</p>
               {resumen.mesContratoCorto && (
-                <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
-                  {resumen.mesContratoCorto}
-                </span>
+                <span className={portalBadge}>{resumen.mesContratoCorto}</span>
               )}
             </div>
 
-            <p className="mt-1 text-[1.75rem] font-bold leading-tight tracking-tight text-slate-900">
+            <p className={`mt-1 ${portalMontoLg}`}>
               {formatMonto(resumen.monto)}
             </p>
 
@@ -160,13 +159,13 @@ export default function InquilinoDashboard() {
               </div>
             )}
           </div>
-        </>
+        </div>
       )}
 
-      <section className="space-y-3">
-        <h2 className="text-base font-bold text-slate-900">Acciones rápidas</h2>
+      <section className={portalSection}>
+        <h2 className={portalSectionTitle}>Acciones rápidas</h2>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
           {quickActions.map((action) => {
             const Icon = action.icon
             const content = (
@@ -194,7 +193,7 @@ export default function InquilinoDashboard() {
               return (
                 <div
                   key={action.title}
-                  className="flex flex-col gap-2.5 rounded-2xl bg-white p-3.5 ring-1 ring-slate-100"
+                  className={`${portalCardClass} flex flex-col gap-2.5 p-3.5 lg:p-4`}
                   aria-disabled="true"
                 >
                   {content}
@@ -206,7 +205,7 @@ export default function InquilinoDashboard() {
               <Link
                 key={action.to}
                 to={action.to}
-                className="flex flex-col gap-2.5 rounded-2xl bg-white p-3.5 ring-1 ring-slate-100 transition hover:ring-indigo-200"
+                className={`${portalCardClass} flex flex-col gap-2.5 p-3.5 transition hover:ring-brand-200 lg:p-4`}
               >
                 {content}
               </Link>

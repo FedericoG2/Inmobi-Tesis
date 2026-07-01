@@ -14,7 +14,7 @@ function cn(...parts) {
 const cellPadding = 'px-4 py-3.5 first:pl-6 last:pr-6'
 
 export function AdminTable({ className, ...props }) {
-  return <Table className={cn('w-full table-fixed !overflow-visible', className)} {...props} />
+  return <Table className={cn('w-full table-fixed !overflow-x-auto !overflow-y-hidden', className)} {...props} />
 }
 
 export function AdminTableHead({ className, ...props }) {

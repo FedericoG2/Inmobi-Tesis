@@ -1,8 +1,8 @@
 const THEMES = {
   indigo: {
-    iconBg: 'bg-indigo-100',
-    iconColor: 'text-indigo-600',
-    valueColor: 'text-indigo-700',
+    iconBg: 'bg-brand-100',
+    iconColor: 'text-brand-600',
+    valueColor: 'text-brand-700',
   },
   emerald: {
     iconBg: 'bg-emerald-100',
@@ -130,9 +130,32 @@ const ICONS = {
   check: IconCheckCircle,
 }
 
-export default function StatCard({ label, value, icon, theme = 'indigo', hint }) {
+export default function StatCard({ label, value, icon, theme = 'indigo', hint, compact = false }) {
   const t = THEMES[theme] ?? THEMES.indigo
   const Icon = ICONS[icon] ?? IconBuilding
+
+  if (compact) {
+    return (
+      <div className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-100">
+        <div className="flex items-center gap-2">
+          <div
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${t.iconBg}`}
+          >
+            <Icon className={`h-4 w-4 ${t.iconColor}`} />
+          </div>
+          <div className="min-w-0">
+            <p className={`truncate text-xl font-bold leading-none tracking-tight ${t.valueColor}`}>
+              {value}
+            </p>
+            <p className="mt-1 truncate text-[11px] font-medium leading-tight text-slate-600">
+              {label}
+            </p>
+          </div>
+        </div>
+        {hint ? <p className="mt-1.5 truncate text-[10px] text-slate-400">{hint}</p> : null}
+      </div>
+    )
+  }
 
   return (
     <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">

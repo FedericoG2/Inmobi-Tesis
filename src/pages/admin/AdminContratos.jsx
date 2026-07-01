@@ -69,7 +69,10 @@ function IconSearch({ className = 'h-4 w-4' }) {
 function IndiceAjusteChip({ tipo }) {
   const indice = chipIndicador(tipo)
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700">
+    <span
+      title={indice.tooltip ?? undefined}
+      className="inline-flex cursor-help items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
+    >
       <span className="text-sm leading-none">{indice.icon}</span>
       {indice.label}
     </span>
@@ -362,6 +365,7 @@ export default function AdminContratos() {
   return (
     <>
       <AdminListLayout
+        compact
         title="Contratos de Alquiler"
         subtitle="Gestión de la cartera de alquileres: vigencia, ajustes y ciclo de vida de cada contrato."
         alerts={
@@ -371,39 +375,39 @@ export default function AdminContratos() {
             </Card>
           ) : null
         }
-        summary={
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard
-              label="Ingreso mensual comprometido"
-              value={loading ? '…' : formatMontoCompacto(resumen.ingresoMensual)}
-              hint="Suma de alquileres de contratos activos"
-              icon="chart"
-              theme="emerald"
-            />
-            <StatCard
-              label="Contratos activos"
-              value={loading ? '…' : resumen.activos}
-              hint="Cartera vigente en curso"
-              icon="building"
-              theme="indigo"
-            />
-            <StatCard
-              label="Por vencer pronto"
-              value={loading ? '…' : resumen.porVencer}
-              hint={`Vencen dentro de ${VENCE_PRONTO_DIAS} días`}
-              icon="calendar"
-              theme={resumen.porVencer > 0 ? 'amber' : 'slate'}
-            />
-            <StatCard
-              label="Vencidos"
-              value={loading ? '…' : resumen.vencidos}
-              hint={resumen.vencidos > 0 ? 'Requieren renovar o finalizar' : 'Sin contratos vencidos'}
-              icon="alert"
-              theme={resumen.vencidos > 0 ? 'red' : 'emerald'}
-            />
-          </div>
-        }
       >
+        <div className="grid grid-cols-2 gap-2 border-b border-slate-200 bg-white p-3 xl:grid-cols-4">
+          <StatCard
+            compact
+            label="Ingreso mensual"
+            value={loading ? '…' : formatMontoCompacto(resumen.ingresoMensual)}
+            icon="chart"
+            theme="slate"
+          />
+          <StatCard
+            compact
+            label="Contratos activos"
+            value={loading ? '…' : resumen.activos}
+            icon="clipboard"
+            theme="slate"
+          />
+          <StatCard
+            compact
+            label="Por vencer pronto"
+            value={loading ? '…' : resumen.porVencer}
+            icon="calendar"
+            theme={resumen.porVencer > 0 ? 'red' : 'slate'}
+            hint={resumen.porVencer > 0 ? `En ${VENCE_PRONTO_DIAS} días` : undefined}
+          />
+          <StatCard
+            compact
+            label="Vencidos"
+            value={loading ? '…' : resumen.vencidos}
+            icon="alert"
+            theme={resumen.vencidos > 0 ? 'red' : 'slate'}
+          />
+        </div>
+
         <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-3 lg:px-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="relative min-w-0 flex-1">
@@ -447,7 +451,7 @@ export default function AdminContratos() {
             </div>
           </div>
 
-          <div className="mt-3 overflow-x-auto">
+          <div className="mt-3 overflow-x-auto overflow-y-hidden">
             <div
               className="inline-flex h-10 items-center rounded-lg border border-slate-200 bg-white p-1"
               role="group"
@@ -466,8 +470,8 @@ export default function AdminContratos() {
                     className={`inline-flex h-full shrink-0 items-center whitespace-nowrap rounded-md px-2.5 text-xs font-medium transition-colors lg:px-3 ${
                       activo
                         ? esVencidos
-                          ? 'bg-red-50 text-red-700 shadow-sm ring-1 ring-red-100'
-                          : 'bg-emerald-50 text-emerald-700 shadow-sm ring-1 ring-emerald-100'
+                          ? 'bg-red-50 text-red-700 shadow-sm ring-1 ring-inset ring-red-200'
+                          : 'bg-brand-50 text-brand-700 shadow-sm ring-1 ring-inset ring-brand-200'
                         : esVencidos
                           ? 'text-red-600 hover:text-red-800'
                           : 'text-slate-600 hover:text-slate-900'
@@ -481,9 +485,8 @@ export default function AdminContratos() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
         <AdminTable className="w-full">
-          <AdminTableHead>
+          <AdminTableHead className="!bg-slate-100/90">
             <AdminTableRow>
               <AdminTableHeaderCell className={COL_INQUILINO}>Inquilino</AdminTableHeaderCell>
               <AdminTableHeaderCell className="min-w-0">Propiedad</AdminTableHeaderCell>
@@ -507,8 +510,13 @@ export default function AdminContratos() {
             )}
 
             {!loading &&
-              contratosPagina.map((c) => (
-                <AdminTableRow key={c.id ?? `${c.inquilino_id}-${c.propiedad_id}`}>
+              contratosPagina.map((c, index) => {
+                const zebra = index % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'
+                return (
+                <AdminTableRow
+                  key={c.id ?? `${c.inquilino_id}-${c.propiedad_id}`}
+                  className={`${zebra} hover:bg-brand-50/40`}
+                >
                   <AdminTableCell className={`${COL_INQUILINO} font-medium text-slate-900`}>
                     <span className="block truncate" title={c.inquilinos?.nombre_completo ?? undefined}>
                       {c.inquilinos?.nombre_completo ?? '—'}
@@ -545,10 +553,10 @@ export default function AdminContratos() {
                     />
                   </AdminTableActionsCell>
                 </AdminTableRow>
-              ))}
+                )
+              })}
           </AdminTableBody>
         </AdminTable>
-        </div>
 
         <AdminTablePagination
           pagina={paginaActual}

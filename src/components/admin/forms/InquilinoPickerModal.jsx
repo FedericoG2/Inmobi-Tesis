@@ -65,12 +65,12 @@ export default function InquilinoPickerModal({
       />
 
       <div className="relative z-10 flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl">
-        <div className="flex items-center justify-between bg-indigo-600 px-6 py-4">
+        <div className="flex items-center justify-between bg-brand-600 px-6 py-4">
           <h2 className="text-lg font-semibold text-white">Elegir Inquilino</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1 text-indigo-100 transition hover:bg-indigo-500 hover:text-white"
+            className="rounded-lg p-1 text-brand-100 transition hover:bg-brand-500 hover:text-white"
             aria-label="Cerrar"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -88,7 +88,7 @@ export default function InquilinoPickerModal({
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder="Buscar por nombre o DNI/CUIT..."
-              className="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              className="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             />
           </div>
         </div>
@@ -112,11 +112,11 @@ export default function InquilinoPickerModal({
                       onClick={() => onSelect(i)}
                       className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${
                         esSeleccionado
-                          ? 'bg-indigo-50 ring-1 ring-indigo-200'
+                          ? 'bg-brand-50 ring-1 ring-brand-200'
                           : 'hover:bg-slate-50'
                       }`}
                     >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
                         {(i.nombre_completo ?? '?')
                           .split(' ')
                           .filter(Boolean)
@@ -135,7 +135,7 @@ export default function InquilinoPickerModal({
                       </span>
                       {esSeleccionado && (
                         <svg
-                          className="h-5 w-5 shrink-0 text-indigo-600"
+                          className="h-5 w-5 shrink-0 text-brand-600"
                           fill="none"
                           viewBox="0 0 24 24"
                           strokeWidth={2.5}

@@ -26,7 +26,7 @@ const formInicial = {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200'
+  'w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200'
 
 const inputErrorClass =
   'w-full rounded-lg border border-red-400 px-4 py-2.5 text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200'
@@ -267,7 +267,7 @@ export default function PropiedadFormModal({
         <form noValidate onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 space-y-4 overflow-y-auto p-6">
         {esEdicion && identidadBloqueada && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
             {tieneContratoActivo
               ? 'Esta propiedad tiene un contrato activo. El estado, tipo y dirección están bloqueados. Si cambiás el propietario se pedirá confirmación.'
               : 'Esta propiedad tiene contratos o reclamos asociados. El tipo y la dirección no se pueden modificar.'}
@@ -278,7 +278,7 @@ export default function PropiedadFormModal({
             {propietariosLoading ? (
               <p className="text-sm text-slate-500">Cargando propietarios...</p>
             ) : sinPropietarios ? (
-              <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
                 No hay propietarios cargados. Creá uno antes de agregar una propiedad.
               </p>
             ) : (

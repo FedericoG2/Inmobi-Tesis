@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { syncIndices, obtenerUltimosIndicesArgly } from '../services/arglyService'
+import { syncIndices, obtenerUltimosIndicesLocal } from '../services/arglyService'
 import {
   calcularAumentosPendientes,
   confirmarAumentos,
+  ejecutarMantenimientoContratos,
   generarComprobantesAumentos,
   listarAumentosConfirmadosEnPeriodo,
 } from '../services/aumentosService'
@@ -24,12 +25,20 @@ export function useAumentos() {
   const [syncWarning, setSyncWarning] = useState(null)
 
   const cargarAumentos = useCallback(async ({ diasProximos } = {}) => {
-    // Cubre hasta el fin del período operativo (ventana hasta el día 10).
     const dias = diasProximos ?? diasHastaFinPeriodoOperativo()
     setLoading(true)
     setError(null)
 
-    const { error: syncError } = await syncIndices({ incluirProximos: true, diasProximos: dias })
+    const clavePeriodo = periodoOperativoInfo(hoyIsoLocal()).clave
+
+    const confirmadosPromise = listarAumentosConfirmadosEnPeriodo({ claveMes: clavePeriodo })
+
+    const [syncResult] = await Promise.all([
+      syncIndices({ incluirProximos: true, diasProximos: dias }),
+      ejecutarMantenimientoContratos(),
+    ])
+
+    const syncError = syncResult?.error
 
     if (syncError) {
       setSyncWarning(
@@ -39,15 +48,14 @@ export function useAumentos() {
       setSyncWarning(null)
     }
 
-    const clavePeriodo = periodoOperativoInfo(hoyIsoLocal()).clave
-
-    const [{ data, error: calcError }, indicesResult, confirmadosResult] = await Promise.all([
+    const [{ data, error: calcError }, confirmadosResult, indicesResult] = await Promise.all([
       calcularAumentosPendientes({
         incluirProximos: true,
         diasProximos: dias,
+        skipMaintenance: true,
       }),
-      obtenerUltimosIndicesArgly(),
-      listarAumentosConfirmadosEnPeriodo({ claveMes: clavePeriodo }),
+      confirmadosPromise,
+      obtenerUltimosIndicesLocal(),
     ])
 
     if (calcError) {
@@ -120,7 +128,6 @@ export function useAumentos() {
         )
       }
 
-      // Genera el comprobante PDF de cada aumento confirmado (best-effort).
       const confirmadas = propuestasSeleccionadas.filter(
         (p) => !failedIds.has(Number(p.contrato_id))
       )

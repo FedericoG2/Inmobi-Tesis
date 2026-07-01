@@ -64,7 +64,7 @@ export default function ContratoDocumentoAltaPicker({
                 checked={visibleParaInquilino}
                 onChange={(e) => onVisibleChange(e.target.checked)}
                 disabled={disabled}
-                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-200"
+                className="rounded border-slate-300 text-brand-600 focus:ring-brand-200"
               />
               Compartir con el inquilino en su portal
             </label>
@@ -96,7 +96,7 @@ export default function ContratoDocumentoAltaPicker({
 
         {archivo ? (
           <div className="mt-4 flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
               <IconDocument />
             </span>
             <div className="min-w-0 flex-1">

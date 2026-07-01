@@ -4,7 +4,8 @@ import AdminFormModalHeader from './AdminFormModalHeader'
 import InquilinoDetalleModal from './InquilinoDetalleModal'
 import PropiedadDetalleModal from './PropiedadDetalleModal'
 import ReclamoTimeline from './ReclamoTimeline'
-import { badgeEstado, badgePrioridad, infoCategoria, PILL_SOLID_CLASS } from '../../utils/reclamosUi'
+import { badgePrioridad, PILL_SOLID_CLASS } from '../../utils/reclamosUi'
+import { ReclamoCategoriaChip, ReclamoEstadoChip } from './ReclamoChips'
 import { listarAdjuntosReclamo, obtenerUrlDescargaDocumento } from '../../services/documentosService'
 import { listarEventosReclamo } from '../../services/reclamosService'
 
@@ -135,13 +136,16 @@ function Pill({ badge }) {
 }
 
 function CategoriaChip({ categoria }) {
-  const info = infoCategoria(categoria)
-  if (!info) return <span className="text-slate-400">—</span>
+  return <ReclamoCategoriaChip categoria={categoria} />
+}
+
+function SeccionTitulo({ children, className = '' }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700">
-      <span className="text-sm leading-none">{info.icon}</span>
-      <span>{info.label}</span>
-    </span>
+    <h3
+      className={`text-[11px] font-semibold uppercase tracking-wide text-slate-500 ${className}`}
+    >
+      {children}
+    </h3>
   )
 }
 
@@ -265,31 +269,21 @@ export default function ReclamoDetalleModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="reclamo-detalle-titulo"
-        className="relative z-10 flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl"
+        className="relative z-10 flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl"
       >
-        <AdminFormModalHeader title="Detalle del reclamo" />
+        <AdminFormModalHeader
+          title="Detalle del Reclamo"
+          titleId="reclamo-detalle-titulo"
+          icon={<IconWrench className="h-5 w-5" />}
+        />
 
         <div className="border-b border-slate-100 px-6 py-3">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
-              <IconWrench />
-            </span>
-            <h2
-              id="reclamo-detalle-titulo"
-              className="min-w-0 flex-1 truncate text-base font-semibold text-slate-900"
-            >
-              {reclamo.titulo ?? 'Reclamo'}
-            </h2>
-          </div>
-        </div>
-
-        <div className="overflow-y-auto px-6 py-3">
+          <SeccionTitulo className="mb-2">Partes</SeccionTitulo>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <DetalleFila
               label="Inquilino"
               value={reclamo.inquilinos?.nombre_completo ?? '—'}
               icon={IconUser}
-              className="sm:col-span-2"
               action={
                 inquilinoFull ? (
                   <button
@@ -306,7 +300,6 @@ export default function ReclamoDetalleModal({
               label="Propiedad"
               value={reclamo.propiedades?.direccion ?? '—'}
               icon={IconBuilding}
-              className="sm:col-span-2"
               action={
                 propiedadFull ? (
                   <button
@@ -319,99 +312,109 @@ export default function ReclamoDetalleModal({
                 ) : null
               }
             />
-            <DetalleFila
-              label="Fecha de creación"
-              value={formatearFecha(reclamo.fecha_creacion)}
-              icon={IconCalendar}
-            />
-            <DetalleFila label="Categoría" icon={IconTag}>
-              <CategoriaChip categoria={reclamo.categoria} />
-            </DetalleFila>
-            <DetalleFila label="Estado" icon={IconFlag}>
-              <Pill badge={badgeEstado(reclamo.estado)} />
-            </DetalleFila>
-            <DetalleFila label="Prioridad" icon={IconSignal}>
-              <Pill badge={badgePrioridad(reclamo.prioridad)} />
-            </DetalleFila>
           </div>
+        </div>
 
-          <div className="mt-3 rounded-xl border border-slate-200 px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-              Descripción
-            </p>
-            <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-700">
-              {reclamo.descripcion?.trim() || 'Sin descripción.'}
-            </p>
-          </div>
-
-          <div className="mt-3 rounded-xl border border-slate-200 px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-              Imágenes{adjuntos.length > 0 ? ` (${adjuntos.length})` : ''}
-            </p>
-
-            {errorAdjuntos && (
-              <p className="mt-2 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700">
-                {errorAdjuntos}
-              </p>
-            )}
-
-            {cargandoAdjuntos ? (
-              <p className="mt-2 text-xs text-slate-400">Cargando imágenes…</p>
-            ) : adjuntos.length === 0 ? (
-              <div className="mt-2 flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-200 py-5 text-slate-400">
-                <IconImage />
-                <p className="text-xs">Sin imágenes adjuntas</p>
+        <div className="px-6 py-3">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+            <div className="space-y-3">
+              <div className="rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2">
+                <p className="text-[11px] font-medium text-indigo-700">Reclamo</p>
+                <p className="mt-0.5 text-base font-semibold leading-snug text-indigo-950">
+                  {reclamo.titulo ?? '—'}
+                </p>
               </div>
-            ) : (
-              <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
-                {adjuntos.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
-                  >
-                    {urls[doc.id] ? (
-                      <a
-                        href={urls[doc.id]}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title={doc.nombre}
-                      >
-                        <img
-                          src={urls[doc.id]}
-                          alt={doc.nombre}
-                          className="h-full w-full object-cover transition group-hover:opacity-90"
-                          loading="lazy"
-                        />
-                      </a>
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-slate-300">
-                        <IconImage />
-                      </div>
-                    )}
+
+              <div className="grid grid-cols-2 gap-2">
+                <DetalleFila
+                  label="Fecha de creación"
+                  value={formatearFecha(reclamo.fecha_creacion)}
+                  icon={IconCalendar}
+                />
+                <DetalleFila label="Categoría" icon={IconTag}>
+                  <CategoriaChip categoria={reclamo.categoria} />
+                </DetalleFila>
+                <DetalleFila label="Estado" icon={IconFlag}>
+                  <ReclamoEstadoChip estado={reclamo.estado} />
+                </DetalleFila>
+                <DetalleFila label="Prioridad" icon={IconSignal}>
+                  <Pill badge={badgePrioridad(reclamo.prioridad)} />
+                </DetalleFila>
+              </div>
+
+              <div className="rounded-lg border border-slate-200 px-3 py-2">
+                <SeccionTitulo className="mb-1">Descripción</SeccionTitulo>
+                <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700">
+                  {reclamo.descripcion?.trim() || 'Sin descripción.'}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-slate-200 px-3 py-2">
+                <SeccionTitulo className="mb-1">
+                  Imágenes{adjuntos.length > 0 ? ` (${adjuntos.length})` : ''}
+                </SeccionTitulo>
+
+                {errorAdjuntos && (
+                  <p className="mt-1 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700">
+                    {errorAdjuntos}
+                  </p>
+                )}
+
+                {cargandoAdjuntos ? (
+                  <p className="mt-1 text-xs text-slate-400">Cargando imágenes…</p>
+                ) : adjuntos.length === 0 ? (
+                  <div className="mt-1 flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-200 py-4 text-slate-400">
+                    <IconImage />
+                    <p className="text-xs">Sin imágenes adjuntas</p>
                   </div>
-                ))}
+                ) : (
+                  <div className="mt-1 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                    {adjuntos.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
+                      >
+                        {urls[doc.id] ? (
+                          <a
+                            href={urls[doc.id]}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={doc.nombre}
+                          >
+                            <img
+                              src={urls[doc.id]}
+                              alt={doc.nombre}
+                              className="h-full w-full object-cover transition group-hover:opacity-90"
+                              loading="lazy"
+                            />
+                          </a>
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-slate-300">
+                            <IconImage />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
 
-          <div className="mt-3 rounded-xl border border-slate-200 px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-              Historial
-            </p>
-            <div className="mt-2">
+            <div className="lg:self-start">
+              <SeccionTitulo className="mb-2">Historial</SeccionTitulo>
               <ReclamoTimeline eventos={eventos} loading={cargandoEventos} error={errorEventos} />
             </div>
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 border-t border-slate-100 px-6 py-3">
+        <div className="flex justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
           <Button variant="secondary" onClick={onClose}>
             Cerrar
           </Button>
           {onManage && (
             <Button
               onClick={() => onManage(reclamo)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white border-none"
+              className="!border-indigo-600 !bg-indigo-600 !text-white hover:!border-indigo-700 hover:!bg-indigo-700"
             >
               Gestionar
             </Button>

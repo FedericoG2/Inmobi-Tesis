@@ -13,6 +13,7 @@ import {
   AdminTableHeaderCell,
   AdminTableRow,
 } from '../../components/admin/AdminDataTable'
+import FilterSelect, { toolbarInputClass } from '../../components/admin/FilterSelect'
 import ReclamoFormModal from '../../components/admin/forms/ReclamoFormModal'
 import ReclamoDetalleModal from '../../components/admin/ReclamoDetalleModal'
 import ReclamoGestionModal from '../../components/admin/ReclamoGestionModal'
@@ -69,15 +70,6 @@ const CATEGORIAS = [
   { id: 'Gas', label: 'Gas' },
 ]
 
-const inputToolbarClass =
-  'h-10 w-full rounded-lg border border-slate-200 bg-white text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
-
-const selectBaseClass =
-  'h-10 w-full cursor-pointer appearance-none rounded-lg border bg-white pl-3 pr-9 text-sm outline-none transition focus:ring-2 focus:ring-indigo-100 sm:w-44 shrink-0'
-const selectInactivoClass = 'border-slate-200 text-slate-700 focus:border-indigo-500'
-const selectActivoClass =
-  'border-indigo-300 text-indigo-700 font-medium ring-1 ring-indigo-100 focus:border-indigo-500'
-
 function IconSearch({ className = 'h-4 w-4' }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -87,52 +79,6 @@ function IconSearch({ className = 'h-4 w-4' }) {
         d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
       />
     </svg>
-  )
-}
-
-function IconChevronDown({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-    </svg>
-  )
-}
-
-function IconX({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-    </svg>
-  )
-}
-
-function FilterSelect({ id, value, onChange, onClear, ariaLabel, children }) {
-  const activo = Boolean(value)
-  return (
-    <div className="relative shrink-0">
-      <select
-        id={id}
-        value={value}
-        onChange={onChange}
-        aria-label={ariaLabel}
-        className={`${selectBaseClass} ${activo ? selectActivoClass : selectInactivoClass}`}
-      >
-        {children}
-      </select>
-      {activo ? (
-        <button
-          type="button"
-          onClick={onClear}
-          aria-label="Quitar filtro"
-          title="Quitar filtro"
-          className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-indigo-500 transition hover:bg-indigo-100"
-        >
-          <IconX className="h-3.5 w-3.5" />
-        </button>
-      ) : (
-        <IconChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-      )}
-    </div>
   )
 }
 
@@ -363,7 +309,7 @@ export default function AdminReclamos() {
               value={filtroTexto}
               onChange={(e) => setFiltroTexto(e.target.value)}
               placeholder="Buscar reclamos..."
-              className={`${inputToolbarClass} pl-9`}
+              className={`${toolbarInputClass} pl-9`}
             />
           </div>
 

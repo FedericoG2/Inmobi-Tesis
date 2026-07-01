@@ -85,6 +85,21 @@ export function colorEstadoContrato(contrato) {
   return 'gray'
 }
 
+const ESTADO_PILL_TONOS = {
+  emerald: 'bg-emerald-100 text-emerald-800 ring-1 ring-inset ring-emerald-200',
+  amber: 'bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-200',
+  red: 'bg-red-100 text-red-800 ring-1 ring-inset ring-red-200',
+  gray: 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200',
+}
+
+export function badgeEstadoContratoUi(contrato) {
+  const color = colorEstadoContrato(contrato)
+  return {
+    label: etiquetaEstadoContrato(contrato),
+    className: ESTADO_PILL_TONOS[color] ?? ESTADO_PILL_TONOS.gray,
+  }
+}
+
 export function puedeFinalizarContrato(contrato) {
   return contratoComprometePropiedad(contrato)
 }

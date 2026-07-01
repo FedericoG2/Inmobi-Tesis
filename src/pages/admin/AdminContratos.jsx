@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Badge, Card } from '@tremor/react'
+import { Card } from '@tremor/react'
 import AdminAlertModal from '../../components/admin/AdminAlertModal'
 import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
 import AdminListLayout from '../../components/admin/AdminListLayout'
@@ -10,13 +10,13 @@ import {
   AdminTable,
   AdminTableBody,
   AdminTableActionsCell,
-  AdminTableActionsHeaderCell,
   AdminTableCell,
   AdminTableEmptyCell,
   AdminTableHead,
   AdminTableHeaderCell,
   AdminTableRow,
 } from '../../components/admin/AdminDataTable'
+import FilterSelect, { toolbarInputClass } from '../../components/admin/FilterSelect'
 import ContratoDetalleModal from '../../components/admin/ContratoDetalleModal'
 import ContratoFormModal from '../../components/admin/forms/ContratoFormModal'
 import ContratoRowActions from '../../components/admin/ContratoRowActions'
@@ -25,20 +25,25 @@ import PropiedadDetalleModal from '../../components/admin/PropiedadDetalleModal'
 import { useContratos } from '../../hooks/useContratos'
 import { useInquilinos } from '../../hooks/useInquilinos'
 import { usePropiedades } from '../../hooks/usePropiedades'
-import { periodicidadLabelPorMeses, TIPO_AJUSTE_LABELS, TIPO_AJUSTE_OPCIONES } from '../../utils/contratoAumentosPreview'
+import { TIPO_AJUSTE_OPCIONES } from '../../utils/contratoAumentosPreview'
 import {
-  colorEstadoContrato,
   esContratoPlazoVencido,
-  etiquetaEstadoContrato,
   hoyIsoLocal,
   mensajeConfirmacionFinalizarContrato,
 } from '../../utils/contratoVigencia'
+import { chipIndicador } from '../../utils/aumentosUi'
 
 const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
 
 const FILAS_POR_PAGINA = 4
 
 const VENCE_PRONTO_DIAS = 60
+
+const COL_INQUILINO = 'w-[11rem]'
+const COL_MONTO = 'w-[8.5rem]'
+const COL_AJUSTE = 'w-[5.5rem]'
+const COL_PROX_AUMENTO = 'w-[7.5rem]'
+const COL_ACCIONES = 'w-[7rem]'
 
 const FILTRO_ESTADO = [
   { value: 'activos', label: 'Activos' },
@@ -53,14 +58,21 @@ const FILTRO_TIPO_AJUSTE = [
   ...TIPO_AJUSTE_OPCIONES.map(({ value, label }) => ({ value, label })),
 ]
 
-const inputToolbarClass =
-  'h-10 w-full rounded-lg border border-slate-300 bg-white text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:opacity-50'
-
 function IconSearch({ className = 'h-4 w-4' }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
     </svg>
+  )
+}
+
+function IndiceAjusteChip({ tipo }) {
+  const indice = chipIndicador(tipo)
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700">
+      <span className="text-sm leading-none">{indice.icon}</span>
+      {indice.label}
+    </span>
   )
 }
 
@@ -95,11 +107,6 @@ const formatFecha = (fecha) => {
   if (!fecha) return '—'
   const [year, month, day] = fecha.split('-')
   return `${day}/${month}/${year}`
-}
-
-const formatVigencia = (inicio, fin) => {
-  if (!inicio && !fin) return '—'
-  return `${formatFecha(inicio)} - ${formatFecha(fin)}`
 }
 
 export default function AdminContratos() {
@@ -189,9 +196,11 @@ export default function AdminContratos() {
 
     const termino = normalizarBusqueda(busquedaInquilino.trim())
     if (termino) {
-      items = items.filter((c) =>
-        normalizarBusqueda(c.inquilinos?.nombre_completo).includes(termino)
-      )
+      items = items.filter((c) => {
+        const inquilino = normalizarBusqueda(c.inquilinos?.nombre_completo)
+        const propiedad = normalizarBusqueda(c.propiedades?.direccion)
+        return inquilino.includes(termino) || propiedad.includes(termino)
+      })
     }
 
     return items
@@ -395,128 +404,133 @@ export default function AdminContratos() {
           </div>
         }
       >
-        <div className="flex flex-nowrap items-center gap-2 overflow-x-auto border-b border-slate-200 bg-slate-50/70 px-4 py-3 lg:px-6">
-          <div className="relative w-36 shrink-0 lg:w-40">
-            <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              id="busqueda-inquilino"
-              type="search"
-              value={busquedaInquilino}
-              onChange={(e) => setBusquedaInquilino(e.target.value)}
-              placeholder="Buscar inquilino..."
-              aria-label="Buscar inquilino por nombre"
-              className={`${inputToolbarClass} pl-9`}
+        <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-3 lg:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative min-w-0 flex-1">
+              <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                id="busqueda-inquilino"
+                type="search"
+                value={busquedaInquilino}
+                onChange={(e) => setBusquedaInquilino(e.target.value)}
+                placeholder="Buscar por inquilino o propiedad..."
+                aria-label="Buscar por inquilino o dirección de propiedad"
+                className={`${toolbarInputClass} pl-9`}
+                disabled={loading}
+              />
+            </div>
+
+            <FilterSelect
+              id="filtro-tipo-ajuste"
+              value={filtroTipoAjuste}
+              onChange={(e) => setFiltroTipoAjuste(e.target.value)}
+              onClear={() => setFiltroTipoAjuste('todos')}
+              ariaLabel="Filtrar por tipo de ajuste"
+              className="w-full shrink-0 sm:w-44"
+              clearValue="todos"
               disabled={loading}
-            />
+            >
+              <option value="todos">Ajuste: Todos</option>
+              {FILTRO_TIPO_AJUSTE.filter(({ value }) => value !== 'todos').map(({ value, label }) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </FilterSelect>
+
+            <div className="shrink-0 sm:ml-auto">
+              <AdminNuevoButton
+                label="NUEVO CONTRATO"
+                onClick={abrirModal}
+                className="h-10 w-full whitespace-nowrap sm:w-auto"
+              />
+            </div>
           </div>
 
-          <select
-            id="filtro-tipo-ajuste"
-            value={filtroTipoAjuste}
-            onChange={(e) => setFiltroTipoAjuste(e.target.value)}
-            aria-label="Filtrar por tipo de ajuste"
-            className={`${inputToolbarClass} w-32 shrink-0 cursor-pointer pr-8 lg:w-36`}
-            disabled={loading}
-          >
-            {FILTRO_TIPO_AJUSTE.map(({ value, label }) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-
-          <div
-            className="inline-flex h-10 shrink-0 items-center rounded-lg border border-slate-300 bg-white p-1"
-            role="group"
-            aria-label="Filtrar contratos por estado"
-          >
-            {FILTRO_ESTADO.map(({ value, label }) => {
-              const activo = filtroEstado === value
-              const count = loading ? '…' : conteosEstado[value]
-              const esVencidos = value === 'vencidos'
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  disabled={loading}
-                  onClick={() => setFiltroEstado(value)}
-                  className={`inline-flex h-full shrink-0 items-center whitespace-nowrap rounded-md px-2 text-xs font-medium transition-colors lg:px-2.5 ${
-                    activo
-                      ? esVencidos
-                        ? 'bg-red-50 text-red-700 shadow-sm ring-1 ring-red-100'
-                        : 'bg-indigo-50 text-indigo-700 shadow-sm ring-1 ring-indigo-100'
-                      : esVencidos
-                        ? 'text-red-600 hover:text-red-800'
-                        : 'text-slate-600 hover:text-slate-900'
-                  } disabled:opacity-50`}
-                >
-                  {label} ({count})
-                </button>
-              )
-            })}
-          </div>
-
-          <div className="sticky right-0 ml-auto shrink-0 bg-slate-50/70 pl-2">
-            <AdminNuevoButton
-              label="NUEVO CONTRATO"
-              onClick={abrirModal}
-              className="h-10 w-full whitespace-nowrap sm:w-auto"
-            />
+          <div className="mt-3 overflow-x-auto">
+            <div
+              className="inline-flex h-10 items-center rounded-lg border border-slate-200 bg-white p-1"
+              role="group"
+              aria-label="Filtrar contratos por estado"
+            >
+              {FILTRO_ESTADO.map(({ value, label }) => {
+                const activo = filtroEstado === value
+                const count = loading ? '…' : conteosEstado[value]
+                const esVencidos = value === 'vencidos'
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => setFiltroEstado(value)}
+                    className={`inline-flex h-full shrink-0 items-center whitespace-nowrap rounded-md px-2.5 text-xs font-medium transition-colors lg:px-3 ${
+                      activo
+                        ? esVencidos
+                          ? 'bg-red-50 text-red-700 shadow-sm ring-1 ring-red-100'
+                          : 'bg-emerald-50 text-emerald-700 shadow-sm ring-1 ring-emerald-100'
+                        : esVencidos
+                          ? 'text-red-600 hover:text-red-800'
+                          : 'text-slate-600 hover:text-slate-900'
+                    } disabled:opacity-50`}
+                  >
+                    {label} ({count})
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
 
-        <AdminTable>
+        <div className="overflow-x-auto">
+        <AdminTable className="w-full">
           <AdminTableHead>
             <AdminTableRow>
-              <AdminTableHeaderCell>Inquilino</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Propiedad</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Monto</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Vigencia</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Ajuste</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Próx. aumento</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Estado</AdminTableHeaderCell>
-              <AdminTableActionsHeaderCell />
+              <AdminTableHeaderCell className={COL_INQUILINO}>Inquilino</AdminTableHeaderCell>
+              <AdminTableHeaderCell className="min-w-0">Propiedad</AdminTableHeaderCell>
+              <AdminTableHeaderCell className={COL_MONTO}>Monto</AdminTableHeaderCell>
+              <AdminTableHeaderCell className={`${COL_AJUSTE} !text-center`}>Ajuste</AdminTableHeaderCell>
+              <AdminTableHeaderCell className={COL_PROX_AUMENTO}>Próx. aumento</AdminTableHeaderCell>
+              <AdminTableHeaderCell className={`${COL_ACCIONES} !text-right`}>Acciones</AdminTableHeaderCell>
             </AdminTableRow>
           </AdminTableHead>
           <AdminTableBody>
             {loading && (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={8}>Cargando contratos...</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={6}>Cargando contratos...</AdminTableEmptyCell>
               </AdminTableRow>
             )}
 
             {!loading && !error && contratosFiltrados.length === 0 && (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={8}>{mensajeListadoVacio}</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={6}>{mensajeListadoVacio}</AdminTableEmptyCell>
               </AdminTableRow>
             )}
 
             {!loading &&
               contratosPagina.map((c) => (
                 <AdminTableRow key={c.id ?? `${c.inquilino_id}-${c.propiedad_id}`}>
-                  <AdminTableCell className="font-medium text-slate-900">
-                    {c.inquilinos?.nombre_completo ?? '—'}
-                  </AdminTableCell>
-                  <AdminTableCell>{c.propiedades?.direccion ?? '—'}</AdminTableCell>
-                  <AdminTableCell className="tabular-nums">{formatMonto(c.monto_alquiler)}</AdminTableCell>
-                  <AdminTableCell className="text-slate-600">
-                    {formatVigencia(c.fecha_inicio, c.fecha_fin)}
-                  </AdminTableCell>
-                  <AdminTableCell className="text-slate-600 text-xs">
-                    <span className="block">{TIPO_AJUSTE_LABELS[c.tipo_ajuste] ?? c.tipo_ajuste ?? '—'}</span>
-                    <span className="text-slate-400">
-                      {periodicidadLabelPorMeses(c.periodicidad_meses)}
+                  <AdminTableCell className={`${COL_INQUILINO} font-medium text-slate-900`}>
+                    <span className="block truncate" title={c.inquilinos?.nombre_completo ?? undefined}>
+                      {c.inquilinos?.nombre_completo ?? '—'}
                     </span>
                   </AdminTableCell>
-                  <AdminTableCell className="text-slate-600 tabular-nums">
+                  <AdminTableCell className="min-w-0 text-slate-700">
+                    <span className="block truncate" title={c.propiedades?.direccion ?? undefined}>
+                      {c.propiedades?.direccion ?? '—'}
+                    </span>
+                  </AdminTableCell>
+                  <AdminTableCell className={`${COL_MONTO} tabular-nums`}>{formatMonto(c.monto_alquiler)}</AdminTableCell>
+                  <AdminTableCell className={`${COL_AJUSTE} !text-center`}>
+                    {c.tipo_ajuste ? (
+                      <IndiceAjusteChip tipo={c.tipo_ajuste} />
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
+                  </AdminTableCell>
+                  <AdminTableCell className={`${COL_PROX_AUMENTO} text-slate-600 tabular-nums`}>
                     {formatFecha(c.fecha_proximo_aumento)}
                   </AdminTableCell>
-                  <AdminTableCell>
-                    <Badge color={colorEstadoContrato(c)}>
-                      {etiquetaEstadoContrato(c)}
-                    </Badge>
-                  </AdminTableCell>
-                  <AdminTableActionsCell>
+                  <AdminTableActionsCell className={COL_ACCIONES}>
                     <ContratoRowActions
                       onView={() => abrirDetalle(c)}
                       onFinalize={
@@ -534,6 +548,7 @@ export default function AdminContratos() {
               ))}
           </AdminTableBody>
         </AdminTable>
+        </div>
 
         <AdminTablePagination
           pagina={paginaActual}

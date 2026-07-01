@@ -4,8 +4,9 @@ import {
   calcularAumentosPendientes,
   confirmarAumentos,
   generarComprobantesAumentos,
+  listarAumentosConfirmadosEnPeriodo,
 } from '../services/aumentosService'
-import { diasHastaFinMesProximo } from '../utils/aumentosUi'
+import { diasHastaFinPeriodoOperativo, hoyIsoLocal, periodoOperativoInfo } from '../utils/aumentosUi'
 
 function formatearErroresConfirmacion(errores) {
   if (!Array.isArray(errores) || errores.length === 0) return ''
@@ -14,6 +15,7 @@ function formatearErroresConfirmacion(errores) {
 
 export function useAumentos() {
   const [propuestas, setPropuestas] = useState([])
+  const [confirmadosPeriodo, setConfirmadosPeriodo] = useState([])
   const [meta, setMeta] = useState(null)
   const [indicesResumen, setIndicesResumen] = useState({ icl: null, ipc: null })
   const [loading, setLoading] = useState(true)
@@ -22,9 +24,8 @@ export function useAumentos() {
   const [syncWarning, setSyncWarning] = useState(null)
 
   const cargarAumentos = useCallback(async ({ diasProximos } = {}) => {
-    // Por defecto cubre hasta el fin del mes próximo, así el panorama y el
-    // conteo "Aumentan el próximo mes" son completos aunque estemos a comienzo de mes.
-    const dias = diasProximos ?? diasHastaFinMesProximo()
+    // Cubre hasta el fin del período operativo (ventana hasta el día 10).
+    const dias = diasProximos ?? diasHastaFinPeriodoOperativo()
     setLoading(true)
     setError(null)
 
@@ -38,17 +39,21 @@ export function useAumentos() {
       setSyncWarning(null)
     }
 
-    const [{ data, error: calcError }, indicesResult] = await Promise.all([
+    const clavePeriodo = periodoOperativoInfo(hoyIsoLocal()).clave
+
+    const [{ data, error: calcError }, indicesResult, confirmadosResult] = await Promise.all([
       calcularAumentosPendientes({
         incluirProximos: true,
         diasProximos: dias,
       }),
       obtenerUltimosIndicesArgly(),
+      listarAumentosConfirmadosEnPeriodo({ claveMes: clavePeriodo }),
     ])
 
     if (calcError) {
       setError(calcError.message)
       setPropuestas([])
+      setConfirmadosPeriodo([])
       setMeta(null)
       setIndicesResumen({ icl: null, ipc: null })
       setLoading(false)
@@ -57,6 +62,9 @@ export function useAumentos() {
 
     const lista = Array.isArray(data?.propuestas) ? data.propuestas : []
     setPropuestas(lista)
+    setConfirmadosPeriodo(
+      confirmadosResult.error ? [] : Array.isArray(confirmadosResult.data) ? confirmadosResult.data : []
+    )
     setMeta({ total: lista.length, fecha_calculo: data?.fecha_calculo })
 
     if (indicesResult.error) {
@@ -138,6 +146,7 @@ export function useAumentos() {
 
   return {
     propuestas,
+    confirmadosPeriodo,
     meta,
     indicesResumen,
     loading,

@@ -30,7 +30,7 @@ export function AdminTableHeaderCell({ className, ...props }) {
   return (
     <TableHeaderCell
       className={cn(
-        'align-middle text-left text-xs font-semibold uppercase tracking-wide text-slate-500',
+        'align-middle whitespace-nowrap text-left text-xs font-semibold uppercase tracking-wide text-slate-500',
         cellPadding,
         className
       )}

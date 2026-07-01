@@ -22,6 +22,8 @@ import {
   AdminTableRow,
 } from '../../components/admin/AdminDataTable'
 import { useAumentos } from '../../hooks/useAumentos'
+import { useInquilinos } from '../../hooks/useInquilinos'
+import { usePropiedades } from '../../hooks/usePropiedades'
 import { deshacerAumento } from '../../services/aumentosService'
 import {
   obtenerComprobanteAumento,
@@ -30,8 +32,10 @@ import {
 import {
   capitalizar,
   chipIndicador,
-  claveMes,
-  etiquetaAumentoRelativa,
+  DIA_CORTE_OPERATIVO,
+  esAumentoRezagado,
+  esPeriodoOperativo,
+  etiquetaPeriodoAumento,
   formatFechaAumento,
   formatPeriodoIpc,
   formatPeriodoMesAnio,
@@ -39,7 +43,8 @@ import {
   formatValorIpc,
   hoyIsoLocal,
   interpretarPropuestaAumento,
-  mesProximoInfo,
+  periodoOperativoInfo,
+  propuestaDesdeAumentoRegistrado,
 } from '../../utils/aumentosUi'
 
 const FILAS_POR_PAGINA = 4
@@ -47,7 +52,7 @@ const FILAS_POR_PAGINA = 4
 const COL_CONTRATO = 'w-[19rem]'
 const COL_FECHA = 'w-[9.5rem]'
 const COL_MONTO_ACTUAL = 'w-[13rem]'
-const COL_MONTO_AJUSTADO = 'w-[9.5rem]'
+const COL_MONTO_AJUSTADO = 'w-[11rem]'
 const COL_INDICE = 'w-[6rem]'
 const COL_CONFIRMADO = 'w-[7rem]'
 
@@ -96,7 +101,7 @@ function IconInfo({ className = 'h-5 w-5' }) {
 }
 
 export default function AdminAumentos() {
-  const [filtro, setFiltro] = useState('proximo')
+  const [filtro, setFiltro] = useState('pendientes')
   const [paginaActual, setPaginaActual] = useState(1)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmTarget, setConfirmTarget] = useState([])
@@ -123,7 +128,7 @@ export default function AdminAumentos() {
 
   const {
     propuestas,
-    meta,
+    confirmadosPeriodo,
     indicesResumen,
     loading,
     confirmando,
@@ -133,9 +138,15 @@ export default function AdminAumentos() {
     confirmarSeleccionados,
     limpiarError,
   } = useAumentos()
+  const { inquilinos } = useInquilinos()
+  const { propiedades } = usePropiedades()
 
   const hoy = hoyIsoLocal()
-  const mesProximo = useMemo(() => mesProximoInfo(hoy), [hoy])
+  const periodoOperativo = useMemo(() => periodoOperativoInfo(hoy), [hoy])
+  const enVentanaCierre = useMemo(() => {
+    const dia = Number(hoy.split('-')[2])
+    return dia <= DIA_CORTE_OPERATIVO
+  }, [hoy])
 
   const propuestasConUi = useMemo(
     () =>
@@ -147,54 +158,99 @@ export default function AdminAumentos() {
     [propuestas, hoy]
   )
 
+  const confirmadosPeriodoUi = useMemo(
+    () =>
+      confirmadosPeriodo.map((row) => {
+        const propuesta = propuestaDesdeAumentoRegistrado(row)
+        return {
+          ...propuesta,
+          ui: interpretarPropuestaAumento(propuesta, hoy),
+          fechaAumento: row.fecha_aplicacion,
+        }
+      }),
+    [confirmadosPeriodo, hoy]
+  )
+
   // Confirmado = ya tiene un aumento registrado para esa fecha (acordado o aplicado).
   const esConfirmado = useCallback((p) => Boolean(p.ya_acordado || p.ya_aplicado), [])
 
-  const esProximoPeriodo = useCallback(
-    (p) => claveMes(p.fechaAumento) === mesProximo.clave,
-    [mesProximo]
+  const esDelPeriodoOperativo = useCallback(
+    (p) => esPeriodoOperativo(p.fechaAumento, hoy),
+    [hoy]
   )
 
-  // Pendiente de confirmar: del período en curso (próximo) y todavía sin confirmar.
-  // Así, a medida que confirmás, el contador baja.
+  // Pendiente de confirmar: del período operativo vigente y todavía sin confirmar.
   const esPendienteConfirmar = useCallback(
-    (p) => esProximoPeriodo(p) && !esConfirmado(p),
-    [esProximoPeriodo, esConfirmado]
+    (p) => esDelPeriodoOperativo(p) && !esConfirmado(p),
+    [esDelPeriodoOperativo, esConfirmado]
   )
 
-  // Rezagado: su fecha ya pasó y nunca se confirmó (el alquiler quedó sin actualizar).
-  // Son los aumentos de períodos anteriores que se "colaron". Es lo más urgente.
+  // Confirmado en el período operativo vigente (acordado o ya aplicado).
+  const esConfirmadoEnPeriodo = useCallback(
+    (p) => esDelPeriodoOperativo(p) && esConfirmado(p),
+    [esDelPeriodoOperativo, esConfirmado]
+  )
+
+  const idsConfirmadosEnHistorial = useMemo(
+    () => new Set(confirmadosPeriodoUi.map((p) => `${p.contrato_id}:${p.fechaAumento}`)),
+    [confirmadosPeriodoUi]
+  )
+
+  const confirmadosPropuestasUi = useMemo(
+    () =>
+      propuestasConUi.filter(
+        (p) =>
+          esConfirmadoEnPeriodo(p) &&
+          !idsConfirmadosEnHistorial.has(`${p.contrato_id}:${p.fechaAumento}`)
+      ),
+    [propuestasConUi, esConfirmadoEnPeriodo, idsConfirmadosEnHistorial]
+  )
+
+  const listadoConfirmados = useMemo(() => {
+    const clave = (p) => `${p.contrato_id}:${p.fechaAumento}`
+    const vistos = new Set()
+    const merged = []
+
+    for (const p of [...confirmadosPeriodoUi, ...confirmadosPropuestasUi]) {
+      const id = clave(p)
+      if (vistos.has(id)) continue
+      vistos.add(id)
+      merged.push(p)
+    }
+
+    return merged.sort((a, b) => String(b.fechaAumento).localeCompare(String(a.fechaAumento)))
+  }, [confirmadosPeriodoUi, confirmadosPropuestasUi])
+
+  // Rezagado: pasó el día 10 del mes del aumento y nunca se confirmó.
   const esRezagado = useCallback(
-    (p) => p.fechaAumento <= hoy && !esConfirmado(p),
+    (p) => esAumentoRezagado(p.fechaAumento, esConfirmado(p), hoy),
     [hoy, esConfirmado]
   )
 
   const FILTRO_AUMENTOS = useMemo(
     () => [
-      { value: 'proximo', label: capitalizar(mesProximo.nombre) },
       { value: 'pendientes', label: 'Pendientes de confirmar' },
+      { value: 'confirmados', label: 'Confirmados' },
       { value: 'rezagados', label: 'Rezagados' },
-      { value: 'todos', label: 'Todos' },
     ],
-    [mesProximo]
+    []
   )
 
   const conteos = useMemo(
     () => ({
-      proximo: propuestasConUi.filter(esProximoPeriodo).length,
+      enPeriodo: propuestasConUi.filter(esDelPeriodoOperativo).length,
       pendientes: propuestasConUi.filter(esPendienteConfirmar).length,
+      confirmados: listadoConfirmados.length,
       rezagados: propuestasConUi.filter(esRezagado).length,
-      todos: propuestasConUi.length,
     }),
-    [propuestasConUi, esProximoPeriodo, esPendienteConfirmar, esRezagado]
+    [propuestasConUi, listadoConfirmados.length, esDelPeriodoOperativo, esPendienteConfirmar, esRezagado]
   )
 
   const listadoFiltrado = useMemo(() => {
-    if (filtro === 'proximo') return propuestasConUi.filter(esProximoPeriodo)
-    if (filtro === 'pendientes') return propuestasConUi.filter(esPendienteConfirmar)
+    if (filtro === 'confirmados') return listadoConfirmados
     if (filtro === 'rezagados') return propuestasConUi.filter(esRezagado)
-    return propuestasConUi
-  }, [propuestasConUi, filtro, esProximoPeriodo, esPendienteConfirmar, esRezagado])
+    return propuestasConUi.filter(esPendienteConfirmar)
+  }, [propuestasConUi, filtro, listadoConfirmados, esRezagado, esPendienteConfirmar])
 
   useEffect(() => {
     setPaginaActual(1)
@@ -241,15 +297,16 @@ export default function AdminAumentos() {
   const mensajeVacio = useMemo(() => {
     if (loading) return 'Calculando aumentos…'
     if (filtro === 'pendientes')
-      return `No quedan aumentos sin confirmar en ${capitalizar(mesProximo.nombre)}. ¡Todo al día!`
+      return `No quedan aumentos sin confirmar en ${capitalizar(periodoOperativo.nombre)}. ¡Todo al día!`
+    if (filtro === 'confirmados')
+      return `Todavía no hay aumentos confirmados en ${capitalizar(periodoOperativo.nombre)}.`
     if (filtro === 'rezagados')
-      return 'No hay aumentos rezagados de períodos anteriores. ¡Todo al día!'
-    if (filtro === 'proximo') return `No hay aumentos en ${capitalizar(mesProximo.nombre)}`
+      return 'No hay aumentos rezagados. ¡Todo al día!'
     if (propuestasConUi.length === 0) {
-      return 'No hay contratos con aumento programado para este mes ni el próximo'
+      return 'No hay contratos con aumento programado para el período operativo'
     }
     return 'Sin contratos para mostrar'
-  }, [loading, propuestasConUi.length, filtro, mesProximo])
+  }, [loading, propuestasConUi.length, filtro, periodoOperativo])
 
   const abrirConfirm = (lista) => {
     if (!lista.length) return
@@ -268,6 +325,7 @@ export default function AdminAumentos() {
     if (ok) {
       cerrarConfirm()
       cerrarDetalle()
+      setFiltro('confirmados')
     }
   }
 
@@ -387,6 +445,9 @@ export default function AdminAumentos() {
     return `¿Confirmar ${confirmTarget.length} aumento(s)? Los que ya vencieron se aplican ahora; los anticipados quedan acordados para su fecha. Queda registro en el historial.`
   })()
 
+  const tituloConfirm =
+    confirmTarget.length === 1 ? 'Confirmar Aumento' : 'Confirmar Aumentos'
+
   const handleActualizar = () => {
     limpiarError()
     setRevisados(new Set())
@@ -417,7 +478,7 @@ export default function AdminAumentos() {
     <>
       <AdminListLayout
         title="Aumentos de Alquiler"
-        subtitle="Contratos con ajuste programado para este mes y el próximo. Los montos se calculan al ingresar."
+        subtitle={`Período operativo: ${capitalizar(periodoOperativo.nombre)}. Ventana de confirmación hasta el día ${DIA_CORTE_OPERATIVO} de cada mes.`}
         titleAction={
           <button
             type="button"
@@ -432,29 +493,35 @@ export default function AdminAumentos() {
         summary={
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <StatCard
-              label={`Contratos que aumentan en ${capitalizar(mesProximo.nombre)}`}
-              value={loading ? '…' : conteos.proximo}
-              hint={`Próximo período · ${mesProximo.etiqueta}`}
+              label={`Contratos que aumentan en ${capitalizar(periodoOperativo.nombre)}`}
+              value={loading ? '…' : conteos.enPeriodo}
+              hint={
+                enVentanaCierre
+                  ? `Cierre del mes · hasta el día ${DIA_CORTE_OPERATIVO}`
+                  : `Período operativo · ${periodoOperativo.etiqueta}`
+              }
               icon="calendar"
               theme="indigo"
             />
             <StatCard
-              label={`Aumentos pendientes de ${capitalizar(mesProximo.nombre)} sin confirmar`}
+              label={`Aumentos pendientes de ${capitalizar(periodoOperativo.nombre)} sin confirmar`}
               value={loading ? '…' : pendientesConfirmar.length}
               hint={
                 pendientesConfirmar.length > 0
-                  ? `Del próximo período · ${mesProximo.etiqueta}`
-                  : `Todo confirmado en ${capitalizar(mesProximo.nombre)}`
+                  ? enVentanaCierre
+                    ? `Confirmar antes del día ${DIA_CORTE_OPERATIVO}`
+                    : `Período operativo · ${periodoOperativo.etiqueta}`
+                  : `Todo confirmado en ${capitalizar(periodoOperativo.nombre)}`
               }
               icon="clipboard"
               theme={pendientesConfirmar.length > 0 ? 'amber' : 'emerald'}
             />
             <StatCard
-              label="Aumentos pendientes de períodos anteriores sin confirmar"
+              label="Aumentos rezagados sin confirmar"
               value={loading ? '…' : rezagados.length}
               hint={
                 rezagados.length > 0
-                  ? 'Vencidos sin confirmar · ¡revisar!'
+                  ? `Pasaron el día ${DIA_CORTE_OPERATIVO} sin confirmar · ¡revisar!`
                   : 'Sin rezagados'
               }
               icon="alert"
@@ -501,6 +568,18 @@ export default function AdminAumentos() {
       >
         <div className="flex flex-nowrap items-center gap-2 overflow-x-auto border-b border-slate-200 bg-slate-50/70 px-4 py-3 lg:px-6">
           <div
+            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3"
+            aria-label={`Período operativo: ${periodoOperativo.etiqueta}`}
+          >
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-indigo-500">
+              Período operativo
+            </span>
+            <span className="whitespace-nowrap text-sm font-semibold text-indigo-900">
+              {periodoOperativo.etiqueta}
+            </span>
+          </div>
+
+          <div
             className="inline-flex h-10 shrink-0 items-center rounded-lg border border-slate-300 bg-white p-1"
             role="group"
             aria-label="Filtrar aumentos"
@@ -525,12 +604,6 @@ export default function AdminAumentos() {
               )
             })}
           </div>
-
-          {meta && !loading && (
-            <span className="hidden shrink-0 text-xs text-slate-500 sm:inline">
-              Actualizado al {formatFechaAumento(meta.fecha_calculo)}
-            </span>
-          )}
 
           <div className="sticky right-0 ml-auto flex shrink-0 items-center gap-2 bg-slate-50/70 pl-2">
             <button
@@ -571,36 +644,35 @@ export default function AdminAumentos() {
         <AdminTable>
           <AdminTableHead>
             <AdminTableRow>
-              <AdminTableHeaderCell className={COL_CONTRATO}>Contrato</AdminTableHeaderCell>
-              <AdminTableHeaderCell className={COL_FECHA}>Periodo de aumento</AdminTableHeaderCell>
-              <AdminTableHeaderCell
-                className={`${COL_MONTO_ACTUAL} !text-right text-indigo-700`}
-              >
-                Monto actual de alquiler
+              <AdminTableHeaderCell className={`${COL_CONTRATO} align-top`}>
+                Contrato
               </AdminTableHeaderCell>
-              <AdminTableHeaderCell className={`${COL_MONTO_AJUSTADO} !text-right`}>
-                Monto Ajustado
+              <AdminTableHeaderCell className={`${COL_FECHA} align-top`}>
+                Periodo de aumento
               </AdminTableHeaderCell>
-              <AdminTableHeaderCell className={`${COL_INDICE} !text-center`}>
+              <AdminTableHeaderCell className={`${COL_MONTO_ACTUAL} align-top`}>
+                <span className="block text-right text-indigo-700">Monto actual de alquiler</span>
+              </AdminTableHeaderCell>
+              <AdminTableHeaderCell className={`${COL_MONTO_AJUSTADO} align-top`}>
+                <span className="block text-right">Monto ajustado</span>
+              </AdminTableHeaderCell>
+              <AdminTableHeaderCell className={`${COL_INDICE} align-top !text-center`}>
                 Índice
               </AdminTableHeaderCell>
-              <AdminTableHeaderCell className={`${COL_CONFIRMADO} !text-center`}>
+              <AdminTableHeaderCell className={`${COL_CONFIRMADO} align-top !text-center`}>
                 Confirmado
               </AdminTableHeaderCell>
               <AdminTableActionsHeaderCell />
-              <AdminTableHeaderCell className="w-auto" aria-hidden>
-                <span className="sr-only">Relleno</span>
-              </AdminTableHeaderCell>
             </AdminTableRow>
           </AdminTableHead>
           <AdminTableBody>
             {loading ? (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={8}>Calculando aumentos…</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={7}>Calculando aumentos…</AdminTableEmptyCell>
               </AdminTableRow>
             ) : listadoFiltrado.length === 0 ? (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={8}>{mensajeVacio}</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={7}>{mensajeVacio}</AdminTableEmptyCell>
               </AdminTableRow>
             ) : (
               listadoPagina.map((p) => {
@@ -608,7 +680,7 @@ export default function AdminAumentos() {
                 const indice = chipIndicador(p.tipo_ajuste ?? p.indice_tipo)
 
                 return (
-                  <AdminTableRow key={p.contrato_id}>
+                  <AdminTableRow key={p.aumento_id ? `aumento-${p.aumento_id}` : p.contrato_id}>
                     <AdminTableCell className="min-w-0 align-top">
                       <div className="flex min-w-0 flex-col">
                         <span className="truncate font-medium text-slate-900">
@@ -628,7 +700,7 @@ export default function AdminAumentos() {
                           {formatPeriodoMesAnio(p.fechaAumento)}
                         </span>
                         <span className="whitespace-nowrap text-xs text-slate-500">
-                          {etiquetaAumentoRelativa(p.fechaAumento, hoy)}
+                          {etiquetaPeriodoAumento(p.fechaAumento, hoy)}
                         </span>
                       </div>
                     </AdminTableCell>
@@ -661,25 +733,29 @@ export default function AdminAumentos() {
                         </div>
                       )}
                     </AdminTableCell>
-                    <AdminTableCell className={`${COL_INDICE} !text-center`}>
-                      <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700">
-                        <span className="text-sm leading-none">{indice.icon}</span>
-                        {indice.label}
-                      </span>
+                    <AdminTableCell className={`${COL_INDICE} align-top`}>
+                      <div className="flex justify-center">
+                        <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700">
+                          <span className="text-sm leading-none">{indice.icon}</span>
+                          {indice.label}
+                        </span>
+                      </div>
                     </AdminTableCell>
-                    <AdminTableCell className={`${COL_CONFIRMADO} !text-center align-top`}>
-                      {esConfirmado(p) ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
-                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                          </svg>
-                          Sí
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500 ring-1 ring-slate-200">
-                          No
-                        </span>
-                      )}
+                    <AdminTableCell className={`${COL_CONFIRMADO} align-top`}>
+                      <div className="flex justify-center">
+                        {esConfirmado(p) ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
+                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                            </svg>
+                            Sí
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500 ring-1 ring-slate-200">
+                            No
+                          </span>
+                        )}
+                      </div>
                     </AdminTableCell>
                     <AdminTableActionsCell>
                       <AumentoRowActions
@@ -688,7 +764,6 @@ export default function AdminAumentos() {
                         disabled={loading || confirmando}
                       />
                     </AdminTableActionsCell>
-                    <AdminTableCell className="w-auto" aria-hidden />
                   </AdminTableRow>
                 )
               })
@@ -708,6 +783,8 @@ export default function AdminAumentos() {
       <AumentoDetalleModal
         open={detalleOpen}
         propuesta={propuestaDetalle}
+        inquilinos={inquilinos}
+        propiedades={propiedades}
         onClose={cerrarDetalle}
         onConfirmar={confirmarDesdeDetalle}
         onVerHistorial={abrirHistorial}
@@ -748,19 +825,24 @@ export default function AdminAumentos() {
         <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
           <div className="space-y-3">
             <p>
-              Muestra los contratos con ajuste programado para <span className="font-medium text-slate-800">este mes</span>{' '}
-              y <span className="font-medium text-slate-800">el próximo</span>, además de los que quedaron pendientes de
-              confirmar. Los montos se calculan al ingresar.
+              El foco del módulo sigue el <span className="font-medium text-slate-800">período operativo</span> (arriba a
+              la izquierda): del día 1 al {DIA_CORTE_OPERATIVO} confirmás los aumentos del mes en curso; a partir del día{' '}
+              {DIA_CORTE_OPERATIVO + 1} el foco pasa al mes siguiente. Los montos se calculan al ingresar.
             </p>
             <p>
-              <span className="font-medium text-slate-800">Pendientes de confirmar:</span> los del próximo período que
-              todavía no confirmaste. A medida que confirmás, el contador baja. Los acordados por adelantado se aplican
-              solos en su fecha.
+              <span className="font-medium text-slate-800">Pendientes de confirmar:</span> vista principal del módulo.
+              Muestra solo los del período operativo que todavía no confirmaste. A medida que confirmás, el contador baja.
+              Los acordados por adelantado se aplican solos en su fecha.
             </p>
             <p>
-              <span className="font-medium text-slate-800">Rezagados:</span> aumentos de períodos anteriores cuya fecha ya
-              pasó y nunca se confirmaron, así que el alquiler quedó sin actualizar. Es lo más urgente: abrí el detalle y
-              confirmalos para ponerlos al día.
+              <span className="font-medium text-slate-800">Confirmados:</span> aumentos del período operativo que ya
+              acordaste o aplicaste, aunque el contrato ya haya pasado al próximo ciclo. Podés revisar el detalle, el
+              historial o el comprobante desde ahí.
+            </p>
+            <p>
+              <span className="font-medium text-slate-800">Rezagados:</span> aumentos cuyo mes ya pasó el día{' '}
+              {DIA_CORTE_OPERATIVO} sin confirmarse, así que el alquiler quedó sin actualizar. Es lo más urgente: abrí
+              el detalle y confirmalos para ponerlos al día.
             </p>
             <p>
               <span className="font-medium text-slate-800">Cálculo:</span> usa los últimos valores
@@ -820,10 +902,11 @@ export default function AdminAumentos() {
 
       <AdminConfirmModal
         open={confirmOpen}
-        title="Confirmar aumentos"
+        title={tituloConfirm}
         message={mensajeConfirm}
-        confirmLabel="Confirmar"
-        confirmVariant="primary"
+        confirmLabel="Confirmar aumento"
+        confirmVariant="important"
+        apilado={detalleOpen}
         loading={confirmando}
         onCancel={cerrarConfirm}
         onConfirm={ejecutarConfirm}

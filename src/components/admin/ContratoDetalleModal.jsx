@@ -18,7 +18,7 @@ import {
   etiquetaFinalizarContrato,
   puedeFinalizarContrato,
 } from '../../utils/contratoVigencia'
-import { formatearDniCuit } from '../../utils/normalizarContacto'
+import { formatPeriodoMesAnio } from '../../utils/aumentosUi'
 
 function formatFecha(fecha) {
   if (!fecha) return '—'
@@ -400,7 +400,7 @@ export default function ContratoDetalleModal({
                     <table className="min-w-full text-left text-sm">
                       <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                         <tr>
-                          <th className="px-3 py-2.5">Fecha de aumento</th>
+                          <th className="px-3 py-2.5">Período</th>
                           <th className="px-3 py-2.5">Estado</th>
                           <th className="px-3 py-2.5">Monto</th>
                         </tr>
@@ -408,7 +408,7 @@ export default function ContratoDetalleModal({
                       <tbody className="divide-y divide-slate-100">
                         {cronogramaAumentos.map((fila) => (
                           <tr key={fila.fecha} className="text-slate-700">
-                            <td className="px-3 py-2.5 tabular-nums">{formatFecha(fila.fecha)}</td>
+                            <td className="px-3 py-2.5 tabular-nums">{formatPeriodoMesAnio(fila.fecha)}</td>
                             <td className="px-3 py-2.5">
                               {fila.aplicado ? (
                                 <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">

@@ -24,6 +24,7 @@ import {
   fechasSeSolapan,
 } from '../../../utils/contratoVigencia'
 import { formatearMontoInput, parsearMontoInput } from '../../../utils/formatoMonto'
+import { formatPeriodoMesAnio } from '../../../utils/aumentosUi'
 import AdminSearchSelect from '../AdminSearchSelect'
 import AdminFormModalHeader from '../AdminFormModalHeader'
 import ContratoDocumentoAltaPicker from './ContratoDocumentoAltaPicker'
@@ -72,7 +73,7 @@ function PanelProximosAumentos({ preview, fechaInicio, fechaFin }) {
           className="flex items-start justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-sm"
         >
           <span className="font-medium text-slate-700">{fila.numero}º</span>
-          <span className="text-slate-600">{formatFecha(fila.fecha)}</span>
+          <span className="text-slate-600">{formatPeriodoMesAnio(fila.fecha)}</span>
           <span className="text-right text-slate-800">
             {fila.esMontoNumerico ? formatMonto(fila.montoEstimado) : fila.montoEstimado}
           </span>
@@ -613,7 +614,7 @@ export default function ContratoFormModal({
                     </select>
                     {fechaProximoAumento && (
                       <p className="mt-0.5 text-xs text-slate-500">
-                        Primer ajuste estimado: {formatFecha(fechaProximoAumento)}
+                        Primer ajuste estimado: {formatPeriodoMesAnio(fechaProximoAumento)}
                       </p>
                     )}
                   </div>
@@ -712,7 +713,7 @@ export default function ContratoFormModal({
                   </div>
                   <CampoResumen
                     label="Próximo aumento"
-                    value={fechaProximoAumento ? formatFecha(fechaProximoAumento) : '—'}
+                    value={fechaProximoAumento ? formatPeriodoMesAnio(fechaProximoAumento) : '—'}
                   />
                   <CampoResumen
                     label="Aumentos en el plazo"

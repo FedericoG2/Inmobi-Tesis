@@ -504,12 +504,10 @@ export default function AdminAumentos() {
     return {
       icl: {
         value: loading ? '…' : formatValorIcl(icl?.valor),
-        label: 'Último ICL disponible',
         hint: icl ? `Fuente Argly · al ${formatFechaAumento(icl.fecha)}` : 'Sin datos en Argly',
       },
       ipc: {
         value: loading ? '…' : formatValorIpc(ipc?.valor),
-        label: 'Último IPC disponible',
         hint: ipc
           ? `Fuente Argly · ${formatPeriodoIpc(ipc.anio, ipc.mes)}`
           : 'Sin datos en Argly',
@@ -532,59 +530,6 @@ export default function AdminAumentos() {
           >
             <IconInfo />
           </button>
-        }
-        summary={
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            <StatCard
-              label={`Contratos que aumentan en ${capitalizar(periodoOperativo.nombre)}`}
-              value={loading ? '…' : conteos.enPeriodo}
-              hint={
-                enVentanaCierre
-                  ? `Cierre del mes · hasta el día ${DIA_CORTE_OPERATIVO}`
-                  : `Período operativo · ${periodoOperativo.etiqueta}`
-              }
-              icon="calendar"
-              theme="indigo"
-            />
-            <StatCard
-              label={`Aumentos pendientes de ${capitalizar(periodoOperativo.nombre)} sin confirmar`}
-              value={loading ? '…' : pendientesConfirmar.length}
-              hint={
-                pendientesConfirmar.length > 0
-                  ? enVentanaCierre
-                    ? `Confirmar antes del día ${DIA_CORTE_OPERATIVO}`
-                    : `Período operativo · ${periodoOperativo.etiqueta}`
-                  : `Todo confirmado en ${capitalizar(periodoOperativo.nombre)}`
-              }
-              icon="clipboard"
-              theme={pendientesConfirmar.length > 0 ? 'amber' : 'emerald'}
-            />
-            <StatCard
-              label="Aumentos rezagados sin confirmar"
-              value={loading ? '…' : rezagados.length}
-              hint={
-                rezagados.length > 0
-                  ? `Pasaron el día ${DIA_CORTE_OPERATIVO} sin confirmar · ¡revisar!`
-                  : 'Sin rezagados'
-              }
-              icon="alert"
-              theme={rezagados.length > 0 ? 'red' : 'emerald'}
-            />
-            <StatCard
-              label={indicadoresIndices.icl.label}
-              value={indicadoresIndices.icl.value}
-              hint={indicadoresIndices.icl.hint}
-              icon="chart"
-              theme="slate"
-            />
-            <StatCard
-              label={indicadoresIndices.ipc.label}
-              value={indicadoresIndices.ipc.value}
-              hint={indicadoresIndices.ipc.hint}
-              icon="chart"
-              theme="violet"
-            />
-          </div>
         }
         alerts={
           <>
@@ -609,6 +554,63 @@ export default function AdminAumentos() {
           </>
         }
       >
+        <div className="grid grid-cols-2 gap-2 border-b border-slate-200 bg-white p-3 lg:grid-cols-3 xl:grid-cols-5">
+          <StatCard
+            compact
+            label={`Contratos en ${capitalizar(periodoOperativo.nombre)}`}
+            value={loading ? '…' : conteos.enPeriodo}
+            hint={
+              enVentanaCierre
+                ? `Cierre del mes · hasta el día ${DIA_CORTE_OPERATIVO}`
+                : `Período operativo · ${periodoOperativo.etiqueta}`
+            }
+            icon="calendar"
+            theme="indigo"
+          />
+          <StatCard
+            compact
+            label={`Pendientes ${capitalizar(periodoOperativo.nombre)}`}
+            value={loading ? '…' : pendientesConfirmar.length}
+            hint={
+              pendientesConfirmar.length > 0
+                ? enVentanaCierre
+                  ? `Confirmar antes del día ${DIA_CORTE_OPERATIVO}`
+                  : `Período operativo · ${periodoOperativo.etiqueta}`
+                : `Todo confirmado en ${capitalizar(periodoOperativo.nombre)}`
+            }
+            icon="clipboard"
+            theme={pendientesConfirmar.length > 0 ? 'amber' : 'emerald'}
+          />
+          <StatCard
+            compact
+            label="Rezagados"
+            value={loading ? '…' : rezagados.length}
+            hint={
+              rezagados.length > 0
+                ? `Pasaron el día ${DIA_CORTE_OPERATIVO} sin confirmar · ¡revisar!`
+                : 'Sin rezagados'
+            }
+            icon="alert"
+            theme={rezagados.length > 0 ? 'red' : 'emerald'}
+          />
+          <StatCard
+            compact
+            label="ICL"
+            value={indicadoresIndices.icl.value}
+            hint={indicadoresIndices.icl.hint}
+            icon="chart"
+            theme="slate"
+          />
+          <StatCard
+            compact
+            label="IPC"
+            value={indicadoresIndices.ipc.value}
+            hint={indicadoresIndices.ipc.hint}
+            icon="chart"
+            theme="slate"
+          />
+        </div>
+
         <div className="flex flex-nowrap items-center gap-2 overflow-x-auto border-b border-slate-200 bg-slate-50/70 px-4 py-3 lg:px-6">
           <div
             className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3"

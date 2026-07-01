@@ -4,7 +4,7 @@ import { detalleCalculoAumento, formatPeriodoIpc } from './aumentosUi'
 const COLOR_TEXTO = [30, 41, 59] // slate-800
 const COLOR_SUAVE = [100, 116, 139] // slate-500
 const COLOR_LINEA = [226, 232, 240] // slate-200
-const COLOR_ACENTO = [79, 70, 229] // indigo-600
+const COLOR_ACENTO = [79, 70, 229] // brand-600
 const COLOR_AMBAR = [180, 83, 9] // amber-700
 
 const fmtMoneda = (valor) =>

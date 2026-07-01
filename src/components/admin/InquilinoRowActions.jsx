@@ -59,7 +59,7 @@ export default function InquilinoRowActions({ onEdit, onDelete, onView }) {
       {onEdit && (
         <ActionButton
           label="Editar"
-          className={`${btnBase} border-amber-400 text-amber-600 hover:bg-amber-50`}
+          className={`${btnBase} border-brand-300 text-brand-600 hover:bg-brand-50`}
           onClick={onEdit}
         >
           <IconPencil className={iconSm} />
@@ -68,7 +68,7 @@ export default function InquilinoRowActions({ onEdit, onDelete, onView }) {
       {onDelete && (
         <ActionButton
           label="Eliminar"
-          className={`${btnBase} border-red-400 text-red-500 hover:bg-red-50`}
+          className={`${btnBase} border-red-300 text-red-600 hover:bg-red-50`}
           onClick={onDelete}
         >
           <IconTrash className={iconSm} />
@@ -77,7 +77,7 @@ export default function InquilinoRowActions({ onEdit, onDelete, onView }) {
       {onView && (
         <ActionButton
           label="Ver detalle"
-          className={`${btnBase} border-sky-400 text-sky-600 hover:bg-sky-50`}
+          className={`${btnBase} border-slate-300 text-slate-600 hover:bg-slate-50`}
           onClick={onView}
         >
           <IconEye className={iconSm} />

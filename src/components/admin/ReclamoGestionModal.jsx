@@ -6,8 +6,8 @@ import {
   ReclamoCategoriaChip,
   ReclamoEstadoChip,
   ReclamoEstadoSelectChip,
+  ReclamoPrioridadChip,
 } from './ReclamoChips'
-import { badgePrioridad, PILL_SOLID_CLASS } from '../../utils/reclamosUi'
 import { estadosPermitidos } from '../../utils/validarReclamo'
 import { listarEventosReclamo } from '../../services/reclamosService'
 
@@ -51,16 +51,6 @@ function SeccionCard({ children, className = '' }) {
     <section className={`rounded-xl border border-slate-200 bg-white p-4 ${className}`}>
       {children}
     </section>
-  )
-}
-
-function PrioridadPill({ prioridad }) {
-  const badge = badgePrioridad(prioridad)
-  if (!badge) return null
-  return (
-    <span className={`${PILL_SOLID_CLASS} ${badge.className}`}>
-      {badge.label}
-    </span>
   )
 }
 
@@ -183,7 +173,7 @@ export default function ReclamoGestionModal({ open, reclamo, onClose, onGestiona
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <ReclamoEstadoChip estado={estadoActual} />
               {reclamo.categoria ? <ReclamoCategoriaChip categoria={reclamo.categoria} /> : null}
-              <PrioridadPill prioridad={reclamo.prioridad} />
+              <ReclamoPrioridadChip prioridad={reclamo.prioridad} />
             </div>
           </div>
 
@@ -252,7 +242,7 @@ export default function ReclamoGestionModal({ open, reclamo, onClose, onGestiona
                   setErrorGestion(null)
                 }}
                 placeholder="Ej: Se coordinó la visita del plomero para el martes."
-                className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100"
               />
               <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
                 Si no cambiás el estado, el comentario queda como nota en el historial.
@@ -286,7 +276,7 @@ export default function ReclamoGestionModal({ open, reclamo, onClose, onGestiona
             onClick={handleGuardar}
             loading={guardando}
             disabled={!puedeGuardar || guardando}
-            className="border-none bg-indigo-600 text-white hover:bg-indigo-700"
+            className="border-none bg-brand-600 text-white hover:bg-brand-700"
           >
             Guardar gestión
           </Button>

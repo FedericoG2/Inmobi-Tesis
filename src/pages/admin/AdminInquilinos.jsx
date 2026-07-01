@@ -19,6 +19,13 @@ import AdminTablePagination from '../../components/admin/AdminTablePagination'
 import AdminNuevoButton from '../../components/admin/AdminNuevoButton'
 import { useInquilinos } from '../../hooks/useInquilinos'
 import { formatearDniCuit, formatearTelefono } from '../../utils/normalizarContacto'
+import {
+  BADGE_PERSONA_TIPO,
+  celdaNombre,
+  celdaNumero,
+  inputToolbarClass,
+  selectToolbarClass,
+} from '../../utils/adminModuleUi'
 
 const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
 const dependenciasIniciales = {
@@ -28,14 +35,6 @@ const dependenciasIniciales = {
   reclamos: 0,
 }
 const FILAS_POR_PAGINA = 4
-
-const inputToolbarClass =
-  'h-10 w-full rounded-lg border border-slate-300 bg-white text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
-
-const BADGE_TIPO = {
-  Física: { label: 'Particular', className: 'bg-violet-600 text-white' },
-  Jurídica: { label: 'Empresa', className: 'bg-teal-600 text-white' },
-}
 
 function IconSearch({ className = 'h-4 w-4' }) {
   return (
@@ -94,10 +93,6 @@ function HeaderLabel({ icon: Icon, children, align = 'center' }) {
     </span>
   )
 }
-
-const celdaTexto = 'text-sm text-slate-700'
-const celdaNombre = 'text-sm font-medium text-slate-900'
-const celdaNumero = 'text-sm text-slate-600'
 
 function buildMensajeConfirmacionDelete(inquilino, deps) {
   const partes = []
@@ -332,7 +327,7 @@ export default function AdminInquilinos() {
             id="filtro-tipo-inquilino"
             value={filtroTipo}
             onChange={(e) => setFiltroTipo(e.target.value)}
-            className={`${inputToolbarClass} shrink-0 cursor-pointer sm:w-44`}
+            className={selectToolbarClass}
             aria-label="Filtrar por tipo de inquilino"
           >
             <option value="">Tipo: Todos</option>
@@ -395,11 +390,11 @@ export default function AdminInquilinos() {
             {!loading &&
               inquilinosFiltrados.length > 0 &&
               inquilinosPagina.map((i, index) => {
-                const badgeTipo = BADGE_TIPO[i.tipo_persona] ?? BADGE_TIPO['Física']
+                const badgeTipo = BADGE_PERSONA_TIPO[i.tipo_persona] ?? BADGE_PERSONA_TIPO['Física']
                 const zebra = index % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'
 
                 return (
-                  <AdminTableRow key={i.id ?? i.dni_cuit} className={`${zebra} hover:bg-indigo-50/40`}>
+                  <AdminTableRow key={i.id ?? i.dni_cuit} className={`${zebra} hover:bg-brand-50/40`}>
                     <AdminTableCell className="!text-center">
                       <span
                         className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${badgeTipo.className}`}

@@ -21,26 +21,17 @@ import { usePropiedades } from '../../hooks/usePropiedades'
 import { usePropietarios } from '../../hooks/usePropietarios'
 import { etiquetaPropietario } from '../../utils/etiquetaPropietario'
 import { ESTADOS_PROPIEDAD, TIPOS_PROPIEDAD } from '../../utils/validaciones'
+import {
+  BADGE_PROPIEDAD_ESTADO,
+  BADGE_PROPIEDAD_TIPO,
+  celdaTexto,
+  inputToolbarClass,
+  selectToolbarClass,
+} from '../../utils/adminModuleUi'
 
 const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
 const dependenciasIniciales = { contratos_activos: 0, contratos_historicos: 0, reclamos: 0 }
 const FILAS_POR_PAGINA = 4
-
-const inputToolbarClass =
-  'h-10 w-full rounded-lg border border-slate-300 bg-white text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
-
-const BADGE_ESTADO = {
-  Disponible: { label: 'Disponible', className: 'bg-emerald-600 text-white' },
-  Reservada: { label: 'Reservada', className: 'bg-violet-600 text-white' },
-  Alquilada: { label: 'Alquilada', className: 'bg-blue-600 text-white' },
-  Mantenimiento: { label: 'Mantenimiento', className: 'bg-amber-500 text-white' },
-}
-
-const BADGE_TIPO = {
-  Departamento: { label: 'Departamento', className: 'bg-indigo-600 text-white' },
-  Casa: { label: 'Casa', className: 'bg-orange-600 text-white' },
-  'Local comercial': { label: 'Local comercial', className: 'bg-slate-600 text-white' },
-}
 
 function IconSearch({ className = 'h-4 w-4' }) {
   return (
@@ -100,7 +91,6 @@ function HeaderLabel({ icon: Icon, children, align = 'center' }) {
   )
 }
 
-const celdaTexto = 'text-sm text-slate-700'
 const celdaDestacada = 'text-sm font-medium text-slate-900'
 
 function CeldaDireccion({ propiedad }) {
@@ -374,8 +364,8 @@ export default function AdminPropiedades() {
           ) : null
         }
       >
-        <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 lg:px-6">
-          <div className="relative min-w-0 flex-1 sm:min-w-[12rem]">
+        <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-3 sm:flex-row sm:items-center sm:gap-3 lg:px-6">
+          <div className="relative min-w-0 flex-1">
             <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               id="buscar-propiedad"
@@ -391,7 +381,7 @@ export default function AdminPropiedades() {
             id="filtro-tipo-propiedad"
             value={filtroTipo}
             onChange={(e) => setFiltroTipo(e.target.value)}
-            className={`${inputToolbarClass} sm:w-44 shrink-0 cursor-pointer`}
+            className={selectToolbarClass}
             aria-label="Filtrar por tipo de propiedad"
           >
             <option value="">Tipo: Todos</option>
@@ -406,7 +396,7 @@ export default function AdminPropiedades() {
             id="filtro-estado-propiedad"
             value={filtroEstado}
             onChange={(e) => setFiltroEstado(e.target.value)}
-            className={`${inputToolbarClass} sm:w-44 shrink-0 cursor-pointer`}
+            className={selectToolbarClass}
             aria-label="Filtrar por estado de propiedad"
           >
             <option value="">Estado: Todos</option>
@@ -470,16 +460,19 @@ export default function AdminPropiedades() {
             {!loading &&
               propiedadesFiltradas.length > 0 &&
               propiedadesPagina.map((p, index) => {
-                const badgeTipo = BADGE_TIPO[p.tipo] ?? { label: p.tipo, className: 'bg-slate-500 text-white' }
-                const badgeEstado = BADGE_ESTADO[p.estado] ?? {
+                const badgeTipo = BADGE_PROPIEDAD_TIPO[p.tipo] ?? {
+                  label: p.tipo,
+                  className: 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200',
+                }
+                const badgeEstado = BADGE_PROPIEDAD_ESTADO[p.estado] ?? {
                   label: p.estado,
-                  className: 'bg-slate-500 text-white',
+                  className: 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200',
                 }
                 const zebra = index % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'
                 const sinPropietario = !p.propietario_id
 
                 return (
-                  <AdminTableRow key={p.id} className={`${zebra} hover:bg-indigo-50/40`}>
+                  <AdminTableRow key={p.id} className={`${zebra} hover:bg-brand-50/40`}>
                     <AdminTableCell className="!text-left">
                       <CeldaDireccion propiedad={p} />
                     </AdminTableCell>

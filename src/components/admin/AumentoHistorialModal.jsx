@@ -231,7 +231,7 @@ export default function AumentoHistorialModal({
       >
         <div className="border-b border-slate-100 px-6 py-3">
           <div className="flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
+            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-700">
               <IconHistory />
             </span>
             <div className="min-w-0 flex-1">

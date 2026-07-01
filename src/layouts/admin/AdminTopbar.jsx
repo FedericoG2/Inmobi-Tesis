@@ -1,6 +1,8 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
+import { useAdminLayout } from '../../contexts/AdminLayoutContext'
 import { supabase } from '../../supabaseClient'
+import { brandAvatarClass } from '../../utils/brandUi'
 
 function IconLogout({ className = 'h-4 w-4' }) {
   return (
@@ -10,6 +12,14 @@ function IconLogout({ className = 'h-4 w-4' }) {
         strokeLinejoin="round"
         d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"
       />
+    </svg>
+  )
+}
+
+function IconSidebarToggle({ className = 'h-5 w-5' }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
     </svg>
   )
 }
@@ -29,7 +39,7 @@ function inicialDesdeUsuario(email, nombre) {
 function UserAvatar({ inicial }) {
   return (
     <span
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white shadow-sm"
+      className={`${brandAvatarClass} h-8 w-8 text-sm`}
       aria-hidden
     >
       {inicial}
@@ -39,6 +49,7 @@ function UserAvatar({ inicial }) {
 
 export default function AdminTopbar() {
   const { user } = useAuth()
+  const { sidebarCollapsed, toggleSidebar } = useAdminLayout()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
 
@@ -67,10 +78,17 @@ export default function AdminTopbar() {
   }
 
   return (
-    <header
-      className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-end border-b border-slate-200 bg-white px-4 shadow-sm shadow-slate-200/60 sm:px-6 lg:px-8"
-    >
-      {/* Móvil: menú compacto */}
+    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 shadow-sm shadow-slate-200/60 sm:px-5">
+      <button
+        type="button"
+        onClick={toggleSidebar}
+        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+        aria-label={sidebarCollapsed ? 'Expandir menú lateral' : 'Colapsar menú lateral'}
+        aria-expanded={!sidebarCollapsed}
+      >
+        <IconSidebarToggle />
+      </button>
+
       <div className="relative sm:hidden" ref={menuRef}>
         <button
           type="button"
@@ -105,27 +123,22 @@ export default function AdminTopbar() {
         )}
       </div>
 
-      {/* Desktop: chip + cerrar sesión */}
-      <div className="hidden items-center gap-3 sm:flex">
-        <div className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50/90 py-1.5 pl-1.5 pr-3">
+      <div className="hidden items-center gap-2 sm:flex">
+        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/90 py-1 pl-1 pr-2.5">
           <UserAvatar inicial={inicial} />
           <div className="min-w-0 text-left">
-            <p className="truncate text-sm font-semibold leading-tight text-slate-900">
-              {nombreVisible}
-            </p>
-            <p className="truncate text-xs leading-tight text-slate-500">
-              {user?.email ?? 'Sin sesión'}
-            </p>
+            <p className="truncate text-sm font-semibold leading-tight text-slate-900">{nombreVisible}</p>
+            <p className="truncate text-xs leading-tight text-slate-500">{user?.email ?? 'Sin sesión'}</p>
           </div>
         </div>
 
         <button
           type="button"
           onClick={handleSignOut}
-          className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
         >
           <IconLogout />
-          <span>Cerrar sesión</span>
+          <span className="hidden lg:inline">Cerrar sesión</span>
         </button>
       </div>
     </header>

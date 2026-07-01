@@ -25,7 +25,7 @@ const formInicial = {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 placeholder:text-slate-400'
+  'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 placeholder:text-slate-400'
 
 const inputErrorClass =
   'w-full rounded-lg border border-red-400 px-3 py-2 text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 placeholder:text-slate-400'
@@ -162,7 +162,7 @@ export default function InquilinoFormModal({
         <form noValidate onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
           <div className="custom-scrollbar flex-1 space-y-6 overflow-y-auto p-6">
             {esEdicion && identidadBloqueada && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
                 Este inquilino tiene un contrato activo. No podés cambiar el tipo de persona ni el
                 DNI/CUIT mientras el contrato esté vigente.
               </div>
@@ -197,7 +197,7 @@ export default function InquilinoFormModal({
             </div>
 
             <div className="space-y-4">
-              <h3 className="border-b border-slate-100 pb-1 text-xs font-bold uppercase tracking-widest text-indigo-600">
+              <h3 className="border-b border-slate-100 pb-1 text-xs font-bold uppercase tracking-widest text-brand-600">
                 Datos de identificación
               </h3>
 
@@ -330,7 +330,7 @@ export default function InquilinoFormModal({
             </div>
 
             <div className="space-y-4">
-              <h3 className="border-b border-slate-100 pb-1 text-xs font-bold uppercase tracking-widest text-amber-600">
+              <h3 className="border-b border-slate-100 pb-1 text-xs font-bold uppercase tracking-widest text-slate-600">
                 Contacto de emergencia
               </h3>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

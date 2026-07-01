@@ -63,9 +63,14 @@ function IconOjo({ abierto, className }) {
   )
 }
 
+const panelMarcaClass =
+  'bg-gradient-to-br from-[#2548a8] via-[#1C398E] to-[#152a6e]'
+
 function PanelMarca() {
   return (
-    <div className="relative hidden overflow-hidden bg-indigo-700 lg:flex lg:w-1/2 lg:flex-col lg:justify-between lg:p-12">
+    <div
+      className={`relative hidden overflow-hidden lg:flex lg:w-1/2 lg:flex-col lg:justify-between lg:p-12 ${panelMarcaClass}`}
+    >
       {/* Líneas decorativas de fondo */}
       <svg
         className="pointer-events-none absolute inset-0 h-full w-full text-white/[0.06]"
@@ -98,15 +103,18 @@ function PanelMarca() {
       </div>
 
       <div className="relative z-10">
-        <h1 className="text-4xl font-bold leading-tight text-white xl:text-5xl">
-          Hola! <span className="inline-block">👋</span>
+        <p className="text-sm font-medium uppercase tracking-[0.2em] text-white/70">
+          Plataforma Inmobi
+        </p>
+        <h1 className="mt-3 text-3xl font-bold leading-tight text-white xl:text-4xl">
+          Gestión inmobiliaria integral
         </h1>
-        <p className="mt-4 max-w-md text-base leading-relaxed text-indigo-100">
-          Gestioná propiedades, contratos, aumentos y reclamos desde un solo lugar.
+        <p className="mt-4 max-w-md text-base leading-relaxed text-white/85">
+          Propiedades, contratos, aumentos y reclamos centralizados.
         </p>
       </div>
 
-      <p className="relative z-10 text-xs text-indigo-200/80">
+      <p className="relative z-10 text-xs text-white/60">
         © 2026 Zitelli &amp; Asociados
       </p>
     </div>
@@ -126,7 +134,7 @@ export default function LoginPage() {
 
   if ((initializing || rolLoading) && isAuthenticated) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-indigo-700">
+      <div className="flex min-h-screen items-center justify-center bg-[#1C398E]">
         <p className="text-sm text-white/90">Verificando perfil...</p>
       </div>
     )
@@ -137,7 +145,7 @@ export default function LoginPage() {
     if (isInquilino) return <Navigate to={from?.startsWith('/inquilino') ? from : '/inquilino/dashboard'} replace />
 
     return (
-      <div className="flex min-h-screen items-center justify-center bg-indigo-700 px-4">
+      <div className="flex min-h-screen items-center justify-center bg-[#1C398E] px-4">
         <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-xl">
           <h2 className="text-lg font-semibold text-slate-800">Cuenta sin rol asignado</h2>
           <p className="mt-2 text-sm text-slate-500">
@@ -147,7 +155,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => supabase?.auth.signOut()}
-            className="mt-6 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            className="mt-6 rounded-lg bg-[#1C398E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#152a6e]"
           >
             Cerrar sesión
           </button>
@@ -183,14 +191,14 @@ export default function LoginPage() {
         <div className="w-full max-w-sm">
           {/* Logo (visible siempre; en desktop refuerza la marca del panel) */}
           <div className="mb-10 flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#1C398E]">
               <IconEdificio className="h-5 w-5 text-white" />
             </div>
             <span className="text-lg font-bold tracking-tight text-slate-900">Inmobi</span>
           </div>
 
-          <h2 className="text-2xl font-bold text-slate-900">¡Bienvenido de nuevo!</h2>
-          <p className="mt-1.5 text-sm text-slate-500">Ingresá con tu cuenta para continuar</p>
+          <h2 className="text-2xl font-bold text-slate-900">Iniciar sesión</h2>
+          <p className="mt-1.5 text-sm text-slate-500">Ingresá con tus credenciales para continuar</p>
 
           {!isSupabaseConfigured && (
             <div className="mt-6 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
@@ -212,7 +220,7 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 py-2.5 pl-11 pr-4 text-sm outline-none transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                  className="w-full rounded-lg border border-slate-300 py-2.5 pl-11 pr-4 text-sm outline-none transition-colors focus:border-[#1C398E] focus:ring-2 focus:ring-[#1C398E]/25"
                   placeholder=""
                 />
               </div>
@@ -230,7 +238,7 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 py-2.5 pl-11 pr-11 text-sm outline-none transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                  className="w-full rounded-lg border border-slate-300 py-2.5 pl-11 pr-11 text-sm outline-none transition-colors focus:border-[#1C398E] focus:ring-2 focus:ring-[#1C398E]/25"
                   placeholder=""
                 />
                 <button

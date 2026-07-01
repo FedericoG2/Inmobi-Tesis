@@ -1,20 +1,29 @@
 import { useState } from 'react'
 import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
+import PortalPageHeader from '../../components/inquilino/PortalPageHeader'
 import { usePortalInquilino } from '../../contexts/PortalInquilinoContext'
 import {
-  badgeCategoria,
   badgePrioridad,
   CATEGORIAS_RECLAMO,
-  PILL_SOLID_CLASS,
+  infoCategoria,
+  infoEstado,
+  PILL_RING_CLASS,
   PRIORIDADES_RECLAMO,
+  RECLAMO_CHIP_CLASS,
 } from '../../utils/reclamosUi'
 import { RECLAMO_LIMITES } from '../../utils/validarReclamo'
-
-const estadoStyles = {
-  Pendiente: { bg: 'bg-amber-100', text: 'text-amber-700' },
-  'En Proceso': { bg: 'bg-blue-100', text: 'text-blue-700' },
-  Resuelto: { bg: 'bg-emerald-100', text: 'text-emerald-700' },
-}
+import {
+  portalBtnDanger,
+  portalBtnGhost,
+  portalBtnPrimary,
+  portalBtnSecondary,
+  portalCardClass,
+  portalEmptyState,
+  portalInputClass,
+  portalLabelClass,
+  portalPageShell,
+  portalSectionTitle,
+} from '../../utils/portalInquilinoUi'
 
 const formInicial = { titulo: '', descripcion: '', categoria: 'Plomeria', prioridad: 'Media' }
 
@@ -121,21 +130,32 @@ export default function InquilinoReclamos() {
     setReclamoAEliminar(null)
   }
 
-  const inputClass =
-    'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
+  const nuevoReclamoBtn = (
+    <button
+      type="button"
+      onClick={abrirFormCrear}
+      disabled={!contratoActivo}
+      className={`${portalBtnPrimary} inline-flex w-full sm:w-auto`}
+    >
+      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
+      </svg>
+      Nuevo reclamo
+    </button>
+  )
 
   return (
-    <div className="relative space-y-5 pb-4">
-      <h2 className="text-lg font-bold text-slate-800">Mis Reclamos</h2>
+    <div className={portalPageShell}>
+      <PortalPageHeader
+        title="Mis Reclamos"
+        subtitle="Reportá y seguí el estado de tus solicitudes de mantenimiento"
+        action={nuevoReclamoBtn}
+      />
 
       {errorAccion && (
         <div className="flex items-start justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3">
           <p className="text-sm text-red-700">{errorAccion}</p>
-          <button
-            type="button"
-            onClick={() => setErrorAccion(null)}
-            className="ml-3 shrink-0 text-sm font-medium text-red-600 underline"
-          >
+          <button type="button" onClick={() => setErrorAccion(null)} className={`${portalBtnGhost} !h-auto !px-2 text-red-600`}>
             Cerrar
           </button>
         </div>
@@ -146,44 +166,48 @@ export default function InquilinoReclamos() {
       )}
 
       {reclamos.length === 0 && !reclamosLoading && (
-        <div className="rounded-2xl bg-white px-5 py-10 text-center shadow-sm ring-1 ring-slate-100">
+        <div className={portalEmptyState}>
           <p className="text-sm font-medium text-slate-700">No tenés reclamos registrados</p>
           <p className="mt-1 text-xs text-slate-400">
             {contratoActivo
-              ? 'Usá el botón + para reportar un problema de mantenimiento'
+              ? 'Usá el botón Nuevo reclamo para reportar un problema'
               : 'Necesitás tener un contrato activo para registrar reclamos'}
           </p>
         </div>
       )}
 
-      <ul className="space-y-3">
+      <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 xl:gap-4">
         {reclamos.map((r) => {
-          const estilo = estadoStyles[r.estado] ?? { bg: 'bg-slate-100', text: 'text-slate-600' }
           const esPendiente = r.estado === 'Pendiente'
-          const catBadge = badgeCategoria(r.categoria)
+          const catInfo = infoCategoria(r.categoria)
           const prioBadge = badgePrioridad(r.prioridad)
+          const estadoInfo = infoEstado(r.estado)
 
           return (
-            <li key={r.id} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+            <li key={r.id} className={`${portalCardClass} p-4`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-slate-800">{r.titulo}</p>
+                  <p className="truncate text-sm font-semibold text-slate-900">{r.titulo}</p>
                   <p className="mt-0.5 text-xs text-slate-400">{formatFecha(r.fecha_creacion)}</p>
                 </div>
-                <span
-                  className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${estilo.bg} ${estilo.text}`}
-                >
-                  {r.estado}
-                </span>
+                {estadoInfo && (
+                  <span className={RECLAMO_CHIP_CLASS}>
+                    <span className="text-sm leading-none">{estadoInfo.icon}</span>
+                    <span>{estadoInfo.label}</span>
+                  </span>
+                )}
               </div>
 
-              {(catBadge || prioBadge) && (
+              {(catInfo || prioBadge) && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  {catBadge && (
-                    <span className={`${PILL_SOLID_CLASS} ${catBadge.className}`}>{catBadge.label}</span>
+                  {catInfo && (
+                    <span className={RECLAMO_CHIP_CLASS}>
+                      <span className="text-sm leading-none">{catInfo.icon}</span>
+                      <span>{catInfo.label}</span>
+                    </span>
                   )}
                   {prioBadge && (
-                    <span className={`${PILL_SOLID_CLASS} ${prioBadge.className}`}>{prioBadge.label}</span>
+                    <span className={`${PILL_RING_CLASS} ${prioBadge.className}`}>{prioBadge.label}</span>
                   )}
                 </div>
               )}
@@ -198,18 +222,10 @@ export default function InquilinoReclamos() {
 
               {esPendiente && (
                 <div className="mt-3 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => abrirFormEditar(r)}
-                    className="flex-1 rounded-xl border border-indigo-200 py-2 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50"
-                  >
+                  <button type="button" onClick={() => abrirFormEditar(r)} className={portalBtnSecondary}>
                     Editar
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleEliminar(r)}
-                    className="flex-1 rounded-xl border border-red-200 py-2 text-xs font-semibold text-red-500 transition hover:bg-red-50"
-                  >
+                  <button type="button" onClick={() => handleEliminar(r)} className={portalBtnDanger}>
                     Eliminar
                   </button>
                 </div>
@@ -219,30 +235,9 @@ export default function InquilinoReclamos() {
         })}
       </ul>
 
-      {/* FAB — alineado al contenedor y por encima de la bottom nav */}
-      {!showForm && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(6.25rem+env(safe-area-inset-bottom,0px))] z-40 px-4">
-          <div className="mx-auto flex max-w-lg justify-end">
-            <button
-              type="button"
-              onClick={abrirFormCrear}
-              disabled={!contratoActivo}
-              aria-label="Nuevo reclamo"
-              title={!contratoActivo ? 'Necesitás un contrato activo para crear reclamos' : 'Nuevo reclamo'}
-              className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg transition hover:bg-indigo-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Modal formulario */}
       {showForm && (
         <div
-          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 px-4 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))]"
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 px-4 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] lg:items-center lg:px-6 lg:pb-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="reclamo-form-title"
@@ -253,18 +248,18 @@ export default function InquilinoReclamos() {
             className="absolute inset-0"
             onClick={cerrarForm}
           />
-          <div className="relative z-10 max-h-[min(85vh,40rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-slate-100">
-            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-200" aria-hidden="true" />
+          <div className={`relative z-10 max-h-[min(85vh,40rem)] w-full max-w-lg overflow-y-auto ${portalCardClass} p-5 shadow-2xl lg:max-h-[90vh] lg:max-w-xl lg:p-6`}>
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-200 lg:hidden" aria-hidden="true" />
 
             <div className="relative mb-5 text-center">
-              <h3 id="reclamo-form-title" className="text-lg font-bold text-slate-800">
+              <h3 id="reclamo-form-title" className={portalSectionTitle}>
                 {reclamoEditando ? 'Editar reclamo' : 'Nuevo reclamo'}
               </h3>
               <button
                 type="button"
                 onClick={cerrarForm}
                 disabled={submitting}
-                className="absolute right-0 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100"
+                className={`${portalBtnGhost} absolute right-0 top-1/2 -translate-y-1/2`}
                 aria-label="Cerrar"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -274,17 +269,17 @@ export default function InquilinoReclamos() {
             </div>
 
             {!reclamoEditando && contratoActivo?.propiedades?.direccion && (
-              <p className="mb-5 rounded-xl bg-indigo-50 px-4 py-2.5 text-center text-xs font-medium leading-relaxed text-indigo-700">
+              <p className="mb-5 rounded-lg bg-brand-50 px-4 py-2.5 text-center text-xs font-medium leading-relaxed text-brand-700 ring-1 ring-inset ring-brand-100">
                 {contratoActivo.propiedades.direccion}
               </p>
             )}
 
             <form onSubmit={handleSubmit} className="mx-auto w-full max-w-md space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className={portalLabelClass}>
                   Tipo de problema <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
                   {CATEGORIAS_RECLAMO.map((cat) => {
                     const seleccionada = form.categoria === cat.id
                     return (
@@ -293,9 +288,9 @@ export default function InquilinoReclamos() {
                         type="button"
                         disabled={submitting}
                         onClick={() => handleDirectChange('categoria', cat.id)}
-                        className={`flex items-center gap-2 rounded-xl border p-2.5 text-left text-sm transition ${
+                        className={`flex items-center gap-2 rounded-lg border p-2.5 text-left text-sm transition ${
                           seleccionada
-                            ? 'border-indigo-600 bg-indigo-50 font-semibold text-indigo-700 ring-2 ring-indigo-100'
+                            ? 'border-brand-600 bg-brand-50 font-semibold text-brand-700 ring-2 ring-brand-100'
                             : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50'
                         }`}
                       >
@@ -308,10 +303,10 @@ export default function InquilinoReclamos() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className={portalLabelClass}>
                   Urgencia <span className="text-red-500">*</span>
                 </label>
-                <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1">
+                <div className="flex rounded-lg border border-slate-200 bg-slate-100 p-1">
                   {PRIORIDADES_RECLAMO.map((prio) => {
                     const seleccionada = form.prioridad === prio
                     let estiloActivo = 'bg-white text-slate-900 shadow-sm font-semibold'
@@ -324,7 +319,7 @@ export default function InquilinoReclamos() {
                         type="button"
                         disabled={submitting}
                         onClick={() => handleDirectChange('prioridad', prio)}
-                        className={`flex-1 rounded-lg py-2 text-center text-xs transition ${
+                        className={`flex-1 rounded-md py-2 text-center text-xs transition ${
                           seleccionada ? estiloActivo : 'text-slate-600 hover:text-slate-900 disabled:opacity-50'
                         }`}
                       >
@@ -336,7 +331,7 @@ export default function InquilinoReclamos() {
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                <label className={portalLabelClass}>
                   Título <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -345,14 +340,14 @@ export default function InquilinoReclamos() {
                   maxLength={RECLAMO_LIMITES.TITULO_MAX}
                   value={form.titulo}
                   onChange={handleChange('titulo')}
-                  className={inputClass}
+                  className={portalInputClass}
                   placeholder="Ej: Gotera en el techo del baño"
                   disabled={submitting}
                 />
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                <label className={portalLabelClass}>
                   Descripción <span className="text-red-500">*</span>
                 </label>
                 <textarea
@@ -361,30 +356,23 @@ export default function InquilinoReclamos() {
                   rows={4}
                   value={form.descripcion}
                   onChange={handleChange('descripcion')}
-                  className={`${inputClass} resize-none`}
+                  className={`${portalInputClass} resize-none`}
                   placeholder="Describí el problema con el mayor detalle posible..."
                   disabled={submitting}
                 />
               </div>
 
               {submitError && (
-                <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{submitError}</p>
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-inset ring-red-100">
+                  {submitError}
+                </p>
               )}
 
               <div className="flex gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={cerrarForm}
-                  disabled={submitting}
-                  className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
-                >
+                <button type="button" onClick={cerrarForm} disabled={submitting} className={portalBtnSecondary}>
                   Cancelar
                 </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
-                >
+                <button type="submit" disabled={submitting} className={`${portalBtnPrimary} flex-1`}>
                   {submitting ? 'Guardando...' : reclamoEditando ? 'Guardar cambios' : 'Enviar reclamo'}
                 </button>
               </div>

@@ -55,7 +55,7 @@ function ResumenCalculoFinal({ detalle, montoFinal }) {
         Cálculo final
       </p>
       <div className="flex flex-wrap items-center gap-2">
-        <div className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 font-mono text-xs font-semibold tabular-nums text-indigo-900">
+        <div className="rounded-md border border-brand-200 bg-brand-50 px-3 py-2 font-mono text-xs font-semibold tabular-nums text-brand-900">
           {formatMonto(montoBase)}
         </div>
         <span className="text-sm font-medium text-slate-400">×</span>
@@ -122,7 +122,7 @@ function IconBuilding({ className = 'h-4 w-4' }) {
 }
 
 const verDetalleLinkClass =
-  'shrink-0 text-xs font-semibold text-indigo-600 transition hover:text-indigo-700 hover:underline'
+  'shrink-0 text-xs font-semibold text-brand-600 transition hover:text-brand-700 hover:underline'
 
 function DetalleFila({ label, value, icon: Icon, action, children, className = '' }) {
   return (
@@ -260,6 +260,10 @@ export default function AumentoDetalleModal({
   confirmando = false,
   revisado = false,
   onToggleRevisado,
+  onAnterior,
+  hayAnterior = false,
+  onSiguiente,
+  haySiguiente = false,
   inquilinos = [],
   propiedades = [],
 }) {
@@ -433,9 +437,9 @@ export default function AumentoDetalleModal({
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2">
-                  <p className="text-[11px] font-medium text-indigo-700">Monto actual</p>
-                  <p className="mt-0.5 text-lg font-semibold tabular-nums text-indigo-900">
+                <div className="rounded-lg border border-brand-100 bg-brand-50/60 px-3 py-2">
+                  <p className="text-[11px] font-medium text-brand-700">Monto actual</p>
+                  <p className="mt-0.5 text-lg font-semibold tabular-nums text-brand-900">
                     {formatMonto(detalle.montoActual)}
                   </p>
                 </div>
@@ -532,7 +536,7 @@ export default function AumentoDetalleModal({
                     onChange={(e) => setNotas(e.target.value)}
                     disabled={confirmando}
                     placeholder="Aclaraciones del aumento…"
-                    className="w-full resize-none rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:opacity-50"
+                    className="w-full resize-none rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:opacity-50"
                   />
                 </div>
               )}
@@ -575,7 +579,7 @@ export default function AumentoDetalleModal({
                 type="button"
                 onClick={() => onVerHistorial(propuesta)}
                 disabled={confirmando}
-                className="text-sm font-medium text-indigo-600 underline-offset-2 transition hover:text-indigo-800 hover:underline disabled:opacity-50"
+                className="text-sm font-medium text-brand-600 underline-offset-2 transition hover:text-brand-800 hover:underline disabled:opacity-50"
               >
                 Ver historial
               </button>
@@ -585,7 +589,7 @@ export default function AumentoDetalleModal({
                 type="button"
                 onClick={() => onVerComprobante(propuesta)}
                 disabled={confirmando}
-                className="text-sm font-medium text-indigo-600 underline-offset-2 transition hover:text-indigo-800 hover:underline disabled:opacity-50"
+                className="text-sm font-medium text-brand-600 underline-offset-2 transition hover:text-brand-800 hover:underline disabled:opacity-50"
               >
                 Ver comprobante
               </button>
@@ -600,7 +604,7 @@ export default function AumentoDetalleModal({
                   checked={revisado}
                   onChange={onToggleRevisado}
                   disabled={confirmando}
-                  className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
                 />
                 Cálculo revisado
               </label>
@@ -608,12 +612,32 @@ export default function AumentoDetalleModal({
             <Button variant="secondary" onClick={onClose} disabled={confirmando}>
               Cerrar
             </Button>
+            {onAnterior && (
+              <Button
+                variant="secondary"
+                onClick={onAnterior}
+                disabled={confirmando || !hayAnterior}
+                className="!border-brand-200 !text-brand-700 hover:!bg-brand-50 disabled:!border-slate-200 disabled:!text-slate-400"
+              >
+                Anterior a revisar
+              </Button>
+            )}
+            {onSiguiente && (
+              <Button
+                variant="secondary"
+                onClick={onSiguiente}
+                disabled={confirmando || !haySiguiente}
+                className="!border-brand-200 !text-brand-700 hover:!bg-brand-50 disabled:!border-slate-200 disabled:!text-slate-400"
+              >
+                Siguiente a revisar
+              </Button>
+            )}
             {ui.puedeConfirmar && onConfirmar && (
               <Button
                 loading={confirmando}
                 disabled={confirmando || !revisado || !montoValido}
                 onClick={handleConfirmar}
-                className="!border-indigo-600 !bg-indigo-600 !text-white hover:!border-indigo-700 hover:!bg-indigo-700 disabled:!border-slate-300 disabled:!bg-slate-200 disabled:!text-slate-500"
+                className="!border-brand-600 !bg-brand-600 !text-white hover:!border-brand-700 hover:!bg-brand-700 disabled:!border-slate-300 disabled:!bg-slate-200 disabled:!text-slate-500"
               >
                 Confirmar aumento
               </Button>

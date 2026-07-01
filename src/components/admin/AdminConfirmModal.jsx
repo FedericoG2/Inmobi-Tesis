@@ -20,8 +20,8 @@ export default function AdminConfirmModal({
       : confirmVariant === 'warning'
         ? '!border-amber-500 !bg-amber-600 !text-white hover:!border-amber-600 hover:!bg-amber-700'
         : confirmVariant === 'important'
-          ? '!border-indigo-600 !bg-indigo-600 !text-white hover:!border-indigo-700 hover:!bg-indigo-700'
-          : '!border-indigo-500 !bg-indigo-600 !text-white hover:!border-indigo-600 hover:!bg-indigo-700'
+          ? '!border-brand-600 !bg-brand-600 !text-white hover:!border-brand-700 hover:!bg-brand-700'
+          : '!border-brand-500 !bg-brand-600 !text-white hover:!border-brand-600 hover:!bg-brand-700'
 
   const iconClass =
     confirmVariant === 'warning'
@@ -29,8 +29,8 @@ export default function AdminConfirmModal({
       : confirmVariant === 'danger'
         ? 'bg-red-100 text-red-600'
         : confirmVariant === 'important'
-          ? 'bg-indigo-100 text-indigo-600'
-          : 'bg-indigo-100 text-indigo-600'
+          ? 'bg-brand-100 text-brand-600'
+          : 'bg-brand-100 text-brand-600'
 
   const mostrarIcono =
     confirmVariant === 'warning' ||
@@ -53,7 +53,7 @@ export default function AdminConfirmModal({
         aria-modal="true"
         aria-labelledby="admin-confirm-title"
         className={`relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ${
-          esImportante ? 'border border-indigo-100 ring-1 ring-indigo-50' : ''
+          esImportante ? 'border border-brand-100 ring-1 ring-brand-50' : ''
         }`}
       >
         {mostrarIcono ? (
@@ -84,7 +84,7 @@ export default function AdminConfirmModal({
                 {title}
               </h2>
               {esImportante ? (
-                <div className="mt-2 rounded-lg border border-indigo-100 bg-indigo-50/70 px-3 py-2.5 text-sm leading-relaxed text-slate-700">
+                <div className="mt-2 rounded-lg border border-brand-100 bg-brand-50/70 px-3 py-2.5 text-sm leading-relaxed text-slate-700">
                   {message}
                 </div>
               ) : (

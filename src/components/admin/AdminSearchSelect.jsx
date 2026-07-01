@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 const inputClass =
-  'w-full rounded-lg border border-slate-300 py-2.5 pl-10 pr-9 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200'
+  'w-full rounded-lg border border-slate-300 py-2.5 pl-10 pr-9 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200'
 
 function IconX({ className = 'h-4 w-4' }) {
   return (
@@ -168,7 +168,7 @@ export default function AdminSearchSelect({
                         option.disabled
                           ? 'cursor-not-allowed text-slate-400'
                           : activa
-                            ? 'bg-indigo-50 font-medium text-indigo-800'
+                            ? 'bg-brand-50 font-medium text-brand-800'
                             : 'text-slate-800 hover:bg-slate-50'
                       }`}
                     >

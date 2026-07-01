@@ -1,5 +1,19 @@
 @import 'tailwindcss';
 
+@theme {
+  --color-brand-50: #eef1fa;
+  --color-brand-100: #d5dcf4;
+  --color-brand-200: #abb9e9;
+  --color-brand-300: #7a94d9;
+  --color-brand-400: #4a6bc4;
+  --color-brand-500: #2548a8;
+  --color-brand-600: #1c398e;
+  --color-brand-700: #152a6e;
+  --color-brand-800: #112055;
+  --color-brand-900: #0d1842;
+  --color-brand-950: #080f2a;
+}
+
 @source "../node_modules/@tremor/react/dist/**/*.{js,ts,jsx,tsx}";
 
 html,

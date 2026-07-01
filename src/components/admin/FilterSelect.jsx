@@ -1,12 +1,11 @@
 export const toolbarInputClass =
-  'h-10 w-full rounded-lg border border-slate-200 bg-white text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 disabled:opacity-50'
+  'h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:opacity-50'
 
 const selectBaseClass =
-  'h-10 w-full cursor-pointer appearance-none rounded-lg border bg-white pl-3 pr-9 text-sm outline-none transition focus:ring-2 focus:ring-emerald-100 disabled:opacity-50 shrink-0'
+  'h-10 w-full cursor-pointer appearance-none rounded-lg border border-slate-300 bg-white pl-3 pr-9 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:opacity-50 shrink-0'
 
-const selectInactivoClass = 'border-slate-200 text-slate-700 focus:border-emerald-500'
-const selectActivoClass =
-  'border-emerald-300 text-emerald-800 font-medium ring-1 ring-emerald-100 focus:border-emerald-500'
+const selectInactivoClass = 'text-slate-700'
+const selectActivoClass = 'border-brand-300 text-brand-800 font-medium ring-1 ring-brand-100'
 
 function IconChevronDown({ className = 'h-4 w-4' }) {
   return (
@@ -56,7 +55,7 @@ export default function FilterSelect({
           onClick={onClear}
           aria-label="Quitar filtro"
           title="Quitar filtro"
-          className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-emerald-600 transition hover:bg-emerald-100"
+          className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-brand-600 transition hover:bg-brand-100"
         >
           <IconX className="h-3.5 w-3.5" />
         </button>

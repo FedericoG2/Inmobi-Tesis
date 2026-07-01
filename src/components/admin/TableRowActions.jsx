@@ -1,6 +1,6 @@
-function IconEye({ className = 'h-4 w-4' }) {
+function IconEye({ className = 'h-3.5 w-3.5' }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -11,9 +11,9 @@ function IconEye({ className = 'h-4 w-4' }) {
   )
 }
 
-function IconPencil({ className = 'h-4 w-4' }) {
+function IconPencil({ className = 'h-3.5 w-3.5' }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -23,9 +23,9 @@ function IconPencil({ className = 'h-4 w-4' }) {
   )
 }
 
-function IconTrash({ className = 'h-4 w-4' }) {
+function IconTrash({ className = 'h-3.5 w-3.5' }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -35,9 +35,9 @@ function IconTrash({ className = 'h-4 w-4' }) {
   )
 }
 
-function IconClipboard({ className = 'h-4 w-4' }) {
+function IconClipboard({ className = 'h-3.5 w-3.5' }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -47,9 +47,9 @@ function IconClipboard({ className = 'h-4 w-4' }) {
   )
 }
 
-function IconCheckCircle({ className = 'h-4 w-4' }) {
+function IconCheckCircle({ className = 'h-3.5 w-3.5' }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -61,22 +61,14 @@ function IconCheckCircle({ className = 'h-4 w-4' }) {
 
 function ActionButton({ label, className, children, onClick }) {
   return (
-    <div className="group relative">
-      <button type="button" aria-label={label} title={label} className={className} onClick={onClick}>
-        {children}
-      </button>
-      <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
-        {label}
-      </span>
-    </div>
+    <button type="button" aria-label={label} title={label} className={className} onClick={onClick}>
+      {children}
+    </button>
   )
 }
 
-const deleteStyles = {
-  danger: 'inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-500 bg-white text-red-500 transition hover:bg-red-50',
-  finalize:
-    'inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-400 bg-white text-slate-600 transition hover:bg-slate-50',
-}
+const btnBase =
+  'inline-flex h-8 w-8 items-center justify-center rounded-full border bg-white transition hover:shadow-sm'
 
 export default function TableRowActions({
   onView,
@@ -92,11 +84,11 @@ export default function TableRowActions({
   const DeleteIcon = deleteVariant === 'finalize' ? IconCheckCircle : IconTrash
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center justify-center gap-1.5">
       {onView && (
         <ActionButton
           label="Ver detalle"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-sky-400 bg-white text-sky-600 transition hover:bg-sky-50"
+          className={`${btnBase} border-slate-300 text-slate-600 hover:bg-slate-50`}
           onClick={onView}
         >
           <IconEye />
@@ -105,7 +97,7 @@ export default function TableRowActions({
       {onManage && (
         <ActionButton
           label={manageLabel}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-indigo-400 bg-white text-indigo-600 transition hover:bg-indigo-50"
+          className={`${btnBase} border-brand-300 text-brand-600 hover:bg-brand-50`}
           onClick={onManage}
         >
           <IconClipboard />
@@ -114,7 +106,7 @@ export default function TableRowActions({
       {onEdit && (
         <ActionButton
           label="Editar"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-amber-400 text-slate-900 transition hover:bg-amber-500"
+          className={`${btnBase} border-brand-300 text-brand-600 hover:bg-brand-50`}
           onClick={onEdit}
         >
           <IconPencil />
@@ -123,7 +115,11 @@ export default function TableRowActions({
       {onDelete && (
         <ActionButton
           label={deleteLabel}
-          className={deleteStyles[deleteVariant] ?? deleteStyles.danger}
+          className={`${btnBase} ${
+            deleteVariant === 'finalize'
+              ? 'border-brand-300 text-brand-600 hover:bg-brand-50'
+              : 'border-red-300 text-red-600 hover:bg-red-50'
+          }`}
           onClick={onDelete}
         >
           <DeleteIcon />
@@ -132,7 +128,7 @@ export default function TableRowActions({
       {onSecondaryDelete && (
         <ActionButton
           label={secondaryDeleteLabel}
-          className={deleteStyles.danger}
+          className={`${btnBase} border-red-300 text-red-600 hover:bg-red-50`}
           onClick={onSecondaryDelete}
         >
           <IconTrash />

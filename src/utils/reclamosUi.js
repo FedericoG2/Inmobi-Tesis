@@ -26,10 +26,10 @@ export const BADGE_CATEGORIA = {
 }
 
 export const BADGE_PRIORIDAD = {
-  Urgente: { label: 'Urgente', className: 'bg-red-600 text-white' },
-  Alta: { label: 'Alta', className: 'bg-amber-500 text-white' },
-  Media: { label: 'Media', className: 'bg-indigo-600 text-white' },
-  Baja: { label: 'Baja', className: 'bg-slate-500 text-white' },
+  Urgente: { label: 'Urgente', className: 'bg-red-50 text-red-800 ring-red-200' },
+  Alta: { label: 'Alta', className: 'bg-orange-50 text-orange-800 ring-orange-200' },
+  Media: { label: 'Media', className: 'bg-brand-50 text-brand-800 ring-brand-200' },
+  Baja: { label: 'Baja', className: 'bg-slate-100 text-slate-700 ring-slate-200' },
 }
 
 export const ESTADOS_RECLAMO = [
@@ -75,7 +75,7 @@ export function badgePrioridad(prioridad) {
   if (!prioridad) return null
   return BADGE_PRIORIDAD[prioridad] ?? {
     label: prioridad,
-    className: 'bg-slate-500 text-white',
+    className: 'bg-slate-100 text-slate-700 ring-slate-200',
   }
 }
 
@@ -87,5 +87,8 @@ export function badgeEstado(estado) {
   }
 }
 
-export const PILL_SOLID_CLASS =
-  'inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold'
+export const PILL_RING_CLASS =
+  'inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset'
+
+/** @deprecated Usar PILL_RING_CLASS */
+export const PILL_SOLID_CLASS = PILL_RING_CLASS

@@ -57,7 +57,7 @@ export default function ContratoRowActions({ onView, onFinalize, onAnular, final
       {onView && (
         <ActionButton
           label="Ver ficha"
-          className={`${btnBase} border-sky-400 text-sky-600 hover:bg-sky-50`}
+          className={`${btnBase} border-slate-300 text-slate-600 hover:bg-slate-50`}
           onClick={onView}
         >
           <IconEye />
@@ -66,7 +66,7 @@ export default function ContratoRowActions({ onView, onFinalize, onAnular, final
       {onFinalize && (
         <ActionButton
           label={finalizeLabel}
-          className={`${btnBase} border-slate-400 text-slate-600 hover:bg-slate-50`}
+          className={`${btnBase} border-brand-300 text-brand-600 hover:bg-brand-50`}
           onClick={onFinalize}
         >
           <IconCheckCircle />
@@ -75,7 +75,7 @@ export default function ContratoRowActions({ onView, onFinalize, onAnular, final
       {onAnular && (
         <ActionButton
           label="Anular"
-          className={`${btnBase} border-red-400 text-red-500 hover:bg-red-50`}
+          className={`${btnBase} border-red-300 text-red-600 hover:bg-red-50`}
           onClick={onAnular}
         >
           <IconTrash />

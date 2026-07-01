@@ -7,6 +7,9 @@ export function useDashboard() {
   const [aumentosProximos, setAumentosProximos] = useState([])
   const [aumentosVencidos, setAumentosVencidos] = useState([])
   const [reclamosUrgentes, setReclamosUrgentes] = useState([])
+  const [contratosPorVencer, setContratosPorVencer] = useState([])
+  const [propiedadesPorEstado, setPropiedadesPorEstado] = useState([])
+  const [ingresoMensual, setIngresoMensual] = useState(0)
   const [ipcAnual, setIpcAnual] = useState([])
   const [ipcAnio, setIpcAnio] = useState(new Date().getFullYear())
   const [ipcError, setIpcError] = useState(null)
@@ -31,11 +34,17 @@ export function useDashboard() {
       setAumentosProximos([])
       setAumentosVencidos([])
       setReclamosUrgentes([])
+      setContratosPorVencer([])
+      setPropiedadesPorEstado([])
+      setIngresoMensual(0)
     } else {
       setKpis(dashboardResult.data.kpis)
       setAumentosProximos(dashboardResult.data.aumentosProximos)
-      setAumentosVencidos(dashboardResult.data.aumentosVencidos ?? [])
+      setAumentosVencidos(dashboardResult.data.aumentosVencidos)
       setReclamosUrgentes(dashboardResult.data.reclamosUrgentes)
+      setContratosPorVencer(dashboardResult.data.contratosPorVencer)
+      setPropiedadesPorEstado(dashboardResult.data.propiedadesPorEstado)
+      setIngresoMensual(dashboardResult.data.ingresoMensual)
     }
 
     if (ipcResult.error) {
@@ -60,6 +69,9 @@ export function useDashboard() {
     aumentosProximos,
     aumentosVencidos,
     reclamosUrgentes,
+    contratosPorVencer,
+    propiedadesPorEstado,
+    ingresoMensual,
     ipcAnual,
     ipcAnio,
     ipcError,

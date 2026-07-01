@@ -8,6 +8,12 @@ async function aplicarAumentosProgramados() {
   await supabase.rpc('aplicar_aumentos_programados')
 }
 
+/** Activa contratos programados y aplica aumentos vencidos (idempotente). */
+export async function ejecutarMantenimientoContratos() {
+  if (!supabase) return
+  await Promise.all([activarContratosProgramados(), aplicarAumentosProgramados()])
+}
+
 function hoyIsoLocal() {
   const d = new Date()
   const yy = d.getFullYear()
@@ -56,7 +62,7 @@ export async function listarColaAumentos({ diasProximos = 30 } = {}) {
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
 
-  await Promise.all([activarContratosProgramados(), aplicarAumentosProgramados()])
+  await ejecutarMantenimientoContratos()
 
   const hoy = hoyIsoLocal()
   const limite = sumarDiasIso(hoy, diasProximos)
@@ -139,12 +145,18 @@ export async function listarHistorialAumentos(contratoId) {
   return { data: data ?? [], error: null }
 }
 
-export async function calcularAumentosPendientes({ incluirProximos = false, diasProximos = 30 } = {}) {
+export async function calcularAumentosPendientes({
+  incluirProximos = false,
+  diasProximos = 30,
+  skipMaintenance = false,
+} = {}) {
   if (!supabase) {
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
 
-  await Promise.all([activarContratosProgramados(), aplicarAumentosProgramados()])
+  if (!skipMaintenance) {
+    await ejecutarMantenimientoContratos()
+  }
 
   const { data, error } = await supabase.rpc('calcular_aumentos_pendientes', {
     incluir_proximos: incluirProximos,

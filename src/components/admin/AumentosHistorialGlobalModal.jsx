@@ -75,7 +75,7 @@ function EstadoTag({ aplicado }) {
 }
 
 const selectClass =
-  'h-9 rounded-lg border border-slate-300 bg-white px-2 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
+  'h-9 rounded-lg border border-slate-300 bg-white px-2 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100'
 
 export default function AumentosHistorialGlobalModal({
   open,
@@ -149,7 +149,7 @@ export default function AumentosHistorialGlobalModal({
       >
         <div className="border-b border-slate-100 px-6 py-3">
           <div className="flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
+            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-700">
               <IconHistory />
             </span>
             <div className="min-w-0 flex-1">

@@ -2,34 +2,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@tremor/react'
 import { contarDependenciasPropiedad } from '../../services/propiedadesService'
 import { etiquetaPropietario } from '../../utils/etiquetaPropietario'
-
-const ESTILO_TIPO = {
-  Departamento: {
-    label: 'Departamento',
-    iconClass: 'rounded-lg bg-indigo-100 text-indigo-700',
-    badgeClass: 'bg-indigo-600 text-white',
-    Icon: IconDepartamento,
-  },
-  Casa: {
-    label: 'Casa',
-    iconClass: 'rounded-lg bg-orange-100 text-orange-700',
-    badgeClass: 'bg-orange-600 text-white',
-    Icon: IconCasa,
-  },
-  'Local comercial': {
-    label: 'Local comercial',
-    iconClass: 'rounded-lg bg-slate-100 text-slate-700',
-    badgeClass: 'bg-slate-600 text-white',
-    Icon: IconLocal,
-  },
-}
-
-const ESTILO_ESTADO = {
-  Disponible: { label: 'Disponible', className: 'bg-emerald-600 text-white' },
-  Reservada: { label: 'Reservada', className: 'bg-violet-600 text-white' },
-  Alquilada: { label: 'Alquilada', className: 'bg-blue-600 text-white' },
-  Mantenimiento: { label: 'Mantenimiento', className: 'bg-amber-500 text-white' },
-}
+import { BADGE_PROPIEDAD_ESTADO, BADGE_PROPIEDAD_TIPO } from '../../utils/adminModuleUi'
 
 function IconDepartamento({ className = 'h-6 w-6' }) {
   return (
@@ -65,6 +38,12 @@ function IconLocal({ className = 'h-6 w-6' }) {
       />
     </svg>
   )
+}
+
+const ICONOS_TIPO = {
+  Departamento: IconDepartamento,
+  Casa: IconCasa,
+  'Local comercial': IconLocal,
 }
 
 function IconPin({ className = 'h-4 w-4' }) {
@@ -239,17 +218,16 @@ export default function PropiedadDetalleModal({ open, propiedad, onClose, onEdit
 
   if (!open || !propiedad) return null
 
-  const estiloTipo = ESTILO_TIPO[propiedad.tipo] ?? {
+  const estiloTipo = BADGE_PROPIEDAD_TIPO[propiedad.tipo] ?? {
     label: propiedad.tipo,
+    className: 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200',
     iconClass: 'rounded-lg bg-slate-100 text-slate-700',
-    badgeClass: 'bg-slate-600 text-white',
-    Icon: IconDepartamento,
   }
-  const estiloEstado = ESTILO_ESTADO[propiedad.estado] ?? {
+  const estiloEstado = BADGE_PROPIEDAD_ESTADO[propiedad.estado] ?? {
     label: propiedad.estado,
-    className: 'bg-slate-600 text-white',
+    className: 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200',
   }
-  const IconoTipo = estiloTipo.Icon
+  const IconoTipo = ICONOS_TIPO[propiedad.tipo] ?? IconDepartamento
 
   const textoContratos = cargandoDeps ? 'Consultando...' : etiquetaContratos(dependencias)
   const textoReclamos = cargandoDeps
@@ -290,7 +268,7 @@ export default function PropiedadDetalleModal({ open, propiedad, onClose, onEdit
               </h2>
               <div className="mt-1.5 flex flex-wrap items-center gap-2">
                 <span
-                  className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${estiloTipo.badgeClass}`}
+                  className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${estiloTipo.className}`}
                 >
                   {estiloTipo.label}
                 </span>

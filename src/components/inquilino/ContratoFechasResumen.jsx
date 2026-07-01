@@ -15,11 +15,11 @@ function FechaChip({ label, value, destacado = false }) {
     <span
       className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs ring-1 ${
         destacado
-          ? 'bg-indigo-50 text-indigo-800 ring-indigo-100'
+          ? 'bg-brand-50 text-brand-800 ring-brand-100'
           : 'bg-slate-50 text-slate-700 ring-slate-100'
       }`}
     >
-      <IconCalendar className={destacado ? 'text-indigo-500' : 'text-slate-400'} />
+      <IconCalendar className={destacado ? 'text-brand-500' : 'text-slate-400'} />
       <span className="flex flex-col leading-tight">
         <span className="text-[10px] font-semibold uppercase tracking-wide opacity-70">{label}</span>
         <span className="font-semibold">{value}</span>

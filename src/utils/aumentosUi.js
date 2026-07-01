@@ -352,7 +352,7 @@ export const TONO_SITUACION = {
   emerald: 'bg-emerald-50 text-emerald-800 ring-emerald-100',
   amber: 'bg-amber-50 text-amber-800 ring-amber-100',
   red: 'bg-red-50 text-red-800 ring-red-100',
-  indigo: 'bg-indigo-50 text-indigo-800 ring-indigo-100',
+  indigo: 'bg-brand-50 text-brand-800 ring-brand-100',
   sky: 'bg-sky-50 text-sky-800 ring-sky-100',
   slate: 'bg-slate-100 text-slate-600 ring-slate-200',
 }
@@ -367,13 +367,29 @@ export function badgeIndicador(tipo) {
 
 /** Chip de índice estilo categoría de reclamos: ícono + sigla. */
 export const CHIP_INDICADOR = {
-  ipc: { label: 'IPC', icon: '📈' },
-  icl: { label: 'ICL', icon: '🏠' },
+  ipc: {
+    label: 'IPC',
+    icon: '📈',
+    tooltip:
+      'IPC — Índice de Precios al Consumidor (INDEC). Variación mensual de inflación del nivel general. Inmobi sincroniza este índice desde Argly (fuente INDEC) y lo guarda en Supabase para calcular el aumento del período.',
+  },
+  icl: {
+    label: 'ICL',
+    icon: '🏠',
+    tooltip:
+      'ICL — Índice para Contratos de Locación (BCRA). Índice oficial para actualizar alquileres. Inmobi sincroniza ICL desde Argly (fuente BCRA) y lo guarda en Supabase para calcular el aumento del período.',
+  },
 }
 
 export function chipIndicador(tipo) {
   const key = (tipo ?? '').toLowerCase()
-  return CHIP_INDICADOR[key] ?? { label: (tipo ?? '—').toUpperCase(), icon: '📄' }
+  return (
+    CHIP_INDICADOR[key] ?? {
+      label: (tipo ?? '—').toUpperCase(),
+      icon: '📄',
+      tooltip: null,
+    }
+  )
 }
 
 const formatMontoDetalle = (monto) => {

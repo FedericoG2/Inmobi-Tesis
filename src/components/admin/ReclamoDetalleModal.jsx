@@ -4,8 +4,7 @@ import AdminFormModalHeader from './AdminFormModalHeader'
 import InquilinoDetalleModal from './InquilinoDetalleModal'
 import PropiedadDetalleModal from './PropiedadDetalleModal'
 import ReclamoTimeline from './ReclamoTimeline'
-import { badgePrioridad, PILL_SOLID_CLASS } from '../../utils/reclamosUi'
-import { ReclamoCategoriaChip, ReclamoEstadoChip } from './ReclamoChips'
+import { ReclamoCategoriaChip, ReclamoEstadoChip, ReclamoPrioridadChip } from './ReclamoChips'
 import { listarAdjuntosReclamo, obtenerUrlDescargaDocumento } from '../../services/documentosService'
 import { listarEventosReclamo } from '../../services/reclamosService'
 
@@ -107,7 +106,7 @@ function IconImage({ className = 'h-5 w-5' }) {
 }
 
 const verDetalleLinkClass =
-  'shrink-0 text-xs font-semibold text-indigo-600 transition hover:text-indigo-700 hover:underline'
+  'shrink-0 text-xs font-semibold text-brand-600 transition hover:text-brand-700 hover:underline'
 
 function DetalleFila({ label, value, icon: Icon, action, children, className = '' }) {
   return (
@@ -128,11 +127,6 @@ function DetalleFila({ label, value, icon: Icon, action, children, className = '
       {action}
     </div>
   )
-}
-
-function Pill({ badge }) {
-  if (!badge) return <span className="text-slate-400">—</span>
-  return <span className={`${PILL_SOLID_CLASS} ${badge.className}`}>{badge.label}</span>
 }
 
 function CategoriaChip({ categoria }) {
@@ -318,9 +312,9 @@ export default function ReclamoDetalleModal({
         <div className="px-6 py-3">
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
             <div className="space-y-3">
-              <div className="rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2">
-                <p className="text-[11px] font-medium text-indigo-700">Reclamo</p>
-                <p className="mt-0.5 text-base font-semibold leading-snug text-indigo-950">
+              <div className="rounded-lg border border-brand-100 bg-brand-50/60 px-3 py-2">
+                <p className="text-[11px] font-medium text-brand-700">Reclamo</p>
+                <p className="mt-0.5 text-base font-semibold leading-snug text-brand-950">
                   {reclamo.titulo ?? '—'}
                 </p>
               </div>
@@ -338,7 +332,7 @@ export default function ReclamoDetalleModal({
                   <ReclamoEstadoChip estado={reclamo.estado} />
                 </DetalleFila>
                 <DetalleFila label="Prioridad" icon={IconSignal}>
-                  <Pill badge={badgePrioridad(reclamo.prioridad)} />
+                  <ReclamoPrioridadChip prioridad={reclamo.prioridad} />
                 </DetalleFila>
               </div>
 
@@ -414,7 +408,7 @@ export default function ReclamoDetalleModal({
           {onManage && (
             <Button
               onClick={() => onManage(reclamo)}
-              className="!border-indigo-600 !bg-indigo-600 !text-white hover:!border-indigo-700 hover:!bg-indigo-700"
+              className="!border-brand-600 !bg-brand-600 !text-white hover:!border-brand-700 hover:!bg-brand-700"
             >
               Gestionar
             </Button>

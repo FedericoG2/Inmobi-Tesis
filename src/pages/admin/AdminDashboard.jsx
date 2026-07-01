@@ -4,6 +4,7 @@ import DashboardQuickActions from '../../components/admin/DashboardQuickActions'
 import IpcBarChart from '../../components/admin/IpcBarChart'
 import StatCard from '../../components/admin/StatCard'
 import { useDashboard } from '../../hooks/useDashboard'
+import { formatPeriodoMesAnio } from '../../utils/aumentosUi'
 
 function formatFecha(fecha) {
   if (!fecha) return '—'
@@ -198,7 +199,7 @@ export default function AdminDashboard() {
                 compact
                 key={item.contrato_id}
                 titulo={item.inquilino_nombre}
-                subtitulo={`${item.propiedad_direccion} · venció ${formatFecha(item.fecha_proximo_aumento)}`}
+                subtitulo={`${item.propiedad_direccion} · venció ${formatPeriodoMesAnio(item.fecha_proximo_aumento)}`}
                 badge={`${etiquetaDiasVencido(item.dias_vencido)} atrás`}
                 badgeTono="red"
               />
@@ -220,7 +221,7 @@ export default function AdminDashboard() {
                 compact
                 key={item.contrato_id}
                 titulo={item.inquilino_nombre}
-                subtitulo={`${item.propiedad_direccion} · ${formatFecha(item.fecha_proximo_aumento)}`}
+                subtitulo={`${item.propiedad_direccion} · ${formatPeriodoMesAnio(item.fecha_proximo_aumento)}`}
                 badge={etiquetaDiasAumento(item.dias_hasta_aumento)}
                 badgeTono="indigo"
               />

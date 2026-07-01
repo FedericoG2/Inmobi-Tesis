@@ -31,7 +31,7 @@ import {
   hoyIsoLocal,
   mensajeConfirmacionFinalizarContrato,
 } from '../../utils/contratoVigencia'
-import { chipIndicador } from '../../utils/aumentosUi'
+import { chipIndicador, formatPeriodoMesAnio } from '../../utils/aumentosUi'
 
 const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
 
@@ -492,7 +492,9 @@ export default function AdminContratos() {
               <AdminTableHeaderCell className="min-w-0">Propiedad</AdminTableHeaderCell>
               <AdminTableHeaderCell className={COL_MONTO}>Monto</AdminTableHeaderCell>
               <AdminTableHeaderCell className={`${COL_AJUSTE} !text-center`}>Ajuste</AdminTableHeaderCell>
-              <AdminTableHeaderCell className={COL_PROX_AUMENTO}>Próx. aumento</AdminTableHeaderCell>
+              <AdminTableHeaderCell className={`${COL_PROX_AUMENTO} whitespace-nowrap !text-center`}>
+                Próx. aumento
+              </AdminTableHeaderCell>
               <AdminTableHeaderCell className={`${COL_ACCIONES} !text-right`}>Acciones</AdminTableHeaderCell>
             </AdminTableRow>
           </AdminTableHead>
@@ -535,8 +537,8 @@ export default function AdminContratos() {
                       <span className="text-slate-400">—</span>
                     )}
                   </AdminTableCell>
-                  <AdminTableCell className={`${COL_PROX_AUMENTO} text-slate-600 tabular-nums`}>
-                    {formatFecha(c.fecha_proximo_aumento)}
+                  <AdminTableCell className={`${COL_PROX_AUMENTO} whitespace-nowrap !text-center text-slate-600 tabular-nums`}>
+                    {formatPeriodoMesAnio(c.fecha_proximo_aumento)}
                   </AdminTableCell>
                   <AdminTableActionsCell className={COL_ACCIONES}>
                     <ContratoRowActions

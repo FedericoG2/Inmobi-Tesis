@@ -29,6 +29,7 @@ import {
   portalSection,
   portalSectionTitle,
 } from '../../utils/portalInquilinoUi'
+import { formatPeriodoMesAnio } from '../../utils/aumentosUi'
 
 const formatFecha = (fechaStr) => {
   if (!fechaStr) return '—'
@@ -196,7 +197,7 @@ export default function InquilinoDocumentos() {
                 {contrato.fecha_proximo_aumento && (
                   <PortalInfoRow
                     label="Próximo aumento"
-                    value={formatFecha(contrato.fecha_proximo_aumento)}
+                    value={formatPeriodoMesAnio(contrato.fecha_proximo_aumento)}
                   />
                 )}
               </PortalInfoGroup>

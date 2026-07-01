@@ -100,6 +100,62 @@ export function mesProximoInfo(hoy = hoyIsoLocal()) {
   return infoMes(anio, mes)
 }
 
+/** Día fijo de corte operativo: hasta este día del mes se confirman los aumentos de ese mes. */
+export const DIA_CORTE_OPERATIVO = 10
+
+/**
+ * Mes en el que el administrador debe operar según el día 10:
+ * - Del 1 al 10: mes en curso (cerrar confirmaciones del mes).
+ * - Del 11 en adelante: mes siguiente (anticipar el próximo lote).
+ */
+export function periodoOperativoInfo(hoy = hoyIsoLocal()) {
+  const [y, m, d] = hoy.split('-').map(Number)
+  if (d <= DIA_CORTE_OPERATIVO) return infoMes(y, m)
+  return mesProximoInfo(hoy)
+}
+
+/** ISO del día de corte (10) del mes de una fecha de aumento. */
+export function fechaCorteOperativoIso(fechaAumento) {
+  if (!fechaAumento) return null
+  const [y, m] = fechaAumento.split('-').map(Number)
+  const mm = String(m).padStart(2, '0')
+  const dd = String(DIA_CORTE_OPERATIVO).padStart(2, '0')
+  return `${y}-${mm}-${dd}`
+}
+
+/** True si ya pasó el día 10 del mes del aumento (ventana de confirmación cerrada). */
+export function ventanaOperativaCerrada(fechaAumento, hoy = hoyIsoLocal()) {
+  const corte = fechaCorteOperativoIso(fechaAumento)
+  if (!corte) return false
+  return hoy > corte
+}
+
+/** Rezagado: ventana del mes cerrada y sin confirmar. */
+export function esAumentoRezagado(fechaAumento, esConfirmado, hoy = hoyIsoLocal()) {
+  if (esConfirmado) return false
+  return ventanaOperativaCerrada(fechaAumento, hoy)
+}
+
+/** True si la fecha del aumento cae en el período operativo vigente. */
+export function esPeriodoOperativo(fechaAumento, hoy = hoyIsoLocal()) {
+  return claveMes(fechaAumento) === periodoOperativoInfo(hoy).clave
+}
+
+/** Último día (ISO) del período operativo vigente. */
+export function ultimoDiaPeriodoOperativoIso(hoy = hoyIsoLocal()) {
+  const { anio, mes } = periodoOperativoInfo(hoy)
+  const d = new Date(anio, mes, 0)
+  const yy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yy}-${mm}-${dd}`
+}
+
+/** Días desde hoy hasta el fin del período operativo (para traer propuestas completas). */
+export function diasHastaFinPeriodoOperativo(hoy = hoyIsoLocal()) {
+  return diasHastaFecha(ultimoDiaPeriodoOperativoIso(hoy), hoy)
+}
+
 /** Último día (ISO) del mes próximo. */
 export function ultimoDiaMesProximoIso(hoy = hoyIsoLocal()) {
   const { anio, mes } = mesProximoInfo(hoy)
@@ -127,6 +183,19 @@ export function etiquetaFechaAumento(fechaIso, hoy = hoyIsoLocal()) {
   if (dias === 1) return 'Mañana'
   if (dias <= 30) return `En ${dias} días`
   return formatFechaAumento(fechaIso)
+}
+
+/** Subtítulo para la columna de período: "Aumento en julio", etc. */
+export function etiquetaPeriodoAumento(fechaIso, hoy = hoyIsoLocal()) {
+  if (!fechaIso) return ''
+  const dias = diasHastaFecha(fechaIso, hoy)
+  if (dias != null && dias < 0) {
+    const n = Math.abs(dias)
+    return `Venció hace ${n} ${n === 1 ? 'día' : 'días'}`
+  }
+  const mes = Number(fechaIso.split('-')[1])
+  if (!mes || !MESES_LARGOS[mes - 1]) return ''
+  return `Aumento en ${capitalizar(MESES_LARGOS[mes - 1])}`
 }
 
 /** Subtítulo relativo para la columna de fecha: "Aumento en 5 días", "Aumenta hoy", etc. */
@@ -200,6 +269,7 @@ export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal(), opci
   if (propuesta.confirmable) {
     const aproximado = Boolean(propuesta.es_aproximado)
     const dias = diasHastaFecha(fechaAumento, hoy)
+    const rezagado = ventanaOperativaCerrada(fechaAumento, hoy)
     const detalleIpc =
       aproximado && propuesta.ipc_meses != null && propuesta.ipc_meses_esperados != null
         ? ` (${propuesta.ipc_meses}/${propuesta.ipc_meses_esperados} meses IPC publicados)`
@@ -207,7 +277,9 @@ export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal(), opci
 
     const esFuturo = dias != null && dias > 0
     let observacion
-    if (aproximado) {
+    if (rezagado && !portal) {
+      observacion = `Rezagado: pasó el día ${DIA_CORTE_OPERATIVO} del mes sin confirmar. Confirmá para poner el alquiler al día.`
+    } else if (aproximado) {
       observacion = portal
         ? `Estimación del aumento del alquiler${detalleIpc}. El valor final puede variar al publicarse el índice.`
         : esFuturo
@@ -224,14 +296,14 @@ export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal(), opci
     }
 
     return {
-      etiqueta: aproximado ? 'provisorio' : 'listo',
-      etiquetaTexto: aproximado ? 'Provisorio' : 'Definitivo',
-      etiquetaEstado: aproximado ? 'Provisorio' : 'Definitivo',
+      etiqueta: rezagado && !portal ? 'rezagado' : aproximado ? 'provisorio' : 'listo',
+      etiquetaTexto: rezagado && !portal ? 'Rezagado' : aproximado ? 'Provisorio' : 'Definitivo',
+      etiquetaEstado: rezagado && !portal ? 'Rezagado' : aproximado ? 'Provisorio' : 'Definitivo',
       observacion,
       montoMostrar: propuesta.monto_propuesto,
       montoEsAproximado: aproximado,
       puedeConfirmar: !portal,
-      tono: aproximado ? 'amber' : 'emerald',
+      tono: rezagado && !portal ? 'red' : aproximado ? 'amber' : 'emerald',
     }
   }
 
@@ -279,6 +351,7 @@ export const BADGE_INDICADOR = {
 export const TONO_SITUACION = {
   emerald: 'bg-emerald-50 text-emerald-800 ring-emerald-100',
   amber: 'bg-amber-50 text-amber-800 ring-amber-100',
+  red: 'bg-red-50 text-red-800 ring-red-100',
   indigo: 'bg-indigo-50 text-indigo-800 ring-indigo-100',
   sky: 'bg-sky-50 text-sky-800 ring-sky-100',
   slate: 'bg-slate-100 text-slate-600 ring-slate-200',
@@ -363,6 +436,36 @@ export function advertenciaAproximado(propuesta) {
 }
 
 /**
+ * Texto operativo para el modal de detalle (admin).
+ */
+export function observacionOperativaDetalle(detalle) {
+  const { ui, tipo, periodo } = detalle
+
+  if (ui.etiqueta === 'aplicado' || ui.etiqueta === 'acordado' || ui.etiqueta === 'sin_indices') {
+    return ui.observacion
+  }
+
+  if (ui.etiqueta === 'rezagado') {
+    return `Rezagado: pasó el día ${DIA_CORTE_OPERATIVO} del mes sin confirmar. Verificá el cálculo y confirmá para actualizar el contrato.`
+  }
+
+  const indicador =
+    tipo === 'icl' ? 'ICL' : tipo === 'ipc' ? 'IPC' : (tipo?.toUpperCase() || 'índice')
+  const rango = `${periodo.desdeLabel} a ${periodo.hastaLabel}`
+
+  let detalleIndice = ''
+  if (tipo === 'ipc' && detalle.ipcDetalle?.length) {
+    const publicados = detalle.ipcDetalle.filter((m) => m.publicado).length
+    const total = detalle.ipcDetalle.length
+    if (publicados < total) {
+      detalleIndice = ` (${publicados} de ${total} meses del índice ya publicados)`
+    }
+  }
+
+  return `Se calculó con el índice ${indicador}, período ${rango}${detalleIndice}. Verificá el cálculo y confirmá el aumento para que rija desde el ${periodo.hastaLabel}.`
+}
+
+/**
  * Detalle técnico del cálculo para el modal.
  */
 export function detalleCalculoAumento(propuesta, hoy = hoyIsoLocal()) {
@@ -438,5 +541,42 @@ export function detalleCalculoAumento(propuesta, hoy = hoyIsoLocal()) {
     montoActual: propuesta.monto_actual,
     montoPropuesto: propuesta.monto_propuesto,
     esAproximado: propuesta.es_aproximado,
+  }
+}
+
+/** Adapta un registro de la tabla aumentos al formato de propuesta de la grilla. */
+export function propuestaDesdeAumentoRegistrado(row) {
+  const detalle = row.detalle_calculo ?? {}
+  const tipo = (row.indice_tipo ?? detalle.tipo ?? '').toLowerCase()
+
+  return {
+    contrato_id: row.contrato_id,
+    aumento_id: row.id,
+    inquilino_nombre: row.inquilino_nombre,
+    propiedad_direccion: row.propiedad_direccion,
+    monto_actual: row.monto_anterior,
+    monto_propuesto: row.monto_nuevo,
+    monto_acordado: row.monto_nuevo,
+    variacion_pct: row.porcentaje_aplicado,
+    fecha_desde: detalle.fecha_desde ?? null,
+    fecha_hasta: row.fecha_aplicacion,
+    fecha_proximo_aumento: row.fecha_aplicacion,
+    tipo_ajuste: tipo,
+    indice_tipo: tipo,
+    indice_valor_inicio: detalle.icl_inicio ?? row.indice_valor_inicio ?? null,
+    indice_valor_fin: detalle.icl_fin ?? row.indice_valor_fin ?? null,
+    ipc_factor: detalle.factor ?? null,
+    ipc_meses: detalle.meses_aplicados ?? null,
+    ipc_meses_esperados: detalle.meses_esperados ?? null,
+    ipc_detalle: detalle.detalle_meses ?? null,
+    es_aproximado: Boolean(detalle.es_aproximado),
+    modo: row.modo ?? 'calculado',
+    notas: row.notas ?? null,
+    ya_acordado: !row.aplicado,
+    ya_aplicado: row.aplicado,
+    programado: !row.aplicado,
+    confirmable: false,
+    estado: row.aplicado ? 'aplicado' : 'programado',
+    registrado_en_historial: true,
   }
 }

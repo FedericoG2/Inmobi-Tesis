@@ -282,6 +282,71 @@ export async function deshacerAumento(aumento) {
   return { data, error: null }
 }
 
+function rangoMesIso(claveMes) {
+  const [y, m] = claveMes.split('-').map(Number)
+  const mm = String(m).padStart(2, '0')
+  const desde = `${y}-${mm}-01`
+  const dd = String(new Date(y, m, 0).getDate()).padStart(2, '0')
+  const hasta = `${y}-${mm}-${dd}`
+  return { desde, hasta }
+}
+
+/**
+ * Aumentos confirmados (acordados o aplicados) cuya fecha de aplicación cae en el mes indicado.
+ * Fuente de verdad para la pestaña Confirmados del período operativo.
+ */
+export async function listarAumentosConfirmadosEnPeriodo({ claveMes }) {
+  if (!supabase) {
+    return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
+  }
+
+  if (!claveMes) {
+    return { data: [], error: null }
+  }
+
+  const { desde, hasta } = rangoMesIso(claveMes)
+
+  const { data, error } = await supabase
+    .from('aumentos')
+    .select(
+      `
+      id,
+      contrato_id,
+      fecha_aplicacion,
+      monto_anterior,
+      monto_nuevo,
+      porcentaje_aplicado,
+      indice_tipo,
+      modo,
+      notas,
+      aplicado,
+      detalle_calculo,
+      fecha_creacion,
+      contratos (
+        id,
+        inquilinos ( nombre_completo ),
+        propiedades ( direccion )
+      )
+    `
+    )
+    .gte('fecha_aplicacion', desde)
+    .lte('fecha_aplicacion', hasta)
+    .order('fecha_aplicacion', { ascending: false })
+    .order('id', { ascending: false })
+
+  if (error) {
+    return { data: null, error: { message: error.message } }
+  }
+
+  const items = (data ?? []).map((row) => ({
+    ...row,
+    inquilino_nombre: row.contratos?.inquilinos?.nombre_completo ?? null,
+    propiedad_direccion: row.contratos?.propiedades?.direccion ?? null,
+  }))
+
+  return { data: items, error: null }
+}
+
 /**
  * Historial global de aumentos (todos los contratos) con datos de inquilino y
  * propiedad para la tabla filtrable por período. Solo admin (RLS).

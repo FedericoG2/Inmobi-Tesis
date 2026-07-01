@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Badge, Button } from '@tremor/react'
+import { Button } from '@tremor/react'
 import { IconClipboard } from '../icons/NavIcons'
 import ContratoDocumentosPanel from './ContratoDocumentosPanel'
 import { calcularAumentosPendientes } from '../../services/aumentosService'
@@ -12,10 +12,9 @@ import {
   TIPO_AJUSTE_LABELS,
 } from '../../utils/contratoAumentosPreview'
 import {
-  colorEstadoContrato,
+  badgeEstadoContratoUi,
   duracionContratoLabel,
   esContratoPlazoVencido,
-  etiquetaEstadoContrato,
   etiquetaFinalizarContrato,
   puedeFinalizarContrato,
 } from '../../utils/contratoVigencia'
@@ -127,6 +126,17 @@ function DetalleFila({ label, value, icon: Icon, className = '', children }) {
 function SeccionTitulo({ children }) {
   return (
     <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{children}</h3>
+  )
+}
+
+function EstadoContratoBadge({ contrato }) {
+  const badge = badgeEstadoContratoUi(contrato)
+  return (
+    <span
+      className={`inline-flex shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ${badge.className}`}
+    >
+      {badge.label}
+    </span>
   )
 }
 
@@ -251,11 +261,7 @@ export default function ContratoDetalleModal({
               </p>
             </div>
 
-            {contrato && (
-              <Badge color={colorEstadoContrato(contrato)} className="shrink-0">
-                {etiquetaEstadoContrato(contrato)}
-              </Badge>
-            )}
+            {contrato && <EstadoContratoBadge contrato={contrato} />}
           </div>
         </div>
 

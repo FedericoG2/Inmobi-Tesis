@@ -35,12 +35,10 @@ export async function listarContratos() {
       monto_inicial,
       periodicidad_meses,
       tipo_ajuste,
-      porcentaje_ajuste,
       fecha_proximo_aumento,
       fecha_ultimo_aumento,
       dia_vencimiento,
       observaciones,
-      activo,
       estado,
       propiedad_id,
       inquilino_id,
@@ -67,12 +65,10 @@ export async function obtenerContratoDetalle(id) {
       monto_inicial,
       periodicidad_meses,
       tipo_ajuste,
-      porcentaje_ajuste,
       fecha_proximo_aumento,
       fecha_ultimo_aumento,
       dia_vencimiento,
       observaciones,
-      activo,
       estado,
       propiedad_id,
       inquilino_id,
@@ -159,7 +155,6 @@ export async function crearContrato(contrato) {
       fecha_inicio,
       fecha_fin,
       monto_alquiler,
-      activo,
       estado,
       propiedad_id,
       inquilino_id,
@@ -245,7 +240,7 @@ export async function finalizarContrato(id) {
 
   const { data, error } = await supabase
     .from('contratos')
-    .update({ activo: false, estado: 'inactivo' })
+    .update({ estado: 'inactivo' })
     .eq('id', id)
     .in('estado', ['activo', 'programado'])
     .select(`
@@ -253,7 +248,6 @@ export async function finalizarContrato(id) {
       fecha_inicio,
       fecha_fin,
       monto_alquiler,
-      activo,
       estado,
       propiedad_id,
       inquilino_id,

@@ -9,7 +9,20 @@ import {
   YAxis,
 } from 'recharts'
 
-const BAR_COLORS = ['#e0e7ff', '#c7d2fe', '#a5b4fc', '#818cf8', '#6366f1', '#6366f1']
+const BAR_COLORS = [
+  '#eef2ff',
+  '#e0e7ff',
+  '#c7d2fe',
+  '#a5b4fc',
+  '#818cf8',
+  '#6366f1',
+  '#4f46e5',
+  '#4338ca',
+  '#3730a3',
+  '#312e81',
+  '#1e1b4b',
+  '#1e1b4b',
+]
 
 function IpcTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
@@ -24,13 +37,16 @@ function IpcTooltip({ active, payload, label }) {
   )
 }
 
-export default function IpcBarChart({ data, height = 288 }) {
+export default function IpcBarChart({ data, height }) {
   const maxValor = Math.max(...data.map((d) => d.valor), 0)
   const topeEje = Math.ceil((maxValor + 0.5) * 2) / 2
 
   return (
-    <div className="rounded-xl bg-slate-50/80 px-1 pb-1 pt-2 sm:px-3">
-      <ResponsiveContainer width="100%" height={height}>
+    <div
+      className={`rounded-xl bg-slate-50/80 px-1 pb-1 pt-2 sm:px-3 ${height ? '' : 'h-full min-h-[16rem]'}`}
+      style={height ? { height } : undefined}
+    >
+      <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: 4 }} barCategoryGap="28%">
           <CartesianGrid stroke="#e2e8f0" strokeDasharray="4 4" vertical={false} />
           <XAxis

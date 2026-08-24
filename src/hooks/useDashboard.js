@@ -4,12 +4,10 @@ import { obtenerDashboardAdmin } from '../services/dashboardService'
 
 export function useDashboard() {
   const [kpis, setKpis] = useState(null)
-  const [aumentosProximos, setAumentosProximos] = useState([])
-  const [aumentosVencidos, setAumentosVencidos] = useState([])
-  const [reclamosUrgentes, setReclamosUrgentes] = useState([])
+  const [reclamosPendientes, setReclamosPendientes] = useState([])
   const [contratosPorVencer, setContratosPorVencer] = useState([])
-  const [propiedadesPorEstado, setPropiedadesPorEstado] = useState([])
   const [ingresoMensual, setIngresoMensual] = useState(0)
+  const [aumentosPeriodo, setAumentosPeriodo] = useState(null)
   const [ipcAnual, setIpcAnual] = useState([])
   const [ipcAnio, setIpcAnio] = useState(new Date().getFullYear())
   const [ipcError, setIpcError] = useState(null)
@@ -31,20 +29,16 @@ export function useDashboard() {
     if (dashboardResult.error) {
       setError(dashboardResult.error.message)
       setKpis(null)
-      setAumentosProximos([])
-      setAumentosVencidos([])
-      setReclamosUrgentes([])
+      setReclamosPendientes([])
       setContratosPorVencer([])
-      setPropiedadesPorEstado([])
       setIngresoMensual(0)
+      setAumentosPeriodo(null)
     } else {
       setKpis(dashboardResult.data.kpis)
-      setAumentosProximos(dashboardResult.data.aumentosProximos)
-      setAumentosVencidos(dashboardResult.data.aumentosVencidos)
-      setReclamosUrgentes(dashboardResult.data.reclamosUrgentes)
+      setReclamosPendientes(dashboardResult.data.reclamosPendientes)
       setContratosPorVencer(dashboardResult.data.contratosPorVencer)
-      setPropiedadesPorEstado(dashboardResult.data.propiedadesPorEstado)
       setIngresoMensual(dashboardResult.data.ingresoMensual)
+      setAumentosPeriodo(dashboardResult.data.aumentosPeriodo)
     }
 
     if (ipcResult.error) {
@@ -66,12 +60,10 @@ export function useDashboard() {
 
   return {
     kpis,
-    aumentosProximos,
-    aumentosVencidos,
-    reclamosUrgentes,
+    reclamosPendientes,
     contratosPorVencer,
-    propiedadesPorEstado,
     ingresoMensual,
+    aumentosPeriodo,
     ipcAnual,
     ipcAnio,
     ipcError,

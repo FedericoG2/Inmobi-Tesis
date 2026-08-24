@@ -49,7 +49,6 @@ export async function listarContratosActivosInquilino(inquilinoId) {
       periodicidad_meses,
       fecha_proximo_aumento,
       observaciones,
-      activo,
       estado,
       propiedad_id,
       propiedades ( id, direccion, tipo ),

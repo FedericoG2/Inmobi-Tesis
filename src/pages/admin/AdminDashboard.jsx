@@ -1,10 +1,9 @@
 import DashboardAlertPanel, { DashboardInboxItem } from '../../components/admin/DashboardAlertPanel'
-import DashboardPropertiesSummary from '../../components/admin/DashboardPropertiesSummary'
 import DashboardQuickActions from '../../components/admin/DashboardQuickActions'
 import IpcBarChart from '../../components/admin/IpcBarChart'
 import StatCard from '../../components/admin/StatCard'
 import { useDashboard } from '../../hooks/useDashboard'
-import { formatPeriodoMesAnio } from '../../utils/aumentosUi'
+import { capitalizar } from '../../utils/aumentosUi'
 
 function formatFecha(fecha) {
   if (!fecha) return '—'
@@ -18,18 +17,6 @@ function formatMontoCompacto(monto) {
     currency: 'ARS',
     maximumFractionDigits: 0,
   }).format(monto || 0)
-}
-
-function etiquetaDiasAumento(dias) {
-  if (dias === 0) return 'Hoy'
-  if (dias === 1) return 'En 1 día'
-  return `En ${dias} días`
-}
-
-function etiquetaDiasVencido(dias) {
-  if (dias === 0) return 'Hoy'
-  if (dias === 1) return '1 día'
-  return `${dias} días`
 }
 
 function etiquetaDiasRestantes(dias) {
@@ -49,12 +36,10 @@ function fechaHoyLegible() {
 export default function AdminDashboard() {
   const {
     kpis,
-    aumentosProximos,
-    aumentosVencidos,
-    reclamosUrgentes,
+    reclamosPendientes,
     contratosPorVencer,
-    propiedadesPorEstado,
     ingresoMensual,
+    aumentosPeriodo,
     ipcAnual,
     ipcAnio,
     ipcError,
@@ -77,9 +62,7 @@ export default function AdminDashboard() {
   }
 
   const alertasPendientes =
-    (kpis?.aumentos_vencidos ?? 0) +
-    (kpis?.reclamos_urgentes ?? 0) +
-    (kpis?.contratos_por_vencer_90d ?? 0)
+    (kpis?.reclamos_pendientes ?? 0) + (kpis?.contratos_por_vencer_90d ?? 0)
 
   return (
     <div className="space-y-3">
@@ -97,19 +80,12 @@ export default function AdminDashboard() {
         <DashboardQuickActions />
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
         <StatCard
           compact
           label="Propiedades"
           value={kpis?.total_propiedades ?? 0}
           icon="building"
-          theme="slate"
-        />
-        <StatCard
-          compact
-          label="Ocupación"
-          value={`${kpis?.porcentaje_ocupacion ?? 0}%`}
-          icon="chart"
           theme="slate"
         />
         <StatCard
@@ -121,31 +97,31 @@ export default function AdminDashboard() {
         />
         <StatCard
           compact
-          label="Reclamos pend."
-          value={kpis?.reclamos_pendientes ?? 0}
-          icon="wrench"
-          theme={(kpis?.reclamos_pendientes ?? 0) > 0 ? 'red' : 'slate'}
-        />
-        <StatCard
-          compact
-          label="Aumentos vencidos"
-          value={kpis?.aumentos_vencidos ?? 0}
-          icon="alert"
-          theme={(kpis?.aumentos_vencidos ?? 0) > 0 ? 'red' : 'slate'}
-          hint="Sin confirmar"
-        />
-        <StatCard
-          compact
           label="Contratos por vencer"
           value={kpis?.contratos_por_vencer_90d ?? 0}
           icon="calendar"
           theme="slate"
           hint="Próx. 90 días"
         />
+        <StatCard
+          compact
+          label={`Aumentos ${capitalizar(aumentosPeriodo?.nombre ?? '')}`.trim()}
+          value={aumentosPeriodo?.cantidad ?? 0}
+          icon="alert"
+          theme="slate"
+          hint="Próximo período"
+        />
+        <StatCard
+          compact
+          label="Reclamos pend."
+          value={kpis?.reclamos_pendientes ?? 0}
+          icon="wrench"
+          theme={(kpis?.reclamos_pendientes ?? 0) > 0 ? 'red' : 'slate'}
+        />
       </div>
 
-      <div className="grid gap-3 xl:grid-cols-12">
-        <div className="space-y-3 xl:col-span-4">
+      <div className="grid gap-3 xl:grid-cols-12 xl:items-stretch">
+        <div className="flex flex-col gap-3 xl:col-span-5">
           <div className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-100">
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -161,90 +137,23 @@ export default function AdminDashboard() {
             </p>
           </div>
 
-          <div className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-100">
-            <p className="text-xs font-semibold text-slate-900">Cartera por estado</p>
-            <div className="mt-2">
-              <DashboardPropertiesSummary propiedadesPorEstado={propiedadesPorEstado} />
-            </div>
-          </div>
-
-          <div className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-100">
-            <p className="text-xs font-semibold text-slate-900">Evolución IPC {ipcAnio}</p>
-            <p className="mt-0.5 text-[10px] text-slate-500">Variación mensual · Fuente Argly</p>
-            {ipcError ? (
-              <p className="mt-4 text-xs text-slate-600">
-                No se pudo cargar el IPC ({ipcError}).
-              </p>
-            ) : ipcAnual.length === 0 ? (
-              <p className="mt-4 text-xs text-slate-500">Sin datos de IPC para {ipcAnio}.</p>
-            ) : (
-              <IpcBarChart data={ipcAnual} height={160} />
-            )}
-          </div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 xl:col-span-8">
           <DashboardAlertPanel
             compact
-            titulo="Aumentos vencidos sin confirmar"
-            cantidad={kpis?.aumentos_vencidos ?? 0}
-            linkTo="/admin/aumentos"
-            linkLabel="Gestionar aumentos"
-            vacio={aumentosVencidos.length === 0}
-            vacioMensaje="No hay aumentos vencidos pendientes."
-            tono="red"
-          >
-            {aumentosVencidos.map((item) => (
-              <DashboardInboxItem
-                compact
-                key={item.contrato_id}
-                titulo={item.inquilino_nombre}
-                subtitulo={`${item.propiedad_direccion} · venció ${formatPeriodoMesAnio(item.fecha_proximo_aumento)}`}
-                badge={`${etiquetaDiasVencido(item.dias_vencido)} atrás`}
-                badgeTono="red"
-              />
-            ))}
-          </DashboardAlertPanel>
-
-          <DashboardAlertPanel
-            compact
-            titulo="Próximos aumentos (30 días)"
-            cantidad={kpis?.contratos_aumento_30d ?? 0}
-            linkTo="/admin/aumentos"
-            linkLabel="Ver calendario"
-            vacio={aumentosProximos.length === 0}
-            vacioMensaje="No hay aumentos en los próximos 30 días."
-            tono="indigo"
-          >
-            {aumentosProximos.map((item) => (
-              <DashboardInboxItem
-                compact
-                key={item.contrato_id}
-                titulo={item.inquilino_nombre}
-                subtitulo={`${item.propiedad_direccion} · ${formatPeriodoMesAnio(item.fecha_proximo_aumento)}`}
-                badge={etiquetaDiasAumento(item.dias_hasta_aumento)}
-                badgeTono="indigo"
-              />
-            ))}
-          </DashboardAlertPanel>
-
-          <DashboardAlertPanel
-            compact
-            titulo="Reclamos urgentes"
-            cantidad={kpis?.reclamos_urgentes ?? 0}
+            icon="wrench"
+            titulo="Reclamos pendientes"
+            cantidad={kpis?.reclamos_pendientes ?? 0}
             linkTo="/admin/reclamos"
             linkLabel="Ir a Reclamos"
-            vacio={reclamosUrgentes.length === 0}
-            vacioMensaje="No hay reclamos urgentes abiertos."
+            vacio={reclamosPendientes.length === 0}
+            vacioMensaje="No hay reclamos pendientes."
             tono="red"
           >
-            {reclamosUrgentes.map((item) => (
+            {reclamosPendientes.map((item) => (
               <DashboardInboxItem
                 compact
                 key={item.reclamo_id}
                 titulo={item.titulo}
                 subtitulo={`${item.inquilino_nombre} · ${item.propiedad_direccion}`}
-                badge={item.estado}
                 badgeTono="red"
               />
             ))}
@@ -252,6 +161,7 @@ export default function AdminDashboard() {
 
           <DashboardAlertPanel
             compact
+            icon="calendar"
             titulo="Contratos por vencer (90 días)"
             cantidad={kpis?.contratos_por_vencer_90d ?? 0}
             linkTo="/admin/contratos"
@@ -265,12 +175,33 @@ export default function AdminDashboard() {
                 compact
                 key={item.contrato_id}
                 titulo={item.inquilino_nombre}
-                subtitulo={`${item.propiedad_direccion} · fin ${formatFecha(item.fecha_fin)}`}
+                subtitulo={`${item.propiedad_direccion} · vence ${formatFecha(item.fecha_fin)}`}
                 badge={etiquetaDiasRestantes(item.dias_restantes)}
                 badgeTono="slate"
               />
             ))}
           </DashboardAlertPanel>
+        </div>
+
+        <div className="xl:col-span-7">
+          <div className="flex h-full min-h-[22rem] flex-col rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+            <p className="text-sm font-semibold text-slate-900">Evolución IPC {ipcAnio}</p>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Variación mensual · Fuente Argly
+              {ipcAnual.at(-1)?.mes ? ` · hasta ${ipcAnual.at(-1).mes}` : ''}
+            </p>
+            <div className="mt-3 min-h-0 flex-1">
+              {ipcError ? (
+                <p className="mt-4 text-xs text-slate-600">
+                  No se pudo cargar el IPC ({ipcError}).
+                </p>
+              ) : ipcAnual.length === 0 ? (
+                <p className="mt-4 text-xs text-slate-500">Sin datos de IPC para {ipcAnio}.</p>
+              ) : (
+                <IpcBarChart data={ipcAnual} />
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

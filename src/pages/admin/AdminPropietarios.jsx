@@ -67,6 +67,18 @@ function IconIdCard({ className = 'h-4 w-4' }) {
   )
 }
 
+function IconHome({ className = 'h-4 w-4' }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"
+      />
+    </svg>
+  )
+}
+
 function IconEnvelope({ className = 'h-4 w-4' }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
@@ -317,10 +329,10 @@ export default function AdminPropietarios() {
               <AdminTableHeaderCell className="w-[11%] !text-center">
                 <HeaderLabel icon={IconUser}>Tipo</HeaderLabel>
               </AdminTableHeaderCell>
-              <AdminTableHeaderCell className="w-[27%] !text-left">
+              <AdminTableHeaderCell className="w-[22%] !text-left">
                 Nombre / Razón social
               </AdminTableHeaderCell>
-              <AdminTableHeaderCell className="w-[14%] whitespace-nowrap !text-left">
+              <AdminTableHeaderCell className="w-[13%] whitespace-nowrap !text-left">
                 <HeaderLabel icon={IconIdCard} align="left">
                   DNI/CUIT
                 </HeaderLabel>
@@ -330,10 +342,13 @@ export default function AdminPropietarios() {
                   Teléfono
                 </HeaderLabel>
               </AdminTableHeaderCell>
-              <AdminTableHeaderCell className="w-[22%] !text-left">
+              <AdminTableHeaderCell className="w-[18%] !text-left">
                 <HeaderLabel icon={IconEnvelope} align="left">
                   Email
                 </HeaderLabel>
+              </AdminTableHeaderCell>
+              <AdminTableHeaderCell className="w-[10%] !text-center">
+                <HeaderLabel icon={IconHome}>Propiedades</HeaderLabel>
               </AdminTableHeaderCell>
               <AdminTableHeaderCell className="w-[14%] !text-center">Acciones</AdminTableHeaderCell>
             </AdminTableRow>
@@ -341,19 +356,19 @@ export default function AdminPropietarios() {
           <AdminTableBody>
             {loading && (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={6}>Cargando propietarios...</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={7}>Cargando propietarios...</AdminTableEmptyCell>
               </AdminTableRow>
             )}
 
             {!loading && !error && propietarios.length === 0 && (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={6}>No hay propietarios cargados</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={7}>No hay propietarios cargados</AdminTableEmptyCell>
               </AdminTableRow>
             )}
 
             {!loading && !error && propietarios.length > 0 && propietariosFiltrados.length === 0 && (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={6}>
+                <AdminTableEmptyCell colSpan={7}>
                   Ningún propietario coincide con la búsqueda
                 </AdminTableEmptyCell>
               </AdminTableRow>
@@ -390,6 +405,16 @@ export default function AdminPropietarios() {
                     <AdminTableCell className="max-w-0 !text-left">
                       <span className={`block truncate ${celdaTexto}`} title={p.email}>
                         {p.email}
+                      </span>
+                    </AdminTableCell>
+
+                    <AdminTableCell className={`!text-center ${celdaNumero}`}>
+                      <span
+                        className={
+                          (p.cantidad_propiedades ?? 0) > 0 ? 'text-slate-800' : 'text-slate-400'
+                        }
+                      >
+                        {p.cantidad_propiedades ?? 0}
                       </span>
                     </AdminTableCell>
 

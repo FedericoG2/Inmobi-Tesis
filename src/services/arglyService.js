@@ -111,7 +111,40 @@ function rangoIpcAnual(anio, hoy = hoyIsoLocal()) {
   return { desde, hasta }
 }
 
-/** Serie mensual de IPC del año desde Argly (INDEC), sin leer la tabla local. */
+async function obtenerIpcAnualLocal(anio) {
+  if (!supabase) {
+    return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
+  }
+
+  const { data, error } = await supabase
+    .from('indices')
+    .select('anio, mes, valor')
+    .eq('indice', 'ipc')
+    .eq('anio', anio)
+    .order('mes', { ascending: true })
+
+  if (error) {
+    return { data: null, error: { message: error.message } }
+  }
+
+  const hoy = hoyIsoLocal()
+  const anioHoy = Number(hoy.slice(0, 4))
+  const mesHoy = Number(hoy.slice(5, 7))
+  const filas = (data ?? []).filter((row) => {
+    if (anio < anioHoy) return true
+    if (anio > anioHoy) return false
+    return Number(row.mes) <= mesHoy
+  })
+
+  const ipcAnual = mapIpcArglyAnual(filas)
+  if (ipcAnual.length === 0) {
+    return { data: null, error: { message: 'Sin datos de IPC para el período' } }
+  }
+
+  return { data: { anio, ipcAnual }, error: null }
+}
+
+/** Serie mensual de IPC del año. Intenta Argly y, si falla, usa los índices locales. */
 export async function obtenerIpcAnualArgly(anio = new Date().getFullYear()) {
   const { desde, hasta } = rangoIpcAnual(anio)
 
@@ -119,20 +152,15 @@ export async function obtenerIpcAnualArgly(anio = new Date().getFullYear()) {
     const json = await fetchArglyJson(
       `${ARGLY_IPC_RANGE}?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`
     )
-
-    return {
-      data: {
-        anio,
-        ipcAnual: mapIpcArglyAnual(json.data),
-      },
-      error: null,
+    const ipcAnual = mapIpcArglyAnual(json.data)
+    if (ipcAnual.length > 0) {
+      return { data: { anio, ipcAnual }, error: null }
     }
-  } catch (err) {
-    return {
-      data: null,
-      error: { message: err.message ?? 'No se pudo consultar Argly' },
-    }
+  } catch {
+    // Argly no siempre responde desde el navegador (CORS / red).
   }
+
+  return obtenerIpcAnualLocal(anio)
 }
 
 /** Últimos ICL/IPC guardados en Supabase (rápido; mismo origen que usa el cálculo). */

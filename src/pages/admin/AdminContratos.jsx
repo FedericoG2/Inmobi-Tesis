@@ -375,39 +375,40 @@ export default function AdminContratos() {
             </Card>
           ) : null
         }
+        summary={
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <StatCard
+              compact
+              label="Ingreso mensual"
+              value={loading ? '…' : formatMontoCompacto(resumen.ingresoMensual)}
+              icon="chart"
+              theme="slate"
+            />
+            <StatCard
+              compact
+              label="Contratos activos"
+              value={loading ? '…' : resumen.activos}
+              icon="clipboard"
+              theme="slate"
+            />
+            <StatCard
+              compact
+              label="Por vencer pronto"
+              value={loading ? '…' : resumen.porVencer}
+              icon="calendar"
+              theme="slate"
+              hint={`Próx. ${VENCE_PRONTO_DIAS} días`}
+            />
+            <StatCard
+              compact
+              label="Vencidos"
+              value={loading ? '…' : resumen.vencidos}
+              icon="alert"
+              theme="slate"
+            />
+          </div>
+        }
       >
-        <div className="grid grid-cols-2 gap-2 border-b border-slate-200 bg-white p-3 xl:grid-cols-4">
-          <StatCard
-            compact
-            label="Ingreso mensual"
-            value={loading ? '…' : formatMontoCompacto(resumen.ingresoMensual)}
-            icon="chart"
-            theme="slate"
-          />
-          <StatCard
-            compact
-            label="Contratos activos"
-            value={loading ? '…' : resumen.activos}
-            icon="clipboard"
-            theme="slate"
-          />
-          <StatCard
-            compact
-            label="Por vencer pronto"
-            value={loading ? '…' : resumen.porVencer}
-            icon="calendar"
-            theme={resumen.porVencer > 0 ? 'red' : 'slate'}
-            hint={resumen.porVencer > 0 ? `En ${VENCE_PRONTO_DIAS} días` : undefined}
-          />
-          <StatCard
-            compact
-            label="Vencidos"
-            value={loading ? '…' : resumen.vencidos}
-            icon="alert"
-            theme={resumen.vencidos > 0 ? 'red' : 'slate'}
-          />
-        </div>
-
         <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-3 lg:px-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="relative min-w-0 flex-1">

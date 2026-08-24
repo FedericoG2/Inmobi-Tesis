@@ -7,6 +7,12 @@ import {
 const SELECT_PROPIETARIO =
   'id, tipo_persona, nombre_completo, dni_cuit, telefono, email, domicilio'
 
+function cantidadDesdeRelacion(rel) {
+  if (Array.isArray(rel) && rel[0]?.count != null) return Number(rel[0].count)
+  if (rel?.count != null) return Number(rel.count)
+  return 0
+}
+
 function sanitizarPropietario(datos) {
   return {
     tipo_persona: datos.tipo_persona === 'Jurídica' ? 'Jurídica' : 'Física',
@@ -40,10 +46,18 @@ export async function listarPropietarios() {
 
   const { data, error } = await supabase
     .from('propietarios')
-    .select(SELECT_PROPIETARIO)
+    .select(`${SELECT_PROPIETARIO}, propiedades(count)`)
     .order('nombre_completo')
 
-  return { data, error }
+  if (error) return { data: null, error }
+
+  return {
+    data: (data ?? []).map(({ propiedades, ...row }) => ({
+      ...row,
+      cantidad_propiedades: cantidadDesdeRelacion(propiedades),
+    })),
+    error: null,
+  }
 }
 
 export async function crearPropietario(propietario) {

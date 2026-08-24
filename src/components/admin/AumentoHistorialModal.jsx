@@ -156,7 +156,7 @@ function FilaHistorial({ item, posicion, onVerComprobante, onDeshacer, disabled 
                 Ver comprobante
               </button>
             )}
-            {onDeshacer && (
+            {onDeshacer && !item.aplicado && (
               <button
                 type="button"
                 onClick={() => onDeshacer(item)}

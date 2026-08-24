@@ -258,7 +258,7 @@ export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal(), opci
       etiquetaEstado: 'Sin Índices',
       observacion: portal
         ? 'Todavía no hay datos suficientes para estimar el aumento. Consultá con la inmobiliaria.'
-        : 'El sistema no pudo recuperar los datos necesarios para el cálculo. Requiere revisión manual.',
+        : 'No hay datos de Argly para calcular este aumento. Cargá los valores oficiales a mano (BCRA/INDEC) y el sistema aplica la misma fórmula.',
       montoMostrar: null,
       montoEsAproximado: false,
       puedeConfirmar: false,
@@ -279,12 +279,16 @@ export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal(), opci
     let observacion
     if (rezagado && !portal) {
       observacion = `Rezagado: pasó el día ${DIA_CORTE_OPERATIVO} del mes sin confirmar. Confirmá para poner el alquiler al día.`
+    } else if (propuesta.fuente === 'manual' && !portal) {
+      observacion = esFuturo
+        ? `Cálculo con índices cargados a mano. Podés acordarlo ahora: se aplica automáticamente el ${formatFechaAumento(fechaAumento)}.`
+        : 'Cálculo con índices cargados a mano. Podés confirmar y actualizar el contrato.'
     } else if (aproximado) {
       observacion = portal
-        ? `Estimación del aumento del alquiler${detalleIpc}. El valor final puede variar al publicarse el índice.`
+        ? `Estimación del aumento del alquiler${detalleIpc}. El valor puede variar cuando se publique el índice que falta.`
         : esFuturo
-          ? `Valor aproximado${detalleIpc}. Podés acordarlo ahora: el monto queda fijo y se aplica el ${formatFechaAumento(fechaAumento)}.`
-          : `Valor aproximado${detalleIpc}: el índice del período aún no se publicó. Podés confirmarlo igual y el monto queda registrado.`
+          ? `Falta un índice del período${detalleIpc}. El monto se muestra igual; puede variar al publicarse. Podés acordarlo ahora: se aplica el ${formatFechaAumento(fechaAumento)}.`
+          : `Falta un índice del período${detalleIpc}. El monto se muestra igual; puede variar al publicarse.`
     } else {
       observacion = portal
         ? 'Cálculo con índices oficiales de cierre. La inmobiliaria confirmará el nuevo monto.'
@@ -297,8 +301,8 @@ export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal(), opci
 
     return {
       etiqueta: rezagado && !portal ? 'rezagado' : aproximado ? 'provisorio' : 'listo',
-      etiquetaTexto: rezagado && !portal ? 'Rezagado' : aproximado ? 'Provisorio' : 'Definitivo',
-      etiquetaEstado: rezagado && !portal ? 'Rezagado' : aproximado ? 'Provisorio' : 'Definitivo',
+      etiquetaTexto: rezagado && !portal ? 'Rezagado' : aproximado ? 'Índice pendiente' : 'Definitivo',
+      etiquetaEstado: rezagado && !portal ? 'Rezagado' : aproximado ? 'Índice pendiente' : 'Definitivo',
       observacion,
       montoMostrar: propuesta.monto_propuesto,
       montoEsAproximado: aproximado,
@@ -337,7 +341,7 @@ export function interpretarPropuestaAumentoPortal(propuesta, hoy = hoyIsoLocal()
 export function mensajeConfirmarDeshabilitado(ui) {
   if (!ui) return 'No se puede confirmar'
   if (ui.puedeConfirmar) return 'Confirmar aumento'
-  if (ui.etiqueta === 'sin_indices') return 'Sin índices: requiere revisión manual'
+  if (ui.etiqueta === 'sin_indices') return 'Cargá los índices a mano para calcular'
   if (ui.etiqueta === 'acordado') return 'Ya acordado: se aplica en la fecha'
   if (ui.etiqueta === 'proyectado') return 'Se podrá confirmar desde la fecha del aumento'
   return 'No disponible para confirmar'
@@ -441,13 +445,35 @@ export function advertenciaAproximado(propuesta) {
 
   const fechaHasta = propuesta.fecha_hasta ?? propuesta.fecha_proximo_aumento
   const estimada = estimarProximaPublicacion(propuesta)
+  const tipo = (propuesta.tipo_ajuste ?? propuesta.indice_tipo ?? '').toLowerCase()
+
+  let texto
+  if (tipo === 'ipc') {
+    const faltantes = (propuesta.ipc_detalle ?? [])
+      .filter((m) => !m.publicado)
+      .map((m) => formatPeriodoIpc(m.anio, m.mes))
+    if (faltantes.length === 1) {
+      texto = `Falta el IPC de ${faltantes[0]}. El monto se calculó con los meses ya publicados y puede variar cuando salga ese índice.`
+    } else if (faltantes.length > 1) {
+      texto = `Faltan IPC de ${faltantes.join(', ')}. El monto se calculó con los meses ya publicados y puede variar cuando salgan esos índices.`
+    } else {
+      texto = `Este valor todavía no es de cierre: falta un IPC del período. Puede variar al publicarse.`
+    }
+  } else if (tipo === 'icl') {
+    const usado = propuesta.icl_fecha_fin_usada ?? propuesta.detalle_calculo?.icl_fecha_fin_usada
+    texto = usado
+      ? `Falta el ICL al ${formatFechaAumento(fechaHasta)}. Se usó el último valor publicado (${formatFechaAumento(usado)}). El monto puede variar.`
+      : `Falta el ICL al ${formatFechaAumento(fechaHasta)}. El monto se calculó con el último valor publicado y puede variar.`
+  } else {
+    texto = `Falta un índice del período. El monto se muestra igual y puede variar al publicarse.`
+  }
 
   return {
     fechaReferencia: fechaHasta,
     fechaReferenciaLabel: formatFechaAumento(fechaHasta),
     proximaPublicacion: estimada,
     proximaPublicacionLabel: estimada ? formatFechaAumento(estimada) : null,
-    texto: `Este valor es aproximado: todavía no se publicó el índice correspondiente a la fecha ${formatFechaAumento(fechaHasta)}. El monto final se conocerá al publicarse el índice y puede variar.`,
+    texto,
   }
 }
 
@@ -545,6 +571,7 @@ export function detalleCalculoAumento(propuesta, hoy = hoyIsoLocal()) {
         ? {
             inicio: propuesta.indice_valor_inicio,
             fin: propuesta.indice_valor_fin,
+            fechaFinUsada: propuesta.icl_fecha_fin_usada ?? propuesta.detalle_calculo?.icl_fecha_fin_usada ?? null,
             proporcion:
               propuesta.indice_valor_inicio && propuesta.indice_valor_fin
                 ? Number(propuesta.indice_valor_fin) / Number(propuesta.indice_valor_inicio)
@@ -581,6 +608,7 @@ export function propuestaDesdeAumentoRegistrado(row) {
     indice_tipo: tipo,
     indice_valor_inicio: detalle.icl_inicio ?? row.indice_valor_inicio ?? null,
     indice_valor_fin: detalle.icl_fin ?? row.indice_valor_fin ?? null,
+    icl_fecha_fin_usada: detalle.icl_fecha_fin_usada ?? null,
     ipc_factor: detalle.factor ?? null,
     ipc_meses: detalle.meses_aplicados ?? null,
     ipc_meses_esperados: detalle.meses_esperados ?? null,

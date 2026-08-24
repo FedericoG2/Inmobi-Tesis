@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import { syncIndices, obtenerUltimosIndicesLocal } from '../services/arglyService'
 import {
   calcularAumentosPendientes,
   confirmarAumentos,
   ejecutarMantenimientoContratos,
   generarComprobantesAumentos,
   listarAumentosConfirmadosEnPeriodo,
+  recalcularPropuestasConOverrides,
 } from '../services/aumentosService'
 import { diasHastaFinPeriodoOperativo, hoyIsoLocal, periodoOperativoInfo } from '../utils/aumentosUi'
 
@@ -23,39 +23,32 @@ export function useAumentos() {
   const [confirmando, setConfirmando] = useState(false)
   const [error, setError] = useState(null)
   const [syncWarning, setSyncWarning] = useState(null)
+  const [colaCalculo, setColaCalculo] = useState({
+    contratos: [],
+    series: { icl: [], ipc: [] },
+    acordadosPorClave: {},
+  })
+  const [overrides, setOverrides] = useState({})
 
-  const cargarAumentos = useCallback(async ({ diasProximos } = {}) => {
+  const cargarAumentos = useCallback(async ({ diasProximos, keepOverrides = false } = {}) => {
     const dias = diasProximos ?? diasHastaFinPeriodoOperativo()
     setLoading(true)
     setError(null)
+    if (!keepOverrides) setOverrides({})
 
     const clavePeriodo = periodoOperativoInfo(hoyIsoLocal()).clave
-
     const confirmadosPromise = listarAumentosConfirmadosEnPeriodo({ claveMes: clavePeriodo })
 
-    const [syncResult] = await Promise.all([
-      syncIndices({ incluirProximos: true, diasProximos: dias }),
-      ejecutarMantenimientoContratos(),
-    ])
+    await ejecutarMantenimientoContratos()
 
-    const syncError = syncResult?.error
-
-    if (syncError) {
-      setSyncWarning(
-        'No pudimos actualizar los índices en este momento. Mostramos los últimos guardados; volvé a intentar más tarde.'
-      )
-    } else {
-      setSyncWarning(null)
-    }
-
-    const [{ data, error: calcError }, confirmadosResult, indicesResult] = await Promise.all([
+    const [{ data, error: calcError }, confirmadosResult] = await Promise.all([
       calcularAumentosPendientes({
         incluirProximos: true,
         diasProximos: dias,
         skipMaintenance: true,
+        overrides: keepOverrides ? overrides : {},
       }),
       confirmadosPromise,
-      obtenerUltimosIndicesLocal(),
     ])
 
     if (calcError) {
@@ -74,22 +67,46 @@ export function useAumentos() {
       confirmadosResult.error ? [] : Array.isArray(confirmadosResult.data) ? confirmadosResult.data : []
     )
     setMeta({ total: lista.length, fecha_calculo: data?.fecha_calculo })
+    setIndicesResumen(data?.indicesResumen ?? { icl: null, ipc: null })
+    setColaCalculo({
+      contratos: data?.contratos ?? [],
+      series: data?.series ?? { icl: [], ipc: [] },
+      acordadosPorClave: data?.acordadosPorClave ?? {},
+    })
 
-    if (indicesResult.error) {
-      setIndicesResumen({ icl: null, ipc: null })
+    if (data?.indicesError) {
+      setSyncWarning(
+        'No pudimos obtener los índices oficiales (Argly). Podés cargarlos a mano en el detalle de cada aumento.'
+      )
     } else {
-      setIndicesResumen({
-        icl: indicesResult.data?.icl ?? null,
-        ipc: indicesResult.data?.ipc ?? null,
-      })
+      setSyncWarning(null)
     }
+
     setLoading(false)
     return true
-  }, [])
+  }, [overrides])
 
   useEffect(() => {
     cargarAumentos()
-  }, [cargarAumentos])
+    // Primera carga: no re-disparar cuando cambian overrides.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const aplicarIndicesManuales = useCallback((contratoId, override) => {
+    setOverrides((prev) => {
+      const next = { ...prev, [contratoId]: override, [String(contratoId)]: override }
+      setPropuestas(
+        recalcularPropuestasConOverrides({
+          contratos: colaCalculo.contratos,
+          series: colaCalculo.series,
+          acordadosPorClave: colaCalculo.acordadosPorClave,
+          overrides: next,
+          hoy: hoyIsoLocal(),
+        })
+      )
+      return next
+    })
+  }, [colaCalculo])
 
   const confirmarSeleccionados = useCallback(
     async (propuestasSeleccionadas) => {
@@ -139,7 +156,7 @@ export function useAumentos() {
         })
       }
 
-      await cargarAumentos()
+      await cargarAumentos({ keepOverrides: false })
       setConfirmando(false)
       return { ok: true, data, errores, contratoIdsConfirmados }
     },
@@ -162,6 +179,7 @@ export function useAumentos() {
     syncWarning,
     cargarAumentos,
     confirmarSeleccionados,
+    aplicarIndicesManuales,
     limpiarError,
   }
 }

@@ -10,6 +10,7 @@ import AumentoDetalleModal from '../../components/admin/AumentoDetalleModal'
 import AumentoHistorialModal from '../../components/admin/AumentoHistorialModal'
 import AumentosHistorialGlobalModal from '../../components/admin/AumentosHistorialGlobalModal'
 import AumentoRowActions from '../../components/admin/AumentoRowActions'
+import IndicesEvolucionModal from '../../components/admin/IndicesEvolucionModal'
 import {
   AdminTable,
   AdminTableBody,
@@ -37,10 +38,7 @@ import {
   esPeriodoOperativo,
   etiquetaPeriodoAumento,
   formatFechaAumento,
-  formatPeriodoIpc,
   formatPeriodoMesAnio,
-  formatValorIcl,
-  formatValorIpc,
   hoyIsoLocal,
   interpretarPropuestaAumento,
   periodoOperativoInfo,
@@ -117,6 +115,7 @@ export default function AdminAumentos() {
   const [propuestaHistorial, setPropuestaHistorial] = useState(null)
   const [historialGlobalOpen, setHistorialGlobalOpen] = useState(false)
   const [ayudaOpen, setAyudaOpen] = useState(false)
+  const [indicesOpen, setIndicesOpen] = useState(false)
   const [revisados, setRevisados] = useState(() => new Set())
   const [deshacerTarget, setDeshacerTarget] = useState(null)
   const [deshaciendo, setDeshaciendo] = useState(false)
@@ -144,6 +143,7 @@ export default function AdminAumentos() {
     syncWarning,
     cargarAumentos,
     confirmarSeleccionados,
+    aplicarIndicesManuales,
     limpiarError,
   } = useAumentos()
 
@@ -165,10 +165,6 @@ export default function AdminAumentos() {
 
   const hoy = hoyIsoLocal()
   const periodoOperativo = useMemo(() => periodoOperativoInfo(hoy), [hoy])
-  const enVentanaCierre = useMemo(() => {
-    const dia = Number(hoy.split('-')[2])
-    return dia <= DIA_CORTE_OPERATIVO
-  }, [hoy])
 
   const propuestasConUi = useMemo(
     () =>
@@ -258,15 +254,20 @@ export default function AdminAumentos() {
     []
   )
 
-  const conteos = useMemo(
-    () => ({
-      enPeriodo: propuestasConUi.filter(esDelPeriodoOperativo).length,
-      pendientes: propuestasConUi.filter(esPendienteConfirmar).length,
-      confirmados: listadoConfirmados.length,
+  const conteos = useMemo(() => {
+    const pendientes = propuestasConUi.filter(esPendienteConfirmar)
+    const confirmados = listadoConfirmados
+    const clavesPeriodo = new Set()
+    for (const p of pendientes) clavesPeriodo.add(`${p.contrato_id}:${p.fechaAumento}`)
+    for (const p of confirmados) clavesPeriodo.add(`${p.contrato_id}:${p.fechaAumento}`)
+
+    return {
+      enPeriodo: clavesPeriodo.size,
+      pendientes: pendientes.length,
+      confirmados: confirmados.length,
       rezagados: propuestasConUi.filter(esRezagado).length,
-    }),
-    [propuestasConUi, listadoConfirmados.length, esDelPeriodoOperativo, esPendienteConfirmar, esRezagado]
-  )
+    }
+  }, [propuestasConUi, listadoConfirmados, esPendienteConfirmar, esRezagado])
 
   const listadoFiltrado = useMemo(() => {
     if (filtro === 'confirmados') return listadoConfirmados
@@ -299,6 +300,20 @@ export default function AdminAumentos() {
     setPaginaActual(1)
   }, [filtro])
 
+  useEffect(() => {
+    if (!detalleOpen || !propuestaDetalle) return
+    const clave = clavePropuestaAumento(propuestaDetalle)
+    const actualizada = propuestasConUi.find((p) => clavePropuestaAumento(p) === clave)
+    if (!actualizada) return
+    if (
+      actualizada.estado !== propuestaDetalle.estado ||
+      actualizada.monto_propuesto !== propuestaDetalle.monto_propuesto ||
+      actualizada.fuente !== propuestaDetalle.fuente
+    ) {
+      setPropuestaDetalle(actualizada)
+    }
+  }, [propuestasConUi, detalleOpen, propuestaDetalle])
+
   const totalPaginas = useMemo(
     () => Math.max(1, Math.ceil(listadoFiltrado.length / FILAS_POR_PAGINA)),
     [listadoFiltrado.length]
@@ -323,16 +338,6 @@ export default function AdminAumentos() {
   const listosRevisados = useMemo(
     () => listosParaConfirmar.filter((p) => revisados.has(p.contrato_id)),
     [listosParaConfirmar, revisados]
-  )
-
-  const rezagados = useMemo(
-    () => propuestasConUi.filter(esRezagado),
-    [propuestasConUi, esRezagado]
-  )
-
-  const pendientesConfirmar = useMemo(
-    () => propuestasConUi.filter(esPendienteConfirmar),
-    [propuestasConUi, esPendienteConfirmar]
   )
 
   const indicesNoDisponibles = !loading && !indicesResumen.icl && !indicesResumen.ipc
@@ -467,10 +472,6 @@ export default function AdminAumentos() {
 
   const mensajeDeshacer = (() => {
     if (!deshacerTarget) return ''
-    const monto = formatMonto(deshacerTarget.monto_anterior)
-    if (deshacerTarget.aplicado) {
-      return `Esto revierte el aumento ya aplicado: el alquiler vuelve a ${monto} y se elimina el registro y su comprobante. Solo se puede deshacer el aumento más reciente del contrato. ¿Continuar?`
-    }
     return `Esto cancela el aumento acordado a futuro y elimina su comprobante. El contrato no se modifica. ¿Continuar?`
   })()
 
@@ -497,27 +498,10 @@ export default function AdminAumentos() {
     cargarAumentos()
   }
 
-  const indicadoresIndices = useMemo(() => {
-    const icl = indicesResumen.icl
-    const ipc = indicesResumen.ipc
-
-    return {
-      icl: {
-        value: loading ? '…' : formatValorIcl(icl?.valor),
-        hint: icl ? `Fuente Argly · al ${formatFechaAumento(icl.fecha)}` : 'Sin datos en Argly',
-      },
-      ipc: {
-        value: loading ? '…' : formatValorIpc(ipc?.valor),
-        hint: ipc
-          ? `Fuente Argly · ${formatPeriodoIpc(ipc.anio, ipc.mes)}`
-          : 'Sin datos en Argly',
-      },
-    }
-  }, [indicesResumen, loading])
-
   return (
     <>
       <AdminListLayout
+        compact
         title="Aumentos de Alquiler"
         subtitle={`Período operativo: ${capitalizar(periodoOperativo.nombre)}. Ventana de confirmación hasta el día ${DIA_CORTE_OPERATIVO} de cada mes.`}
         titleAction={
@@ -542,7 +526,8 @@ export default function AdminAumentos() {
               <Card className="border border-amber-200 bg-amber-50">
                 <p className="text-sm font-semibold text-amber-800">Índices no disponibles</p>
                 <p className="mt-0.5 text-xs text-amber-700/90">
-                  No pudimos obtener los índices en este momento. Intentá nuevamente más tarde.
+                  No pudimos obtener ICL/IPC de Argly. Abrí el detalle de cada aumento y cargá los
+                  valores oficiales a mano para calcular.
                 </p>
               </Card>
             )}
@@ -553,64 +538,52 @@ export default function AdminAumentos() {
             )}
           </>
         }
+        summary={
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+            <StatCard
+              compact
+              label={`Aumentos en ${capitalizar(periodoOperativo.nombre)}`}
+              value={loading ? '…' : conteos.enPeriodo}
+              hint="Contratos con aumento este período"
+              icon="calendar"
+              theme="slate"
+            />
+            <StatCard
+              compact
+              label="Pendientes de revisión"
+              value={loading ? '…' : conteos.pendientes}
+              hint="Falta revisar y confirmar"
+              icon="clipboard"
+              theme="slate"
+            />
+            <StatCard
+              compact
+              label="Confirmados"
+              value={loading ? '…' : conteos.confirmados}
+              hint="Ya confirmados este período"
+              icon="check"
+              theme="slate"
+            />
+            <StatCard
+              compact
+              label="Rezagados"
+              value={loading ? '…' : conteos.rezagados}
+              hint="No confirmados de otros períodos"
+              icon="alert"
+              theme="slate"
+            />
+            <StatCard
+              compact
+              value="Índices"
+              hint="Ver evolución IPC / ICL"
+              icon="chart"
+              theme="slate"
+              onClick={() => setIndicesOpen(true)}
+              ariaLabel="Ver evolución de índices IPC e ICL"
+            />
+          </div>
+        }
       >
-        <div className="grid grid-cols-2 gap-2 border-b border-slate-200 bg-white p-3 lg:grid-cols-3 xl:grid-cols-5">
-          <StatCard
-            compact
-            label={`Contratos en ${capitalizar(periodoOperativo.nombre)}`}
-            value={loading ? '…' : conteos.enPeriodo}
-            hint={
-              enVentanaCierre
-                ? `Cierre del mes · hasta el día ${DIA_CORTE_OPERATIVO}`
-                : `Período operativo · ${periodoOperativo.etiqueta}`
-            }
-            icon="calendar"
-            theme="indigo"
-          />
-          <StatCard
-            compact
-            label={`Pendientes ${capitalizar(periodoOperativo.nombre)}`}
-            value={loading ? '…' : pendientesConfirmar.length}
-            hint={
-              pendientesConfirmar.length > 0
-                ? enVentanaCierre
-                  ? `Confirmar antes del día ${DIA_CORTE_OPERATIVO}`
-                  : `Período operativo · ${periodoOperativo.etiqueta}`
-                : `Todo confirmado en ${capitalizar(periodoOperativo.nombre)}`
-            }
-            icon="clipboard"
-            theme={pendientesConfirmar.length > 0 ? 'amber' : 'emerald'}
-          />
-          <StatCard
-            compact
-            label="Rezagados"
-            value={loading ? '…' : rezagados.length}
-            hint={
-              rezagados.length > 0
-                ? `Pasaron el día ${DIA_CORTE_OPERATIVO} sin confirmar · ¡revisar!`
-                : 'Sin rezagados'
-            }
-            icon="alert"
-            theme={rezagados.length > 0 ? 'red' : 'emerald'}
-          />
-          <StatCard
-            compact
-            label="ICL"
-            value={indicadoresIndices.icl.value}
-            hint={indicadoresIndices.icl.hint}
-            icon="chart"
-            theme="slate"
-          />
-          <StatCard
-            compact
-            label="IPC"
-            value={indicadoresIndices.ipc.value}
-            hint={indicadoresIndices.ipc.hint}
-            icon="chart"
-            theme="slate"
-          />
-        </div>
-
         <div className="flex flex-nowrap items-center gap-2 overflow-x-auto border-b border-slate-200 bg-slate-50/70 px-4 py-3 lg:px-6">
           <div
             className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3"
@@ -761,7 +734,7 @@ export default function AdminAumentos() {
                             —
                           </span>
                           <span className="whitespace-nowrap text-[11px] font-medium text-slate-400">
-                            Sin índices disponibles
+                            Sin datos de Argly
                           </span>
                         </div>
                       ) : (
@@ -846,6 +819,7 @@ export default function AdminAumentos() {
         haySiguiente={haySiguienteARevisar}
         onAnterior={irAnteriorARevisar}
         hayAnterior={hayAnteriorARevisar}
+        onAplicarIndicesManuales={aplicarIndicesManuales}
       />
 
       <AumentoHistorialModal
@@ -866,6 +840,8 @@ export default function AdminAumentos() {
         accionDeshabilitada={deshaciendo}
         reloadToken={reloadHistorialToken}
       />
+
+      <IndicesEvolucionModal open={indicesOpen} onClose={() => setIndicesOpen(false)} />
 
       <AdminAlertModal
         open={ayudaOpen}
@@ -897,8 +873,9 @@ export default function AdminAumentos() {
               el detalle y confirmalos para ponerlos al día.
             </p>
             <p>
-              <span className="font-medium text-slate-800">Cálculo:</span> usa los últimos valores
-              oficiales de ICL e IPC publicados.
+              <span className="font-medium text-slate-800">Cálculo:</span> consulta los índices
+              oficiales (Argly / INDEC-BCRA) al entrar. No usa datos guardados ni aproximaciones.
+              Si faltan índices, se cargan a mano en el detalle.
             </p>
             <p>
               <span className="font-medium text-slate-800">Acciones:</span> tocá el ícono del ojo para
@@ -922,10 +899,17 @@ export default function AdminAumentos() {
                 </p>
               </div>
               <div className="rounded-lg border border-amber-100 bg-amber-50/80 px-3 py-2">
-                <p className="text-xs font-semibold text-amber-800">Provisorio</p>
+                <p className="text-xs font-semibold text-amber-800">Índice pendiente</p>
                 <p className="mt-0.5 text-xs leading-snug text-amber-900/80">
-                  El índice del período aún no se publicó. Se puede confirmar igual (como la
-                  calculadora); el monto queda fijo.
+                  Falta un mes o el cierre (por ejemplo IPC de agosto). Igual ves el monto, con
+                  advertencia. Puede variar cuando se publique.
+                </p>
+              </div>
+              <div className="rounded-lg border border-orange-100 bg-orange-50/80 px-3 py-2">
+                <p className="text-xs font-semibold text-orange-800">Carga manual</p>
+                <p className="mt-0.5 text-xs leading-snug text-orange-900/80">
+                  Solo si Argly no trae ningún dato (API caída). Cargás los valores oficiales a mano
+                  y el sistema calcula igual.
                 </p>
               </div>
               <div className="rounded-lg border border-sky-100 bg-sky-50/80 px-3 py-2">
@@ -942,9 +926,9 @@ export default function AdminAumentos() {
                 </p>
               </div>
               <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                <p className="text-xs font-semibold text-slate-700">Sin Índices</p>
+                <p className="text-xs font-semibold text-slate-700">Sin datos</p>
                 <p className="mt-0.5 text-xs leading-snug text-slate-600">
-                  Sin datos para calcular. Requiere revisión manual.
+                  Argly no respondió. Ahí sí se cargan los índices a mano en el detalle.
                 </p>
               </div>
             </div>

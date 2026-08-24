@@ -1,6 +1,13 @@
 import { supabase } from '../supabaseClient'
 import { activarContratosProgramados } from './contratosService'
 import { eliminarComprobanteAumento, subirComprobanteAumento } from './documentosService'
+import { obtenerSeriesArgly } from './arglyService'
+import {
+  calcularPropuestaAumento,
+  rangosIndicesParaContratos,
+  ultimoIclDeSerie,
+  ultimoIpcDeSerie,
+} from '../utils/calcularAumento'
 
 /** Aplica los aumentos acordados cuya fecha ya llegó (fallback del cron diario). */
 async function aplicarAumentosProgramados() {
@@ -145,10 +152,60 @@ export async function listarHistorialAumentos(contratoId) {
   return { data: data ?? [], error: null }
 }
 
+async function listarContratosColaAumentos({ incluirProximos = false, diasProximos = 30 } = {}) {
+  const hoy = hoyIsoLocal()
+  const limite = incluirProximos ? sumarDiasIso(hoy, diasProximos) : hoy
+
+  const { data, error } = await supabase
+    .from('contratos')
+    .select(`
+      id,
+      tipo_ajuste,
+      monto_alquiler,
+      fecha_inicio,
+      fecha_ultimo_aumento,
+      fecha_proximo_aumento,
+      fecha_fin,
+      periodicidad_meses,
+      inquilinos ( nombre_completo ),
+      propiedades ( direccion )
+    `)
+    .eq('estado', 'activo')
+    .in('tipo_ajuste', ['icl', 'ipc'])
+    .not('fecha_proximo_aumento', 'is', null)
+    .lte('fecha_proximo_aumento', limite)
+    .order('fecha_proximo_aumento', { ascending: true })
+
+  if (error) {
+    return { data: null, error: { message: error.message } }
+  }
+
+  const contratos = (data ?? []).filter(
+    (row) => !row.fecha_fin || row.fecha_proximo_aumento <= row.fecha_fin
+  )
+
+  return { data: contratos, error: null }
+}
+
+function armarPropuestasDesdeContratos(contratos, series, acordadosPorClave, overrides, hoy) {
+  return contratos.map((contrato) => {
+    const clave = `${Number(contrato.id)}|${contrato.fecha_proximo_aumento}`
+    return calcularPropuestaAumento({
+      contrato,
+      serieIcl: series?.icl ?? [],
+      serieIpc: series?.ipc ?? [],
+      override: overrides?.[contrato.id] ?? overrides?.[String(contrato.id)] ?? null,
+      acordado: acordadosPorClave.get(clave) ?? null,
+      hoy,
+    })
+  })
+}
+
 export async function calcularAumentosPendientes({
   incluirProximos = false,
   diasProximos = 30,
   skipMaintenance = false,
+  overrides = {},
 } = {}) {
   if (!supabase) {
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
@@ -158,16 +215,64 @@ export async function calcularAumentosPendientes({
     await ejecutarMantenimientoContratos()
   }
 
-  const { data, error } = await supabase.rpc('calcular_aumentos_pendientes', {
-    incluir_proximos: incluirProximos,
-    dias_proximos: diasProximos,
-  })
-
-  if (error) {
-    return { data: null, error: { message: error.message } }
+  const hoy = hoyIsoLocal()
+  const contratosRes = await listarContratosColaAumentos({ incluirProximos, diasProximos })
+  if (contratosRes.error) {
+    return { data: null, error: contratosRes.error }
   }
 
-  return { data, error: null }
+  const contratos = contratosRes.data ?? []
+  const ids = contratos.map((c) => c.id)
+
+  let acordadosPorClave = new Map()
+  if (ids.length > 0) {
+    const { data: aumentos, error: aumentosError } = await supabase
+      .from('aumentos')
+      .select(
+        'id, contrato_id, fecha_aplicacion, monto_nuevo, aplicado, detalle_calculo, indice_valor_inicio, indice_valor_fin'
+      )
+      .in('contrato_id', ids)
+
+    if (aumentosError) {
+      return { data: null, error: { message: aumentosError.message } }
+    }
+
+    acordadosPorClave = new Map(
+      (aumentos ?? []).map((row) => [`${Number(row.contrato_id)}|${row.fecha_aplicacion}`, row])
+    )
+  }
+
+  const rangos = rangosIndicesParaContratos(contratos, hoy)
+  const seriesRes = await obtenerSeriesArgly(rangos)
+  const series = seriesRes.data ?? { icl: [], ipc: [] }
+
+  const propuestas = armarPropuestasDesdeContratos(contratos, series, acordadosPorClave, overrides, hoy)
+
+  return {
+    data: {
+      propuestas,
+      total: propuestas.length,
+      fecha_calculo: hoy,
+      contratos,
+      series,
+      acordadosPorClave: Object.fromEntries(acordadosPorClave),
+      indicesResumen: {
+        icl: ultimoIclDeSerie(series.icl),
+        ipc: ultimoIpcDeSerie(series.ipc),
+      },
+      indicesError: seriesRes.error?.message ?? null,
+    },
+    error: null,
+  }
+}
+
+export function recalcularPropuestasConOverrides({ contratos, series, acordadosPorClave, overrides, hoy }) {
+  const mapa =
+    acordadosPorClave instanceof Map
+      ? acordadosPorClave
+      : new Map(Object.entries(acordadosPorClave ?? {}))
+
+  return armarPropuestasDesdeContratos(contratos ?? [], series, mapa, overrides, hoy)
 }
 
 export async function confirmarAumentos(propuestas) {
@@ -184,6 +289,8 @@ export async function confirmarAumentos(propuestas) {
     indice_valor_fin: p.indice_valor_fin,
     porcentaje_aplicado: p.variacion_pct,
     notas: p.notas ?? null,
+    fuente: p.fuente ?? 'argly',
+    detalle_calculo: p.detalle_calculo ?? null,
   }))
 
   const { data, error } = await supabase.rpc('confirmar_aumentos', { payload })
@@ -265,8 +372,8 @@ export async function generarComprobantesAumentos(propuestas) {
 }
 
 /**
- * Deshace un aumento (admin). Revierte el contrato si estaba aplicado y borra
- * el comprobante PDF asociado (best-effort para el comprobante).
+ * Deshace un aumento acordado a futuro (admin). No se puede si ya rige.
+ * Borra el comprobante PDF asociado (best-effort).
  */
 export async function deshacerAumento(aumento) {
   if (!supabase) {
@@ -276,6 +383,13 @@ export async function deshacerAumento(aumento) {
   const aumentoId = aumento?.id
   if (aumentoId == null) {
     return { data: null, error: { message: 'Aumento inválido' } }
+  }
+
+  if (aumento.aplicado) {
+    return {
+      data: null,
+      error: { message: 'Solo se puede deshacer un aumento que todavía no se aplicó' },
+    }
   }
 
   const { data, error } = await supabase.rpc('deshacer_aumento', { p_aumento_id: aumentoId })

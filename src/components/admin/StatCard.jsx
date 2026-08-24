@@ -130,13 +130,38 @@ const ICONS = {
   check: IconCheckCircle,
 }
 
-export default function StatCard({ label, value, icon, theme = 'indigo', hint, compact = false }) {
+export default function StatCard({
+  label,
+  value,
+  icon,
+  theme = 'indigo',
+  hint,
+  compact = false,
+  onClick,
+  ariaLabel,
+}) {
   const t = THEMES[theme] ?? THEMES.indigo
   const Icon = ICONS[icon] ?? IconBuilding
+  const clickable = typeof onClick === 'function'
+  const Wrapper = clickable ? 'button' : 'div'
+  const wrapperProps = clickable
+    ? {
+        type: 'button',
+        onClick,
+        'aria-label': ariaLabel ?? `${label}. ${hint ?? 'Ver detalle'}`,
+      }
+    : {}
 
   if (compact) {
     return (
-      <div className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-100">
+      <Wrapper
+        {...wrapperProps}
+        className={`rounded-xl bg-white p-3 text-left shadow-sm ring-1 ring-slate-100 ${
+          clickable
+            ? 'w-full cursor-pointer transition hover:ring-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-200'
+            : ''
+        }`}
+      >
         <div className="flex items-center gap-2">
           <div
             className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${t.iconBg}`}
@@ -147,13 +172,15 @@ export default function StatCard({ label, value, icon, theme = 'indigo', hint, c
             <p className={`truncate text-xl font-bold leading-none tracking-tight ${t.valueColor}`}>
               {value}
             </p>
-            <p className="mt-1 truncate text-[11px] font-medium leading-tight text-slate-600">
-              {label}
-            </p>
+            {label ? (
+              <p className="mt-1 truncate text-[11px] font-medium leading-tight text-slate-600">
+                {label}
+              </p>
+            ) : null}
           </div>
         </div>
         {hint ? <p className="mt-1.5 truncate text-[10px] text-slate-400">{hint}</p> : null}
-      </div>
+      </Wrapper>
     )
   }
 

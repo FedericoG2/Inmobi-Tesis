@@ -283,10 +283,10 @@ export default function AumentosHistorialGlobalModal({
                               <IconReceipt className="h-3.5 w-3.5" />
                             </button>
                           )}
-                          {onDeshacer && (
+                          {onDeshacer && !item.aplicado && (
                             <button
                               type="button"
-                              title="Deshacer aumento"
+                              title="Deshacer aumento acordado"
                               onClick={() => onDeshacer(item)}
                               disabled={accionDeshabilitada}
                               className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-red-200 text-red-600 transition hover:bg-red-50 disabled:opacity-40"

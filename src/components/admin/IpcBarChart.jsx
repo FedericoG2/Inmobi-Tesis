@@ -24,7 +24,12 @@ const BAR_COLORS = [
   '#1e1b4b',
 ]
 
-function IpcTooltip({ active, payload, label }) {
+function formatIndice(valor, unidad) {
+  if (unidad === '%') return `${Number(valor).toFixed(1)}%`
+  return Number(valor).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function IpcTooltip({ active, payload, label, unidad }) {
   if (!active || !payload?.length) return null
 
   const valor = Number(payload[0].value)
@@ -32,12 +37,12 @@ function IpcTooltip({ active, payload, label }) {
   return (
     <div className="rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-md ring-1 ring-slate-100">
       <p className="text-xs font-medium text-slate-500">{label}</p>
-      <p className="text-sm font-bold text-brand-700">{valor.toFixed(1)}%</p>
+      <p className="text-sm font-bold text-brand-700">{formatIndice(valor, unidad)}</p>
     </div>
   )
 }
 
-export default function IpcBarChart({ data, height }) {
+export default function IpcBarChart({ data, height, unidad = '%' }) {
   const maxValor = Math.max(...data.map((d) => d.valor), 0)
   const topeEje = Math.ceil((maxValor + 0.5) * 2) / 2
 
@@ -59,12 +64,15 @@ export default function IpcBarChart({ data, height }) {
           <YAxis
             axisLine={false}
             tickLine={false}
-            width={52}
+            width={unidad === '%' ? 52 : 64}
             domain={[0, topeEje]}
             tick={{ fill: '#64748b', fontSize: 12 }}
-            tickFormatter={(v) => `${v}%`}
+            tickFormatter={(v) => formatIndice(v, unidad)}
           />
-          <Tooltip content={<IpcTooltip />} cursor={{ fill: '#eef2ff', opacity: 0.6 }} />
+          <Tooltip
+            content={<IpcTooltip unidad={unidad} />}
+            cursor={{ fill: '#eef2ff', opacity: 0.6 }}
+          />
           <Bar dataKey="valor" radius={[8, 8, 0, 0]} maxBarSize={52}>
             {data.map((entry, index) => (
               <Cell

@@ -1,6 +1,9 @@
 import { supabase } from '../supabaseClient'
 import { listarDocumentosVisiblesInquilino, obtenerUrlDescargaDocumento, etiquetaTipoArchivo } from './documentosService'
 import { sinErrores, validarCamposReclamo } from '../utils/validarReclamo'
+import { obtenerSeriesArgly } from './arglyService'
+import { calcularPropuestaAumento, rangosIndicesParaContratos } from '../utils/calcularAumento'
+import { hoyIsoLocal } from '../utils/aumentosUi'
 
 export { etiquetaTipoArchivo }
 
@@ -188,19 +191,79 @@ export async function obtenerProyeccionAumentoPortal(contratoId) {
     return { data: null, error: { message: 'Contrato no especificado' } }
   }
 
-  // Aplica los aumentos acordados cuya fecha ya llegó (respaldo del cron diario)
-  // para que el inquilino vea el monto vigente correcto.
   await supabase.rpc('aplicar_aumentos_programados')
 
-  const { data, error } = await supabase.rpc('calcular_proyeccion_aumento_portal', {
-    p_contrato_id: contratoId,
-  })
+  const { data: contrato, error } = await supabase
+    .from('contratos')
+    .select(
+      `
+      id,
+      monto_alquiler,
+      fecha_inicio,
+      fecha_ultimo_aumento,
+      fecha_proximo_aumento,
+      fecha_fin,
+      tipo_ajuste,
+      inquilinos ( nombre_completo ),
+      propiedades ( direccion ),
+      aumentos (
+        id,
+        fecha_aplicacion,
+        monto_nuevo,
+        aplicado,
+        detalle_calculo,
+        indice_valor_inicio,
+        indice_valor_fin
+      )
+    `
+    )
+    .eq('id', contratoId)
+    .eq('estado', 'activo')
+    .maybeSingle()
 
   if (error) {
     return { data: null, error: { message: error.message } }
   }
 
-  return { data, error: null }
+  if (!contrato) {
+    return { data: { disponible: false, motivo: 'contrato_no_encontrado', propuesta: null }, error: null }
+  }
+
+  const tipo = (contrato.tipo_ajuste ?? '').toLowerCase()
+  if (!['icl', 'ipc'].includes(tipo)) {
+    return { data: { disponible: false, motivo: 'ajuste_no_indexado', propuesta: null }, error: null }
+  }
+
+  if (!contrato.fecha_proximo_aumento || (contrato.fecha_fin && contrato.fecha_proximo_aumento > contrato.fecha_fin)) {
+    return { data: { disponible: false, motivo: 'sin_aumento_programado', propuesta: null }, error: null }
+  }
+
+  const hoy = hoyIsoLocal()
+  const acordado = (contrato.aumentos ?? []).find(
+    (row) => row.fecha_aplicacion === contrato.fecha_proximo_aumento
+  )
+
+  if (acordado) {
+    return {
+      data: {
+        disponible: true,
+        motivo: null,
+        propuesta: calcularPropuestaAumento({ contrato, acordado, hoy }),
+      },
+      error: null,
+    }
+  }
+
+  const rangos = rangosIndicesParaContratos([contrato], hoy)
+  const seriesRes = await obtenerSeriesArgly(rangos)
+  const propuesta = calcularPropuestaAumento({
+    contrato,
+    serieIcl: seriesRes.data?.icl ?? [],
+    serieIpc: seriesRes.data?.ipc ?? [],
+    hoy,
+  })
+
+  return { data: { disponible: true, motivo: null, propuesta }, error: null }
 }
 
 /**

@@ -5,6 +5,7 @@ import InquilinoDetalleModal from './InquilinoDetalleModal'
 import PropiedadDetalleModal from './PropiedadDetalleModal'
 import { supabase } from '../../supabaseClient'
 import { detalleCalculoAumento, formatPeriodoIpc, hoyIsoLocal, observacionOperativaDetalle } from '../../utils/aumentosUi'
+import { mesesIpcPeriodo } from '../../utils/calcularAumento'
 
 const formatMonto = (monto) => {
   if (monto == null) return '—'
@@ -157,6 +158,134 @@ function IconAlerta({ className = 'h-5 w-5' }) {
   )
 }
 
+function CargaManualIndices({ propuesta, onAplicar, disabled }) {
+  const tipo = (propuesta.tipo_ajuste ?? propuesta.indice_tipo ?? '').toLowerCase()
+  const meses =
+    Array.isArray(propuesta.ipc_detalle) && propuesta.ipc_detalle.length > 0
+      ? propuesta.ipc_detalle
+      : mesesIpcPeriodo(propuesta.fecha_desde, propuesta.fecha_hasta ?? propuesta.fecha_proximo_aumento)
+
+  const [iclInicio, setIclInicio] = useState(
+    propuesta.indice_valor_inicio != null ? String(propuesta.indice_valor_inicio) : ''
+  )
+  const [iclFin, setIclFin] = useState(
+    propuesta.indice_valor_fin != null ? String(propuesta.indice_valor_fin) : ''
+  )
+  const [ipcMeses, setIpcMeses] = useState({})
+
+  useEffect(() => {
+    setIclInicio(propuesta.indice_valor_inicio != null ? String(propuesta.indice_valor_inicio) : '')
+    setIclFin(propuesta.indice_valor_fin != null ? String(propuesta.indice_valor_fin) : '')
+    const inicial = {}
+    for (const mes of meses) {
+      const clave = `${mes.anio}-${String(mes.mes).padStart(2, '0')}`
+      if (mes.publicado && mes.variacion_pct != null) inicial[clave] = String(mes.variacion_pct)
+      else inicial[clave] = ''
+    }
+    setIpcMeses(inicial)
+  }, [propuesta.contrato_id, propuesta.fecha_desde, propuesta.fecha_hasta])
+
+  const inputClass =
+    'w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 font-mono text-xs text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:opacity-50'
+
+  const handleAplicar = () => {
+    if (tipo === 'icl') {
+      const inicio = Number(iclInicio)
+      const fin = Number(iclFin)
+      if (!Number.isFinite(inicio) || inicio <= 0 || !Number.isFinite(fin) || fin <= 0) return
+      onAplicar({ iclInicio: inicio, iclFin: fin })
+      return
+    }
+
+    const cargados = {}
+    for (const mes of meses) {
+      const clave = `${mes.anio}-${String(mes.mes).padStart(2, '0')}`
+      const valor = Number(ipcMeses[clave])
+      if (!Number.isFinite(valor) || valor <= 0) return
+      cargados[clave] = valor
+    }
+    onAplicar({ ipcMeses: cargados })
+  }
+
+  const iclListo =
+    Number(iclInicio) > 0 && Number(iclFin) > 0 && Number.isFinite(Number(iclInicio)) && Number.isFinite(Number(iclFin))
+  const ipcListo = meses.every((mes) => {
+    const clave = `${mes.anio}-${String(mes.mes).padStart(2, '0')}`
+    const valor = Number(ipcMeses[clave])
+    return Number.isFinite(valor) && valor > 0
+  })
+
+  return (
+    <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2.5">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800">
+        Cargar índices a mano
+      </p>
+      <p className="mt-0.5 text-xs text-amber-900/80">
+        Usá los valores oficiales (BCRA para ICL, INDEC para IPC). El sistema calcula con la misma fórmula.
+      </p>
+
+      {tipo === 'icl' ? (
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <label className="text-[11px] font-medium text-slate-600">
+            ICL inicio
+            <input
+              type="number"
+              min="0"
+              step="0.0001"
+              value={iclInicio}
+              onChange={(e) => setIclInicio(e.target.value)}
+              disabled={disabled}
+              className={`mt-1 ${inputClass}`}
+            />
+          </label>
+          <label className="text-[11px] font-medium text-slate-600">
+            ICL cierre
+            <input
+              type="number"
+              min="0"
+              step="0.0001"
+              value={iclFin}
+              onChange={(e) => setIclFin(e.target.value)}
+              disabled={disabled}
+              className={`mt-1 ${inputClass}`}
+            />
+          </label>
+        </div>
+      ) : (
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {meses.map((mes) => {
+            const clave = `${mes.anio}-${String(mes.mes).padStart(2, '0')}`
+            return (
+              <label key={clave} className="text-[11px] font-medium text-slate-600">
+                IPC {formatPeriodoIpc(mes.anio, mes.mes)}
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={ipcMeses[clave] ?? ''}
+                  onChange={(e) => setIpcMeses((prev) => ({ ...prev, [clave]: e.target.value }))}
+                  disabled={disabled}
+                  placeholder="%"
+                  className={`mt-1 ${inputClass}`}
+                />
+              </label>
+            )
+          })}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={handleAplicar}
+        disabled={disabled || (tipo === 'icl' ? !iclListo : !ipcListo)}
+        className="mt-2 rounded-md border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-100 disabled:opacity-50"
+      >
+        Calcular con estos valores
+      </button>
+    </div>
+  )
+}
+
 function AdvertenciaAproximado({ advertencia }) {
   if (!advertencia) return null
   return (
@@ -192,7 +321,8 @@ function PasoIcl({ detalle }) {
       </li>
       <li className="flex justify-between gap-3">
         <span className="text-slate-600">
-          2. ICL al cierre del período ({periodo.hastaLabel})
+          2. ICL al cierre del período ({periodo.hastaLabel}
+          {detalle.esAproximado ? ' · último publicado' : ''})
         </span>
         <span className="font-mono font-medium text-slate-900">
           {iclValores.fin != null ? Number(iclValores.fin).toLocaleString('es-AR') : '—'}
@@ -264,6 +394,7 @@ export default function AumentoDetalleModal({
   hayAnterior = false,
   onSiguiente,
   haySiguiente = false,
+  onAplicarIndicesManuales,
   inquilinos = [],
   propiedades = [],
 }) {
@@ -368,6 +499,14 @@ export default function AumentoDetalleModal({
       variacion_pct: variacionEditada,
       modo: esManual ? 'manual' : propuesta.modo ?? 'calculado',
       notas: notas.trim() || null,
+      detalle_calculo: propuesta.detalle_calculo
+        ? {
+            ...propuesta.detalle_calculo,
+            monto_nuevo: montoValido ? montoNum : propuesta.detalle_calculo.monto_nuevo,
+            variacion_pct: variacionEditada,
+            modo: esManual ? 'manual' : propuesta.detalle_calculo.modo ?? propuesta.modo,
+          }
+        : propuesta.detalle_calculo,
     }
     onConfirmar(propuestaFinal)
   }
@@ -433,6 +572,14 @@ export default function AumentoDetalleModal({
 
         <div className="px-6 py-3">
           <AdvertenciaAproximado advertencia={advertencia} />
+
+          {onAplicarIndicesManuales && ui.etiqueta === 'sin_indices' && (
+            <CargaManualIndices
+              propuesta={propuesta}
+              onAplicar={(valores) => onAplicarIndicesManuales(propuesta.contrato_id, valores)}
+              disabled={confirmando}
+            />
+          )}
 
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
             <div className="space-y-3">

@@ -3,23 +3,6 @@ import { supabase } from '../supabaseClient'
 const ARGLY_ICL_RANGE = 'https://api.argly.com.ar/api/icl/range'
 const ARGLY_IPC_RANGE = 'https://api.argly.com.ar/api/ipc/range'
 
-async function invokeSyncIcl(body) {
-  return supabase.functions.invoke('sync-argly-icl', { body })
-}
-
-async function parseInvokeError(error) {
-  let message = error.message ?? 'Error al sincronizar ICL con Argly'
-  if (error.context && typeof error.context.json === 'function') {
-    try {
-      const payload = await error.context.json()
-      if (payload?.error) message = payload.error
-    } catch {
-      // respuesta no JSON
-    }
-  }
-  return message
-}
-
 function hoyIsoLocal() {
   const d = new Date()
   const yy = d.getFullYear()
@@ -36,14 +19,17 @@ function arglyFechaToIso(fecha) {
   return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
 }
 
-function rangoConsultaIpc(hoy) {
-  const [year, month] = hoy.split('-')
-  return { desde: `${year}-01`, hasta: `${year}-${month}` }
-}
-
-function rangoConsultaIcl(hoy) {
-  const year = Number(hoy.slice(0, 4))
-  return { desde: `${year - 1}-01-01`, hasta: hoy }
+async function parseInvokeError(error) {
+  let message = error.message ?? 'Error al consultar índices en Argly'
+  if (error.context && typeof error.context.json === 'function') {
+    try {
+      const payload = await error.context.json()
+      if (payload?.error) message = payload.error
+    } catch {
+      // respuesta no JSON
+    }
+  }
+  return message
 }
 
 async function fetchArglyJson(url) {
@@ -54,39 +40,19 @@ async function fetchArglyJson(url) {
   return res.json()
 }
 
-function ultimoIpcDesdeFilas(filas) {
-  const validas = (filas ?? [])
+export function normalizarSerieIcl(filas) {
+  return (filas ?? [])
     .map((row) => {
-      const anio = Number(row.anio)
-      const mes = Number(row.mes)
-      const valor = Number(row.valor)
-      if (!Number.isFinite(anio) || !Number.isFinite(mes) || mes < 1 || mes > 12) return null
-      if (!Number.isFinite(valor) || valor <= 0) return null
-      return { anio, mes, valor }
-    })
-    .filter(Boolean)
-    .sort((a, b) => (a.anio !== b.anio ? a.anio - b.anio : a.mes - b.mes))
-
-  return validas.at(-1) ?? null
-}
-
-function ultimoIclDesdeFilas(filas) {
-  const validas = (filas ?? [])
-    .map((row) => {
-      const fecha = arglyFechaToIso(row.fecha)
+      const fecha = row.fecha?.includes('-') ? row.fecha : arglyFechaToIso(row.fecha)
       const valor = Number(row.valor)
       if (!fecha || !Number.isFinite(valor) || valor <= 0) return null
       return { fecha, valor }
     })
     .filter(Boolean)
     .sort((a, b) => a.fecha.localeCompare(b.fecha))
-
-  return validas.at(-1) ?? null
 }
 
-const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-
-function mapIpcArglyAnual(filas) {
+export function normalizarSerieIpc(filas) {
   return (filas ?? [])
     .map((row) => {
       const anio = Number(row.anio)
@@ -98,10 +64,23 @@ function mapIpcArglyAnual(filas) {
     })
     .filter(Boolean)
     .sort((a, b) => (a.anio !== b.anio ? a.anio - b.anio : a.mes - b.mes))
-    .map((row) => ({
-      mes: MESES_CORTOS[row.mes - 1] ?? String(row.mes),
-      valor: row.valor,
-    }))
+}
+
+function ultimoIpcDesdeFilas(filas) {
+  return normalizarSerieIpc(filas).at(-1) ?? null
+}
+
+function ultimoIclDesdeFilas(filas) {
+  return normalizarSerieIcl(filas).at(-1) ?? null
+}
+
+const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+
+function mapIpcArglyAnual(filas) {
+  return normalizarSerieIpc(filas).map((row) => ({
+    mes: MESES_CORTOS[row.mes - 1] ?? String(row.mes),
+    valor: row.valor,
+  }))
 }
 
 function rangoIpcAnual(anio, hoy = hoyIsoLocal()) {
@@ -111,150 +90,24 @@ function rangoIpcAnual(anio, hoy = hoyIsoLocal()) {
   return { desde, hasta }
 }
 
-async function obtenerIpcAnualLocal(anio) {
+function rangoConsultaIpc(hoy) {
+  const [year, month] = hoy.split('-')
+  return { desde: `${year}-01`, hasta: `${year}-${month}` }
+}
+
+function rangoConsultaIcl(hoy) {
+  const year = Number(hoy.slice(0, 4))
+  return { desde: `${year - 1}-01-01`, hasta: hoy }
+}
+
+async function obtenerSeriesArglyViaEdge({ icl, ipc } = {}) {
   if (!supabase) {
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
 
-  const { data, error } = await supabase
-    .from('indices')
-    .select('anio, mes, valor')
-    .eq('indice', 'ipc')
-    .eq('anio', anio)
-    .order('mes', { ascending: true })
-
-  if (error) {
-    return { data: null, error: { message: error.message } }
-  }
-
-  const hoy = hoyIsoLocal()
-  const anioHoy = Number(hoy.slice(0, 4))
-  const mesHoy = Number(hoy.slice(5, 7))
-  const filas = (data ?? []).filter((row) => {
-    if (anio < anioHoy) return true
-    if (anio > anioHoy) return false
-    return Number(row.mes) <= mesHoy
+  const { data, error } = await supabase.functions.invoke('obtener-indices-argly', {
+    body: { icl, ipc },
   })
-
-  const ipcAnual = mapIpcArglyAnual(filas)
-  if (ipcAnual.length === 0) {
-    return { data: null, error: { message: 'Sin datos de IPC para el período' } }
-  }
-
-  return { data: { anio, ipcAnual }, error: null }
-}
-
-/** Serie mensual de IPC del año. Intenta Argly y, si falla, usa los índices locales. */
-export async function obtenerIpcAnualArgly(anio = new Date().getFullYear()) {
-  const { desde, hasta } = rangoIpcAnual(anio)
-
-  try {
-    const json = await fetchArglyJson(
-      `${ARGLY_IPC_RANGE}?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`
-    )
-    const ipcAnual = mapIpcArglyAnual(json.data)
-    if (ipcAnual.length > 0) {
-      return { data: { anio, ipcAnual }, error: null }
-    }
-  } catch {
-    // Argly no siempre responde desde el navegador (CORS / red).
-  }
-
-  return obtenerIpcAnualLocal(anio)
-}
-
-/** Últimos ICL/IPC guardados en Supabase (rápido; mismo origen que usa el cálculo). */
-export async function obtenerUltimosIndicesLocal() {
-  if (!supabase) {
-    return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
-  }
-
-  const [iclRes, ipcRes] = await Promise.all([
-    supabase
-      .from('indices')
-      .select('fecha, valor')
-      .eq('indice', 'icl')
-      .order('fecha', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    supabase
-      .from('indices')
-      .select('anio, mes, valor')
-      .eq('indice', 'ipc')
-      .order('anio', { ascending: false })
-      .order('mes', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ])
-
-  if (iclRes.error || ipcRes.error) {
-    return {
-      data: null,
-      error: { message: iclRes.error?.message ?? ipcRes.error?.message ?? 'Error al leer índices' },
-    }
-  }
-
-  return {
-    data: {
-      icl: iclRes.data?.fecha
-        ? { fecha: iclRes.data.fecha, valor: Number(iclRes.data.valor) }
-        : null,
-      ipc:
-        ipcRes.data?.anio != null
-          ? {
-              anio: Number(ipcRes.data.anio),
-              mes: Number(ipcRes.data.mes),
-              valor: Number(ipcRes.data.valor),
-            }
-          : null,
-    },
-    error: null,
-  }
-}
-
-/** Últimos valores publicados en Argly (INDEC/BCRA), sin leer la tabla local. */
-export async function obtenerUltimosIndicesArgly() {
-  const hoy = hoyIsoLocal()
-  const ipcRango = rangoConsultaIpc(hoy)
-  const iclRango = rangoConsultaIcl(hoy)
-
-  try {
-    const [ipcJson, iclJson] = await Promise.all([
-      fetchArglyJson(
-        `${ARGLY_IPC_RANGE}?desde=${encodeURIComponent(ipcRango.desde)}&hasta=${encodeURIComponent(ipcRango.hasta)}`
-      ),
-      fetchArglyJson(
-        `${ARGLY_ICL_RANGE}?desde=${encodeURIComponent(iclRango.desde)}&hasta=${encodeURIComponent(iclRango.hasta)}`
-      ),
-    ])
-
-    return {
-      data: {
-        icl: ultimoIclDesdeFilas(iclJson.data),
-        ipc: ultimoIpcDesdeFilas(ipcJson.data),
-      },
-      error: null,
-    }
-  } catch (err) {
-    return {
-      data: null,
-      error: { message: err.message ?? 'No se pudo consultar Argly' },
-    }
-  }
-}
-
-export async function syncIndices({ incluirProximos = false, diasProximos = 30 } = {}) {
-  if (!supabase) {
-    return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
-  }
-
-  const body = { incluir_proximos: incluirProximos, dias_proximos: diasProximos }
-
-  let { data, error } = await invokeSyncIcl(body)
-
-  if (error) {
-    ;({ data, error } = await invokeSyncIcl(body))
-  }
 
   if (error) {
     return { data: null, error: { message: await parseInvokeError(error) } }
@@ -264,7 +117,105 @@ export async function syncIndices({ incluirProximos = false, diasProximos = 30 }
     return { data: null, error: { message: data.error } }
   }
 
-  return { data, error: null }
+  return {
+    data: {
+      icl: normalizarSerieIcl(data?.icl),
+      ipc: normalizarSerieIpc(data?.ipc),
+    },
+    error: null,
+  }
+}
+
+async function obtenerSeriesArglyDirecto({ icl, ipc } = {}) {
+  const hoy = hoyIsoLocal()
+  const iclRango = icl === null ? null : (icl ?? rangoConsultaIcl(hoy))
+  const ipcRango = ipc === null ? null : (ipc ?? rangoConsultaIpc(hoy))
+
+  const [ipcJson, iclJson] = await Promise.all([
+    ipcRango?.desde && ipcRango?.hasta
+      ? fetchArglyJson(
+          `${ARGLY_IPC_RANGE}?desde=${encodeURIComponent(ipcRango.desde)}&hasta=${encodeURIComponent(ipcRango.hasta)}`
+        )
+      : Promise.resolve({ data: [] }),
+    iclRango?.desde && iclRango?.hasta
+      ? fetchArglyJson(
+          `${ARGLY_ICL_RANGE}?desde=${encodeURIComponent(iclRango.desde)}&hasta=${encodeURIComponent(iclRango.hasta)}`
+        )
+      : Promise.resolve({ data: [] }),
+  ])
+
+  return {
+    data: {
+      icl: normalizarSerieIcl(iclJson.data),
+      ipc: normalizarSerieIpc(ipcJson.data),
+    },
+    error: null,
+  }
+}
+
+/** Series ICL/IPC desde Argly. Primero el navegador; si falla CORS/red, la Edge Function. */
+export async function obtenerSeriesArgly(rangos = {}) {
+  try {
+    const directo = await obtenerSeriesArglyDirecto(rangos)
+    if ((directo.data?.icl?.length ?? 0) > 0 || (directo.data?.ipc?.length ?? 0) > 0) {
+      return directo
+    }
+  } catch {
+    // Argly no siempre responde desde el navegador (CORS / red).
+  }
+
+  return obtenerSeriesArglyViaEdge(rangos)
+}
+
+/** Serie mensual de IPC del año (dashboard). Sin tabla local. */
+export async function obtenerIpcAnualArgly(anio = new Date().getFullYear()) {
+  const { desde, hasta } = rangoIpcAnual(anio)
+  const { data, error } = await obtenerSeriesArgly({
+    ipc: { desde, hasta },
+    icl: null,
+  })
+
+  if (error) {
+    return { data: null, error }
+  }
+
+  const ipcAnual = mapIpcArglyAnual(data?.ipc)
+  if (ipcAnual.length === 0) {
+    return { data: null, error: { message: 'Sin datos de IPC para el período' } }
+  }
+
+  return { data: { anio, ipcAnual }, error: null }
+}
+
+/** Últimos ICL/IPC publicados en Argly. */
+export async function obtenerUltimosIndicesArgly() {
+  const hoy = hoyIsoLocal()
+  const { data, error } = await obtenerSeriesArgly({
+    ipc: rangoConsultaIpc(hoy),
+    icl: rangoConsultaIcl(hoy),
+  })
+
+  if (error) {
+    return { data: null, error }
+  }
+
+  return {
+    data: {
+      icl: ultimoIclDesdeFilas(data?.icl),
+      ipc: ultimoIpcDesdeFilas(data?.ipc),
+    },
+    error: null,
+  }
+}
+
+/** @deprecated usar obtenerSeriesArgly / obtenerUltimosIndicesArgly */
+export async function obtenerUltimosIndicesLocal() {
+  return obtenerUltimosIndicesArgly()
+}
+
+/** @deprecated ya no se persiste en tabla `indices`. */
+export async function syncIndices(rangos = {}) {
+  return obtenerSeriesArgly(rangos)
 }
 
 /** @deprecated alias */

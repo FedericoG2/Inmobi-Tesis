@@ -103,9 +103,9 @@ export default function AdminReclamos() {
     const lista = reclamos || []
     const noResuelto = (r) => r.estado !== 'Resuelto'
     return {
-      sinResolver: lista.filter(noResuelto).length,
-      urgentes: lista.filter((r) => r.prioridad === 'Urgente' && noResuelto(r)).length,
       pendientes: lista.filter((r) => r.estado === 'Pendiente').length,
+      enAtencion: lista.filter((r) => r.estado === 'En Proceso' || r.estado === 'Revision').length,
+      urgentes: lista.filter((r) => r.prioridad === 'Urgente' && noResuelto(r)).length,
       resueltos: lista.filter((r) => r.estado === 'Resuelto').length,
     }
   }, [reclamos])
@@ -252,38 +252,43 @@ export default function AdminReclamos() {
             )}
           </>
         }
+        summary={
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <StatCard
+              compact
+              label="Pendientes"
+              value={loading ? '…' : kpis.pendientes}
+              hint="Recién cargados, sin gestionar"
+              icon="clipboard"
+              theme="slate"
+            />
+            <StatCard
+              compact
+              label="En atención"
+              value={loading ? '…' : kpis.enAtencion}
+              hint="En proceso o en revisión"
+              icon="wrench"
+              theme="slate"
+            />
+            <StatCard
+              compact
+              label="Urgentes"
+              value={loading ? '…' : kpis.urgentes}
+              hint="Prioridad urgente sin resolver"
+              icon="alert"
+              theme="slate"
+            />
+            <StatCard
+              compact
+              label="Resueltos"
+              value={loading ? '…' : kpis.resueltos}
+              hint="Ya cerrados"
+              icon="check"
+              theme="slate"
+            />
+          </div>
+        }
       >
-        <div className="grid grid-cols-2 gap-2 border-b border-slate-200 bg-white p-3 xl:grid-cols-4">
-          <StatCard
-            compact
-            label="Sin resolver"
-            value={loading ? '…' : kpis.sinResolver}
-            icon="clipboard"
-            theme="slate"
-          />
-          <StatCard
-            compact
-            label="Urgentes"
-            value={loading ? '…' : kpis.urgentes}
-            icon="alert"
-            theme={kpis.urgentes > 0 ? 'red' : 'slate'}
-          />
-          <StatCard
-            compact
-            label="Pendientes"
-            value={loading ? '…' : kpis.pendientes}
-            icon="wrench"
-            theme="slate"
-          />
-          <StatCard
-            compact
-            label="Resueltos"
-            value={loading ? '…' : kpis.resueltos}
-            icon="check"
-            theme="emerald"
-          />
-        </div>
-
         <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-3 lg:px-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <div className="relative min-w-0 flex-1 sm:min-w-[12rem]">

@@ -74,7 +74,7 @@ export default function ContratoRowActions({ onView, onFinalize, onAnular, final
       )}
       {onAnular && (
         <ActionButton
-          label="Anular"
+          label="Eliminar"
           className={`${btnBase} border-red-300 text-red-600 hover:bg-red-50`}
           onClick={onAnular}
         >

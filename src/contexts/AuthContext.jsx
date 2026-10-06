@@ -11,7 +11,7 @@ const AuthContext = createContext(null)
 // PASO 4 (MOMENTO B): CONSULTA A LA BASE DE DATOS
 // ==========================================
 // Esta función va a internet, entra a la tabla 'perfiles' de Supabase
-// y trae el rol ('admin' o 'inquilino') usando el ID del usuario.
+// y trae el rol ('admin', 'encargado' o 'inquilino') usando el ID del usuario.
 async function fetchRol(userId) {
   if (!supabase) return null
 
@@ -29,6 +29,14 @@ async function fetchRol(userId) {
   return data?.rol ?? null
 }
 
+// Pantalla de inicio de cada rol: administración de cuentas, panel de la inmobiliaria o portal.
+export function rutaInicioPorRol(rol) {
+  if (rol === 'admin') return '/cuentas'
+  if (rol === 'encargado') return '/admin/dashboard'
+  if (rol === 'inquilino') return '/inquilino/dashboard'
+  return null
+}
+
 // ==========================================
 // COMPONENTE PRINCIPAL
 // ==========================================
@@ -38,7 +46,7 @@ export function AuthProvider({ children }) {
   // ==========================================
   // Guardan los datos en la memoria mientras la app esté abierta.
   const [user, setUser] = useState(null) // Guarda el email y el ID de Supabase
-  const [rol, setRol] = useState(null) // Guarda si es 'admin' o 'inquilino'
+  const [rol, setRol] = useState(null) // Guarda si es 'admin', 'encargado' o 'inquilino'
   const [initializing, setInitializing] = useState(true) // Solo true al primer arranque de la app
   const [rolLoading, setRolLoading] = useState(false) // true solo mientras trae el rol post-login
   const userIdRef = useRef(null)
@@ -132,8 +140,10 @@ export function AuthProvider({ children }) {
     rolLoading,
     loading: initializing, // alias: solo bloquea en el primer arranque
     isAuthenticated: user !== null, // true si el usuario logueó
-    isAdmin: rol === 'admin', // true si es administrador de la inmobiliaria
+    isAdminSistema: rol === 'admin', // Administrador de sistema: solo administra cuentas
+    isEncargado: rol === 'encargado', // Encargado de Alquileres: opera la cartera
     isInquilino: rol === 'inquilino', // true si es cliente/inquilino
+    rutaInicio: rutaInicioPorRol(rol),
   }
 
   // 3-B: Metemos el paquete en el canal (.Provider) y envolvemos al Router ({children})
@@ -175,7 +185,7 @@ PASO 4: LA VERIFICACIÓN REAL CON SUPABASE (useEffect)
 - Mientras el usuario ve el cartel de carga, este bloque se despierta y hace el laburo:
   A) React consulta con supabase que este le pregunta al navegador (LocalStorage) si hay un token de sesión guardado.
   B) Si hay, guarda el usuario (user) y viaja a internet a la tabla 'perfiles' de Supabase 
-     a buscar el rol ('admin' o 'inquilino').
+     a buscar el rol ('admin', 'encargado' o 'inquilino').
   C) Cuando vuelve con el rol, cambia 'loading' a 'false'. Si no había nadie, también lo pasa a 'false'.
 
 PASO 5: LA LIBERACIÓN Y EL ENCHUFE (useAuth)

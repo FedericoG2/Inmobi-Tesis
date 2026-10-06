@@ -146,8 +146,10 @@ export default function InquilinoDocumentos() {
             <h2 className={portalSectionTitle}>Resumen</h2>
             <div className={`${portalCardClass} px-4 py-4 lg:px-5 lg:py-5`}>
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-slate-500">Alquiler mensual</p>
-                {resumen.mesContratoCorto && (
+                <p className="text-sm font-medium text-slate-500">
+                  {contrato.estado === 'activo' ? 'Alquiler mensual' : 'Último monto · contrato finalizado'}
+                </p>
+                {contrato.estado === 'activo' && resumen.mesContratoCorto && (
                   <span className={portalBadge}>{resumen.mesContratoCorto}</span>
                 )}
               </div>
@@ -194,7 +196,7 @@ export default function InquilinoDocumentos() {
                       : null
                   }
                 />
-                {contrato.fecha_proximo_aumento && (
+                {contrato.fecha_proximo_aumento && contrato.estado === 'activo' && (
                   <PortalInfoRow
                     label="Próximo aumento"
                     value={formatPeriodoMesAnio(contrato.fecha_proximo_aumento)}

@@ -2,6 +2,7 @@ import { supabase } from '../supabaseClient'
 import { activarContratosProgramados } from './contratosService'
 import { eliminarComprobanteAumento, subirComprobanteAumento } from './documentosService'
 import { obtenerSeriesArgly } from './arglyService'
+import { puedeDeshacerAumento } from '../utils/aumentosUi'
 import {
   calcularPropuestaAumento,
   rangosIndicesParaContratos,
@@ -372,8 +373,8 @@ export async function generarComprobantesAumentos(propuestas) {
 }
 
 /**
- * Deshace un aumento acordado a futuro (admin). No se puede si ya rige.
- * Borra el comprobante PDF asociado (best-effort).
+ * Deshace un aumento confirmado hasta el día 10 del mes siguiente al mes de aumento:
+ * restaura el contrato y borra el comprobante PDF asociado (best-effort).
  */
 export async function deshacerAumento(aumento) {
   if (!supabase) {
@@ -385,10 +386,10 @@ export async function deshacerAumento(aumento) {
     return { data: null, error: { message: 'Aumento inválido' } }
   }
 
-  if (aumento.aplicado) {
+  if (!puedeDeshacerAumento(aumento)) {
     return {
       data: null,
-      error: { message: 'Solo se puede deshacer un aumento que todavía no se aplicó' },
+      error: { message: 'El aumento ya quedó fijo: se podía deshacer hasta el día 10 del mes siguiente al mes de aumento' },
     }
   }
 

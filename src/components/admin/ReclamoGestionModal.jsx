@@ -261,6 +261,7 @@ export default function ReclamoGestionModal({ open, reclamo, onClose, onGestiona
                 eventos={eventos}
                 loading={cargandoEventos}
                 error={errorEventos}
+                perfilInquilinoId={reclamo?.inquilinos?.perfil_id ?? null}
                 className="border-0 bg-slate-50/60 p-0"
               />
             </SeccionCard>

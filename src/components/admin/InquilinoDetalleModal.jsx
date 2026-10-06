@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@tremor/react'
 import { contarDependenciasInquilino } from '../../services/inquilinosService'
+import FichaContratosReclamos from './FichaContratosReclamos'
 import { formatearDniCuit } from '../../utils/normalizarContacto'
 import {
   BADGE_INQUILINO_PORTAL,
@@ -230,7 +231,7 @@ export default function InquilinoDetalleModal({ open, inquilino, onClose, onEdit
         role="dialog"
         aria-modal="true"
         aria-labelledby="inquilino-detalle-titulo"
-        className="relative z-10 w-full max-w-2xl rounded-2xl border border-slate-100 bg-white shadow-xl"
+        className="relative z-10 flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl"
       >
         <div className="border-b border-slate-100 px-6 py-4">
           <div className="flex items-center gap-3">
@@ -263,7 +264,7 @@ export default function InquilinoDetalleModal({ open, inquilino, onClose, onEdit
           </div>
         </div>
 
-        <div className="px-6 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <DetalleFila
               label={esJuridica ? 'CUIT' : 'DNI / CUIT'}
@@ -316,9 +317,13 @@ export default function InquilinoDetalleModal({ open, inquilino, onClose, onEdit
             <DetalleFila label="Contratos" value={textoContratos} icon={IconDocument} />
             <DetalleFila label="Reclamos" value={textoReclamos} icon={IconWrench} />
           </div>
+
+          <div className="mt-5">
+            <FichaContratosReclamos inquilinoId={inquilino.id} />
+          </div>
         </div>
 
-        <div className="flex justify-end gap-3 border-t border-slate-100 px-6 py-3">
+        <div className="flex shrink-0 justify-end gap-3 border-t border-slate-100 px-6 py-3">
           <Button variant="secondary" onClick={onClose}>
             Cerrar
           </Button>

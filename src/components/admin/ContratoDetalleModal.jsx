@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@tremor/react'
 import { IconClipboard } from '../icons/NavIcons'
 import ContratoDocumentosPanel from './ContratoDocumentosPanel'
-import { calcularAumentosPendientes } from '../../services/aumentosService'
+import { calcularAumentosPendientes, listarHistorialAumentos } from '../../services/aumentosService'
 import { obtenerContratoDetalle } from '../../services/contratosService'
 import {
   armarCronogramaAumentosContrato,
@@ -18,7 +18,62 @@ import {
   etiquetaFinalizarContrato,
   puedeFinalizarContrato,
 } from '../../utils/contratoVigencia'
-import { formatPeriodoMesAnio } from '../../utils/aumentosUi'
+import { badgeIndicador, formatFechaAumento, formatPeriodoMesAnio } from '../../utils/aumentosUi'
+
+const formatPct = (valor) => {
+  if (valor == null) return null
+  return `${Number(valor).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 2 })}%`
+}
+
+function HistorialAumentosContrato({ historial, cargando }) {
+  if (cargando) return <p className="text-sm text-slate-500">Cargando historial de aumentos...</p>
+  if (historial.length === 0) {
+    return (
+      <p className="rounded-lg border border-dashed border-slate-200 px-3 py-2.5 text-sm text-slate-500">
+        Todavía no hay aumentos confirmados para este contrato.
+      </p>
+    )
+  }
+  return (
+    <div className="overflow-x-auto rounded-xl border border-slate-200">
+      <table className="min-w-full text-left text-sm">
+        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <tr>
+            <th className="px-3 py-2.5">Rige desde</th>
+            <th className="px-3 py-2.5">Índice</th>
+            <th className="px-3 py-2.5">Monto anterior</th>
+            <th className="px-3 py-2.5">Monto nuevo</th>
+            <th className="px-3 py-2.5">Variación</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {historial.map((a) => {
+            const indicador = badgeIndicador(a.indice_tipo)
+            return (
+              <tr key={a.id} className="text-slate-700">
+                <td className="px-3 py-2.5 tabular-nums">{formatFechaAumento(a.fecha_aplicacion)}</td>
+                <td className="px-3 py-2.5">
+                  {a.indice_tipo ? (
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${indicador.className}`}>
+                      {indicador.label}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-slate-500">{a.modo === 'manual' ? 'Manual' : '—'}</span>
+                  )}
+                </td>
+                <td className="px-3 py-2.5 tabular-nums text-slate-500">{formatMonto(a.monto_anterior)}</td>
+                <td className="px-3 py-2.5 tabular-nums font-semibold text-slate-900">{formatMonto(a.monto_nuevo)}</td>
+                <td className="px-3 py-2.5 tabular-nums text-emerald-700">
+                  {formatPct(a.porcentaje_aplicado) ? `+${formatPct(a.porcentaje_aplicado)}` : '—'}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
 
 function formatFecha(fecha) {
   if (!fecha) return '—'
@@ -154,6 +209,25 @@ export default function ContratoDetalleModal({
   const [error, setError] = useState(null)
   const [propuestaAumento, setPropuestaAumento] = useState(null)
   const [cargandoAumento, setCargandoAumento] = useState(false)
+  const [historial, setHistorial] = useState([])
+  const [cargandoHistorial, setCargandoHistorial] = useState(false)
+
+  useEffect(() => {
+    if (!open || !contratoId) {
+      setHistorial([])
+      return undefined
+    }
+    let activo = true
+    setCargandoHistorial(true)
+    listarHistorialAumentos(contratoId).then(({ data }) => {
+      if (!activo) return
+      setHistorial(data ?? [])
+      setCargandoHistorial(false)
+    })
+    return () => {
+      activo = false
+    }
+  }, [open, contratoId])
 
   useEffect(() => {
     if (!open || !contratoId) {
@@ -429,6 +503,11 @@ export default function ContratoDetalleModal({
                     </table>
                   </div>
                 )}
+              </section>
+
+              <section>
+                <SeccionTitulo>Historial de aumentos confirmados</SeccionTitulo>
+                <HistorialAumentosContrato historial={historial} cargando={cargandoHistorial} />
               </section>
 
               <ContratoDocumentosPanel

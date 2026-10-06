@@ -137,7 +137,6 @@ export default function PropiedadFormModal({
   )
 
   const sinPropietarios = !propietariosLoading && propietarios.length === 0
-  const formDeshabilitadoCrear = sinPropietarios && !esEdicion
   const estadoBloqueado = tieneContratoActivo && esEdicion
   const estadosOpciones = estadoBloqueado ? [form.estado] : ESTADOS_PROPIEDAD_ALTA
   const campoIdentidadClass = (tieneError) =>
@@ -175,10 +174,6 @@ export default function PropiedadFormModal({
 
   const validar = () => {
     const errores = {}
-
-    if (!form.propietario_id) {
-      errores.propietario_id = 'Debe seleccionar un propietario'
-    }
 
     if (!tipoSeleccionado) {
       errores.tipo = 'Seleccioná un tipo de propiedad'
@@ -279,12 +274,12 @@ export default function PropiedadFormModal({
               <p className="text-sm text-slate-500">Cargando propietarios...</p>
             ) : sinPropietarios ? (
               <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                No hay propietarios cargados. Creá uno antes de agregar una propiedad.
+                Todavía no hay propietarios cargados. Podés guardar la propiedad y asignarle el propietario más adelante.
               </p>
             ) : (
               <AdminSearchSelect
                 id="propietario_id"
-                label="Propietario"
+                label="Propietario (opcional)"
                 value={form.propietario_id}
                 onChange={(id) => {
                   setForm((prev) => ({ ...prev, propietario_id: id }))
@@ -295,7 +290,6 @@ export default function PropiedadFormModal({
                 options={opcionesPropietarios}
                 emptySelectionLabel="Seleccioná un propietario"
                 searchPlaceholder="Buscar propietario..."
-                disabled={formDeshabilitadoCrear}
               />
             )}
             {erroresCampo.propietario_id && (
@@ -332,7 +326,7 @@ export default function PropiedadFormModal({
                   className={`${campoIdentidadClass(erroresCampo.tipo)}${
                     tipoSeleccionado && !esEdicion ? ' pr-10' : ''
                   }`}
-                  disabled={formDeshabilitadoCrear || identidadBloqueada}
+                  disabled={identidadBloqueada}
                 >
                   <option value="" disabled>
                     Seleccioná un tipo
@@ -343,7 +337,7 @@ export default function PropiedadFormModal({
                     </option>
                   ))}
                 </select>
-                {tipoSeleccionado && !esEdicion && !formDeshabilitadoCrear && (
+                {tipoSeleccionado && !esEdicion && (
                   <button
                     type="button"
                     aria-label="Quitar tipo seleccionado"
@@ -368,7 +362,7 @@ export default function PropiedadFormModal({
                 value={form.estado}
                 onChange={handleChange('estado')}
                 className={estadoBloqueado ? inputBloqueadoClass : inputClass}
-                disabled={formDeshabilitadoCrear || estadoBloqueado}
+                disabled={estadoBloqueado}
               >
                 {estadosOpciones.map((estado) => (
                   <option key={estado} value={estado}>
@@ -393,7 +387,7 @@ export default function PropiedadFormModal({
                 onChange={handleChange('calle')}
                 className={campoIdentidadClass(erroresCampo.calle)}
                 placeholder="Bv. Chacabuco"
-                disabled={formDeshabilitadoCrear || identidadBloqueada}
+                disabled={identidadBloqueada}
               />
               <p className="mt-1 text-xs text-slate-500">Sin número</p>
               {erroresCampo.calle && (
@@ -413,7 +407,7 @@ export default function PropiedadFormModal({
                 onChange={handleChange('altura')}
                 className={campoIdentidadClass(erroresCampo.altura)}
                 placeholder="4500"
-                disabled={formDeshabilitadoCrear || identidadBloqueada}
+                disabled={identidadBloqueada}
               />
               {erroresCampo.altura && (
                 <p className="mt-1 text-xs text-red-600">{erroresCampo.altura}</p>
@@ -434,7 +428,7 @@ export default function PropiedadFormModal({
                     onChange={handleChange('piso')}
                     className={campoIdentidadClass(erroresCampo.piso)}
                     placeholder={esDepartamento ? '3' : 'PB o vacío'}
-                    disabled={formDeshabilitadoCrear || identidadBloqueada}
+                    disabled={identidadBloqueada}
                   />
                   {erroresCampo.piso && (
                     <p className="mt-1 text-xs text-red-600">{erroresCampo.piso}</p>
@@ -457,7 +451,7 @@ export default function PropiedadFormModal({
                     onChange={handleChange('unidad')}
                     className={campoIdentidadClass(erroresCampo.unidad)}
                     placeholder={esLocalComercial ? 'Local 1' : esDepartamento ? 'B' : 'Opcional'}
-                    disabled={formDeshabilitadoCrear || identidadBloqueada}
+                    disabled={identidadBloqueada}
                   />
                   {erroresCampo.unidad && (
                     <p className="mt-1 text-xs text-red-600">{erroresCampo.unidad}</p>
@@ -475,7 +469,7 @@ export default function PropiedadFormModal({
                 value={form.ciudad}
                 onChange={handleChange('ciudad')}
                 className={campoIdentidadClass(erroresCampo.ciudad)}
-                disabled={formDeshabilitadoCrear || identidadBloqueada}
+                disabled={identidadBloqueada}
               >
                 {CIUDADES_PROPIEDAD.map((ciudad) => (
                   <option key={ciudad} value={ciudad}>
@@ -515,7 +509,7 @@ export default function PropiedadFormModal({
             <Button
               type="submit"
               loading={submitting}
-              disabled={submitting || formDeshabilitadoCrear}
+              disabled={submitting}
             >
               {esEdicion ? 'Guardar cambios' : 'Guardar'}
             </Button>

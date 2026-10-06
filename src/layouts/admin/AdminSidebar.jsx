@@ -14,8 +14,11 @@ import {
   IconWrench,
 } from '../../components/icons/NavIcons'
 import { useAdminLayout } from '../../contexts/AdminLayoutContext'
+import { useAuth } from '../../contexts/AuthContext'
 
-const navItems = [
+const navItemsCuentas = [{ to: '/cuentas', label: 'Cuentas', icon: IconUsers }]
+
+const navItemsEncargado = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: IconHome },
   { to: '/admin/propietarios', label: 'Propietarios', icon: IconUserGroup },
   { to: '/admin/propiedades', label: 'Propiedades', icon: IconBuilding },
@@ -27,6 +30,9 @@ const navItems = [
 
 export default function AdminSidebar() {
   const { sidebarCollapsed } = useAdminLayout()
+  const { isAdminSistema } = useAuth()
+  const navItems = isAdminSistema ? navItemsCuentas : navItemsEncargado
+  const subtitulo = isAdminSistema ? 'Administración de cuentas' : 'Panel del encargado'
 
   return (
     <aside
@@ -45,7 +51,7 @@ export default function AdminSidebar() {
         {!sidebarCollapsed && (
           <div className="min-w-0">
             <p className="truncate text-sm font-bold tracking-tight text-slate-900">INMOBI</p>
-            <p className="truncate text-[10px] font-medium text-slate-500">Panel administrador</p>
+            <p className="truncate text-[10px] font-medium text-slate-500">{subtitulo}</p>
           </div>
         )}
       </div>

@@ -33,7 +33,7 @@ import {
 } from '../../utils/contratoVigencia'
 import { chipIndicador, formatPeriodoMesAnio } from '../../utils/aumentosUi'
 
-const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
+const alertaInicial = { open: false, titulo: 'AtenciÃ³n', mensaje: '' }
 
 const FILAS_POR_PAGINA = 4
 
@@ -43,7 +43,24 @@ const COL_INQUILINO = 'w-[11rem]'
 const COL_MONTO = 'w-[8.5rem]'
 const COL_AJUSTE = 'w-[5.5rem]'
 const COL_PROX_AUMENTO = 'w-[7.5rem]'
+const COL_ESTADO = 'w-[6.5rem]'
 const COL_ACCIONES = 'w-[7rem]'
+
+function EstadoContratoChip({ contrato }) {
+  const vencido = esContratoPlazoVencido(contrato)
+  const { label, className } = vencido
+    ? { label: 'Vencido', className: 'bg-red-50 text-red-700 ring-red-200' }
+    : contrato.estado === 'activo'
+      ? { label: 'Activo', className: 'bg-emerald-50 text-emerald-700 ring-emerald-200' }
+      : contrato.estado === 'programado'
+        ? { label: 'Programado', className: 'bg-sky-50 text-sky-700 ring-sky-200' }
+        : { label: 'Finalizado', className: 'bg-slate-100 text-slate-600 ring-slate-200' }
+  return (
+    <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${className}`}>
+      {label}
+    </span>
+  )
+}
 
 const FILTRO_ESTADO = [
   { value: 'activos', label: 'Activos' },
@@ -107,7 +124,7 @@ const sumarDiasIso = (iso, dias) => {
 }
 
 const formatFecha = (fecha) => {
-  if (!fecha) return '—'
+  if (!fecha) return 'â€”'
   const [year, month, day] = fecha.split('-')
   return `${day}/${month}/${year}`
 }
@@ -236,7 +253,7 @@ export default function AdminContratos() {
     if (loading) return 'Cargando contratos...'
     if (contratos.length === 0) return 'No hay contratos cargados'
     if (contratosFiltrados.length === 0 && hayFiltrosExtra) {
-      return 'No hay contratos que coincidan con la búsqueda o los filtros aplicados'
+      return 'No hay contratos que coincidan con la bÃºsqueda o los filtros aplicados'
     }
     if (filtroEstado === 'activos') return 'No hay contratos activos'
     if (filtroEstado === 'programados') return 'No hay contratos programados'
@@ -251,7 +268,7 @@ export default function AdminContratos() {
       actionError === mensajeMovimientos || actionError === mensajeSoloInactivo
     setAlerta({
       open: true,
-      titulo: esErrorAnular ? 'No se puede anular' : 'No se pudo finalizar',
+      titulo: esErrorAnular ? 'No se puede eliminar' : 'No se pudo finalizar',
       mensaje: actionError,
     })
     limpiarActionError()
@@ -311,11 +328,9 @@ export default function AdminContratos() {
     if (!contratoAnulando) return
 
     const ok = await anular(contratoAnulando)
-    if (ok) {
-      await refetchPropiedades()
-      setConfirmAnularOpen(false)
-      setContratoAnulando(null)
-    }
+    setConfirmAnularOpen(false)
+    setContratoAnulando(null)
+    if (ok) await refetchPropiedades()
   }
 
   const handleCrear = async (form) => {
@@ -359,7 +374,7 @@ export default function AdminContratos() {
   const mensajeConfirmacionFinalizar = mensajeConfirmacionFinalizarContrato(contratoFinalizando)
 
   const mensajeConfirmacionAnular = contratoAnulando
-    ? `¿Anular el contrato inactivo de ${contratoAnulando.inquilinos?.nombre_completo ?? 'este inquilino'} en ${contratoAnulando.propiedades?.direccion ?? 'esta propiedad'}? Solo está permitido si no tiene aumentos confirmados ni reclamos para ese inquilino y propiedad. Los documentos adjuntos se eliminarán junto con el contrato. Esta acción no se puede deshacer.`
+    ? `Â¿Eliminar el contrato ${contratoAnulando.estado === 'programado' ? 'programado' : 'finalizado'} de ${contratoAnulando.inquilinos?.nombre_completo ?? 'este inquilino'} en ${contratoAnulando.propiedades?.direccion ?? 'esta propiedad'}? Solo estÃ¡ permitido si no tiene aumentos confirmados ni reclamos para ese inquilino y propiedad. Los documentos adjuntos se eliminarÃ¡n junto con el contrato. Esta acciÃ³n no se puede deshacer.`
     : ''
 
   return (
@@ -367,7 +382,7 @@ export default function AdminContratos() {
       <AdminListLayout
         compact
         title="Contratos de Alquiler"
-        subtitle="Gestión de la cartera de alquileres: vigencia, ajustes y ciclo de vida de cada contrato."
+        subtitle="GestiÃ³n de la cartera de alquileres: vigencia, ajustes y ciclo de vida de cada contrato."
         alerts={
           error ? (
             <Card className="border border-red-200 bg-red-50">
@@ -380,29 +395,29 @@ export default function AdminContratos() {
             <StatCard
               compact
               label="Ingreso mensual"
-              value={loading ? '…' : formatMontoCompacto(resumen.ingresoMensual)}
+              value={loading ? 'â€¦' : formatMontoCompacto(resumen.ingresoMensual)}
               icon="chart"
               theme="slate"
             />
             <StatCard
               compact
               label="Contratos activos"
-              value={loading ? '…' : resumen.activos}
+              value={loading ? 'â€¦' : resumen.activos}
               icon="clipboard"
               theme="slate"
             />
             <StatCard
               compact
               label="Por vencer pronto"
-              value={loading ? '…' : resumen.porVencer}
+              value={loading ? 'â€¦' : resumen.porVencer}
               icon="calendar"
               theme="slate"
-              hint={`Próx. ${VENCE_PRONTO_DIAS} días`}
+              hint={`PrÃ³x. ${VENCE_PRONTO_DIAS} dÃ­as`}
             />
             <StatCard
               compact
               label="Vencidos"
-              value={loading ? '…' : resumen.vencidos}
+              value={loading ? 'â€¦' : resumen.vencidos}
               icon="alert"
               theme="slate"
             />
@@ -419,7 +434,7 @@ export default function AdminContratos() {
                 value={busquedaInquilino}
                 onChange={(e) => setBusquedaInquilino(e.target.value)}
                 placeholder="Buscar por inquilino o propiedad..."
-                aria-label="Buscar por inquilino o dirección de propiedad"
+                aria-label="Buscar por inquilino o direcciÃ³n de propiedad"
                 className={`${toolbarInputClass} pl-9`}
                 disabled={loading}
               />
@@ -460,7 +475,7 @@ export default function AdminContratos() {
             >
               {FILTRO_ESTADO.map(({ value, label }) => {
                 const activo = filtroEstado === value
-                const count = loading ? '…' : conteosEstado[value]
+                const count = loading ? 'â€¦' : conteosEstado[value]
                 const esVencidos = value === 'vencidos'
                 return (
                   <button
@@ -494,21 +509,22 @@ export default function AdminContratos() {
               <AdminTableHeaderCell className={COL_MONTO}>Monto</AdminTableHeaderCell>
               <AdminTableHeaderCell className={`${COL_AJUSTE} !text-center`}>Ajuste</AdminTableHeaderCell>
               <AdminTableHeaderCell className={`${COL_PROX_AUMENTO} whitespace-nowrap !text-center`}>
-                Próx. aumento
+                PrÃ³x. aumento
               </AdminTableHeaderCell>
+              <AdminTableHeaderCell className={`${COL_ESTADO} !text-center`}>Estado</AdminTableHeaderCell>
               <AdminTableHeaderCell className={`${COL_ACCIONES} !text-right`}>Acciones</AdminTableHeaderCell>
             </AdminTableRow>
           </AdminTableHead>
           <AdminTableBody>
             {loading && (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={6}>Cargando contratos...</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={7}>Cargando contratos...</AdminTableEmptyCell>
               </AdminTableRow>
             )}
 
             {!loading && !error && contratosFiltrados.length === 0 && (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={6}>{mensajeListadoVacio}</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={7}>{mensajeListadoVacio}</AdminTableEmptyCell>
               </AdminTableRow>
             )}
 
@@ -522,12 +538,12 @@ export default function AdminContratos() {
                 >
                   <AdminTableCell className={`${COL_INQUILINO} font-medium text-slate-900`}>
                     <span className="block truncate" title={c.inquilinos?.nombre_completo ?? undefined}>
-                      {c.inquilinos?.nombre_completo ?? '—'}
+                      {c.inquilinos?.nombre_completo ?? 'â€”'}
                     </span>
                   </AdminTableCell>
                   <AdminTableCell className="min-w-0 text-slate-700">
                     <span className="block truncate" title={c.propiedades?.direccion ?? undefined}>
-                      {c.propiedades?.direccion ?? '—'}
+                      {c.propiedades?.direccion ?? 'â€”'}
                     </span>
                   </AdminTableCell>
                   <AdminTableCell className={`${COL_MONTO} tabular-nums`}>{formatMonto(c.monto_alquiler)}</AdminTableCell>
@@ -535,11 +551,14 @@ export default function AdminContratos() {
                     {c.tipo_ajuste ? (
                       <IndiceAjusteChip tipo={c.tipo_ajuste} />
                     ) : (
-                      <span className="text-slate-400">—</span>
+                      <span className="text-slate-400">â€”</span>
                     )}
                   </AdminTableCell>
                   <AdminTableCell className={`${COL_PROX_AUMENTO} whitespace-nowrap !text-center text-slate-600 tabular-nums`}>
                     {formatPeriodoMesAnio(c.fecha_proximo_aumento)}
+                  </AdminTableCell>
+                  <AdminTableCell className={`${COL_ESTADO} !text-center`}>
+                    <EstadoContratoChip contrato={c} />
                   </AdminTableCell>
                   <AdminTableActionsCell className={COL_ACCIONES}>
                     <ContratoRowActions
@@ -551,7 +570,9 @@ export default function AdminContratos() {
                       }
                       finalizeLabel={c.estado === 'programado' ? 'Cancelar' : 'Finalizar'}
                       onAnular={
-                        c.estado === 'inactivo' ? () => abrirConfirmAnular(c) : undefined
+                        c.estado === 'inactivo' || c.estado === 'programado'
+                          ? () => abrirConfirmAnular(c)
+                          : undefined
                       }
                     />
                   </AdminTableActionsCell>
@@ -626,9 +647,9 @@ export default function AdminContratos() {
 
       <AdminConfirmModal
         open={confirmAnularOpen}
-        title="Anular contrato"
+        title="Eliminar contrato"
         message={mensajeConfirmacionAnular}
-        confirmLabel="Anular"
+        confirmLabel="Eliminar"
         onConfirm={confirmarAnular}
         onCancel={cancelarAnular}
         loading={anulando}

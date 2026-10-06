@@ -13,9 +13,9 @@ import {
 } from '../utils/esErrorMovimientosContrato'
 
 const MENSAJE_SOLO_INACTIVO =
-  'Solo se pueden anular contratos inactivos. Finalizá el contrato antes de anularlo.'
+  'Solo se pueden eliminar contratos finalizados o programados. Finalizá el contrato antes de eliminarlo.'
 const MENSAJE_MOVIMIENTOS =
-  'No se puede anular el contrato porque tiene aumentos confirmados o reclamos registrados para ese inquilino y propiedad.'
+  'No se puede eliminar el contrato porque tiene aumentos confirmados o reclamos registrados para ese inquilino y propiedad.'
 
 export function useContratos() {
   const [contratos, setContratos] = useState([])

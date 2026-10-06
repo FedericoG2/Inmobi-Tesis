@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
 import PortalPageHeader from '../../components/inquilino/PortalPageHeader'
+import ReclamoPortalDetalleModal from '../../components/inquilino/ReclamoPortalDetalleModal'
 import { usePortalInquilino } from '../../contexts/PortalInquilinoContext'
+import { validarImagenReclamo } from '../../services/documentosService'
+import { MAX_IMAGENES_RECLAMO } from '../../services/portalInquilinoService'
 import {
   badgePrioridad,
   CATEGORIAS_RECLAMO,
@@ -38,7 +41,8 @@ const formatFecha = (fechaStr) => {
 
 export default function InquilinoReclamos() {
   const {
-    contratoActivo,
+    inquilino,
+    contratos,
     reclamos,
     reclamosLoading,
     crearReclamo,
@@ -56,12 +60,41 @@ export default function InquilinoReclamos() {
   const [reclamoAEliminar, setReclamoAEliminar] = useState(null)
   const [eliminando, setEliminando] = useState(false)
   const [errorAccion, setErrorAccion] = useState(null)
+  const [imagenes, setImagenes] = useState([])
+  const [errorImagenes, setErrorImagenes] = useState(null)
+  const [reclamoDetalle, setReclamoDetalle] = useState(null)
+
+  // Los reclamos se registran sobre un contrato vigente, aunque el selector muestre uno finalizado.
+  const contratoVigente = useMemo(
+    () => (contratos ?? []).find((c) => c.estado === 'activo') ?? null,
+    [contratos]
+  )
 
   const abrirFormCrear = () => {
     limpiarSubmitError()
     setReclamoEditando(null)
     setForm(formInicial)
+    setImagenes([])
+    setErrorImagenes(null)
     setShowForm(true)
+  }
+
+  const handleImagenes = (e) => {
+    const nuevas = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    setErrorImagenes(null)
+    const invalida = nuevas.find((f) => validarImagenReclamo(f).error)
+    if (invalida) {
+      setErrorImagenes(validarImagenReclamo(invalida).error.message)
+      return
+    }
+    setImagenes((prev) => {
+      const combinadas = [...prev, ...nuevas]
+      if (combinadas.length > MAX_IMAGENES_RECLAMO) {
+        setErrorImagenes(`Podés adjuntar hasta ${MAX_IMAGENES_RECLAMO} imágenes.`)
+      }
+      return combinadas.slice(0, MAX_IMAGENES_RECLAMO)
+    })
   }
 
   const abrirFormEditar = (reclamo) => {
@@ -94,17 +127,24 @@ export default function InquilinoReclamos() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    let ok
     if (reclamoEditando) {
-      ok = await actualizarReclamo(reclamoEditando.id, form)
-    } else {
-      ok = await crearReclamo({
-        ...form,
-        propiedad_id: contratoActivo?.propiedad_id ?? null,
-        contrato_id: contratoActivo?.id ?? null,
-      })
+      const ok = await actualizarReclamo(reclamoEditando.id, form)
+      if (ok) cerrarForm()
+      return
     }
-    if (ok) cerrarForm()
+    const resultado = await crearReclamo({
+      ...form,
+      propiedad_id: contratoVigente?.propiedad_id ?? null,
+      contrato_id: contratoVigente?.id ?? null,
+      imagenes,
+    })
+    if (!resultado) return
+    cerrarForm()
+    if (resultado.imagenesFallidas?.length) {
+      setErrorAccion(
+        `El reclamo se registró, pero no se pudieron subir: ${resultado.imagenesFallidas.join(', ')}. Podés agregarlas desde el detalle.`
+      )
+    }
   }
 
   const handleEliminar = (reclamo) => {
@@ -134,7 +174,7 @@ export default function InquilinoReclamos() {
     <button
       type="button"
       onClick={abrirFormCrear}
-      disabled={!contratoActivo}
+      disabled={!contratoVigente}
       className={`${portalBtnPrimary} inline-flex w-full sm:w-auto`}
     >
       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" aria-hidden="true">
@@ -169,7 +209,7 @@ export default function InquilinoReclamos() {
         <div className={portalEmptyState}>
           <p className="text-sm font-medium text-slate-700">No tenés reclamos registrados</p>
           <p className="mt-1 text-xs text-slate-400">
-            {contratoActivo
+            {contratoVigente
               ? 'Usá el botón Nuevo reclamo para reportar un problema'
               : 'Necesitás tener un contrato activo para registrar reclamos'}
           </p>
@@ -220,16 +260,21 @@ export default function InquilinoReclamos() {
                 <p className="mt-1.5 text-xs text-slate-400">{r.propiedades.direccion}</p>
               )}
 
-              {esPendiente && (
-                <div className="mt-3 flex gap-2">
-                  <button type="button" onClick={() => abrirFormEditar(r)} className={portalBtnSecondary}>
-                    Editar
-                  </button>
-                  <button type="button" onClick={() => handleEliminar(r)} className={portalBtnDanger}>
-                    Eliminar
-                  </button>
-                </div>
-              )}
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" onClick={() => setReclamoDetalle(r)} className={portalBtnSecondary}>
+                  Ver detalle
+                </button>
+                {esPendiente && (
+                  <>
+                    <button type="button" onClick={() => abrirFormEditar(r)} className={portalBtnSecondary}>
+                      Editar
+                    </button>
+                    <button type="button" onClick={() => handleEliminar(r)} className={portalBtnDanger}>
+                      Eliminar
+                    </button>
+                  </>
+                )}
+              </div>
             </li>
           )
         })}
@@ -268,9 +313,9 @@ export default function InquilinoReclamos() {
               </button>
             </div>
 
-            {!reclamoEditando && contratoActivo?.propiedades?.direccion && (
+            {!reclamoEditando && contratoVigente?.propiedades?.direccion && (
               <p className="mb-5 rounded-lg bg-brand-50 px-4 py-2.5 text-center text-xs font-medium leading-relaxed text-brand-700 ring-1 ring-inset ring-brand-100">
-                {contratoActivo.propiedades.direccion}
+                {contratoVigente.propiedades.direccion}
               </p>
             )}
 
@@ -362,6 +407,47 @@ export default function InquilinoReclamos() {
                 />
               </div>
 
+              {!reclamoEditando && (
+                <div>
+                  <label className={portalLabelClass}>
+                    Imágenes <span className="font-normal text-slate-400">(opcional, hasta {MAX_IMAGENES_RECLAMO})</span>
+                  </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {imagenes.map((img, idx) => (
+                      <span
+                        key={`${img.name}-${idx}`}
+                        className="inline-flex max-w-[11rem] items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700"
+                      >
+                        <span className="truncate">{img.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setImagenes((prev) => prev.filter((_, i) => i !== idx))}
+                          disabled={submitting}
+                          className="font-bold text-slate-400 hover:text-red-600"
+                          aria-label={`Quitar ${img.name}`}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                    {imagenes.length < MAX_IMAGENES_RECLAMO && (
+                      <label className={`${portalBtnSecondary} cursor-pointer ${submitting ? 'pointer-events-none opacity-50' : ''}`}>
+                        Agregar fotos
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          multiple
+                          className="sr-only"
+                          onChange={handleImagenes}
+                          disabled={submitting}
+                        />
+                      </label>
+                    )}
+                  </div>
+                  {errorImagenes && <p className="mt-1.5 text-xs font-medium text-red-600">{errorImagenes}</p>}
+                </div>
+              )}
+
               {submitError && (
                 <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-inset ring-red-100">
                   {submitError}
@@ -384,11 +470,18 @@ export default function InquilinoReclamos() {
       <AdminConfirmModal
         open={confirmOpen}
         title="Eliminar reclamo"
-        message={`¿Eliminar el reclamo "${reclamoAEliminar?.titulo}"? Esta acción no se puede deshacer.`}
+        message={`¿Eliminar el reclamo "${reclamoAEliminar?.titulo}"? Se borran también sus imágenes. Esta acción no se puede deshacer.`}
         confirmLabel="Eliminar"
         onConfirm={confirmarEliminar}
         onCancel={cancelarEliminar}
         loading={eliminando}
+      />
+
+      <ReclamoPortalDetalleModal
+        open={reclamoDetalle != null}
+        reclamo={reclamoDetalle}
+        perfilInquilinoId={inquilino?.perfil_id ?? null}
+        onClose={() => setReclamoDetalle(null)}
       />
     </div>
   )

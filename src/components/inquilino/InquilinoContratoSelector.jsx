@@ -1,5 +1,12 @@
 import { usePortalInquilino } from '../../contexts/PortalInquilinoContext'
 
+function etiquetaContrato(c) {
+  const direccion = c.propiedades?.direccion ?? `Contrato #${c.id}`
+  const tipo = c.propiedades?.tipo ? ` · ${c.propiedades.tipo}` : ''
+  const finalizado = c.estado === 'activo' ? '' : ' (finalizado)'
+  return `${direccion}${tipo}${finalizado}`
+}
+
 export default function InquilinoContratoSelector({ variant = 'mobile', className = '' }) {
   const { contratos, contratoSeleccionadoId, setContratoSeleccionado, loading } = usePortalInquilino()
 
@@ -14,7 +21,7 @@ export default function InquilinoContratoSelector({ variant = 'mobile', classNam
     return (
       <div className={`hidden shrink-0 lg:block ${className}`.trim()}>
         <label htmlFor="contrato-activo-portal-desktop" className="sr-only">
-          Contrato activo
+          Contrato
         </label>
         <select
           id="contrato-activo-portal-desktop"
@@ -24,8 +31,7 @@ export default function InquilinoContratoSelector({ variant = 'mobile', classNam
         >
           {contratos.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.propiedades?.direccion ?? `Contrato #${c.id}`}
-              {c.propiedades?.tipo ? ` · ${c.propiedades.tipo}` : ''}
+              {etiquetaContrato(c)}
             </option>
           ))}
         </select>
@@ -36,7 +42,7 @@ export default function InquilinoContratoSelector({ variant = 'mobile', classNam
   return (
     <div className={className}>
       <label htmlFor="contrato-activo-portal" className="mb-1.5 block text-xs font-medium text-slate-500">
-        Contrato activo
+        Contrato
       </label>
       <select
         id="contrato-activo-portal"
@@ -46,8 +52,7 @@ export default function InquilinoContratoSelector({ variant = 'mobile', classNam
       >
         {contratos.map((c) => (
           <option key={c.id} value={c.id}>
-            {c.propiedades?.direccion ?? `Contrato #${c.id}`}
-            {c.propiedades?.tipo ? ` · ${c.propiedades.tipo}` : ''}
+            {etiquetaContrato(c)}
           </option>
         ))}
       </select>

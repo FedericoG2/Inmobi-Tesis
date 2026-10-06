@@ -27,9 +27,16 @@ function tituloEvento(evento, tipo) {
   return evento.estado_nuevo ?? 'Cambio de estado'
 }
 
-function EventoItem({ evento, numero, ultimo }) {
+function autorEvento(evento, perfilInquilinoId) {
+  if (!evento.creado_por) return null
+  if (perfilInquilinoId && evento.creado_por === perfilInquilinoId) return 'Inquilino'
+  return 'Encargado de Alquileres'
+}
+
+function EventoItem({ evento, numero, ultimo, perfilInquilinoId }) {
   const tipo = tipoEvento(evento)
   const titulo = tituloEvento(evento, tipo)
+  const autor = autorEvento(evento, perfilInquilinoId)
 
   return (
     <li className="relative flex gap-3 pb-6 last:pb-0">
@@ -46,7 +53,10 @@ function EventoItem({ evento, numero, ultimo }) {
 
       <div className="min-w-0 flex-1 pt-0.5">
         <p className="text-sm font-semibold text-slate-900">{titulo}</p>
-        <p className="mt-0.5 text-xs text-slate-500">{formatearFechaHora(evento.fecha_creacion)}</p>
+        <p className="mt-0.5 text-xs text-slate-500">
+          {formatearFechaHora(evento.fecha_creacion)}
+          {autor && <span className="text-slate-400"> · {autor}</span>}
+        </p>
 
         {tipo === 'cambio' && evento.estado_anterior && (
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -71,6 +81,7 @@ export default function ReclamoTimeline({
   loading = false,
   error = null,
   className = '',
+  perfilInquilinoId = null,
 }) {
   const panelClass = `rounded-xl border border-slate-200 bg-white px-4 py-3 ${className}`.trim()
 
@@ -107,6 +118,7 @@ export default function ReclamoTimeline({
             evento={evento}
             numero={eventos.length - idx}
             ultimo={idx === eventos.length - 1}
+            perfilInquilinoId={perfilInquilinoId}
           />
         ))}
       </ul>

@@ -121,8 +121,22 @@ function PanelMarca() {
   )
 }
 
+function mensajeErrorLogin(error) {
+  const texto = String(error?.message ?? '').toLowerCase()
+  if (texto.includes('banned')) {
+    return 'Tu cuenta está bloqueada. Consultá con el Administrador de sistema.'
+  }
+  if (texto.includes('invalid login credentials')) {
+    return 'Email o contraseña incorrectos.'
+  }
+  if (texto.includes('email not confirmed')) {
+    return 'La cuenta todavía no está confirmada.'
+  }
+  return 'No se pudo iniciar sesión. Intentá de nuevo.'
+}
+
 export default function LoginPage() {
-  const { isAuthenticated, isAdmin, isInquilino, initializing, rolLoading } = useAuth()
+  const { isAuthenticated, rutaInicio, initializing, rolLoading } = useAuth()
   const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -141,16 +155,17 @@ export default function LoginPage() {
   }
 
   if (!initializing && !rolLoading && isAuthenticated) {
-    if (isAdmin) return <Navigate to={from?.startsWith('/admin') ? from : '/admin/dashboard'} replace />
-    if (isInquilino) return <Navigate to={from?.startsWith('/inquilino') ? from : '/inquilino/dashboard'} replace />
+    if (rutaInicio) {
+      const prefijo = `/${rutaInicio.split('/')[1]}`
+      return <Navigate to={from?.startsWith(prefijo) ? from : rutaInicio} replace />
+    }
 
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#1C398E] px-4">
         <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-xl">
           <h2 className="text-lg font-semibold text-slate-800">Cuenta sin rol asignado</h2>
           <p className="mt-2 text-sm text-slate-500">
-            Tu usuario existe en Supabase Auth pero no tiene fila en <code>perfiles</code> con rol{' '}
-            <code>admin</code> o <code>inquilino</code>.
+            Tu cuenta no tiene un rol asignado. Pedile al Administrador de sistema que te asigne uno.
           </p>
           <button
             type="button"
@@ -178,7 +193,7 @@ export default function LoginPage() {
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
     if (authError) {
-      setError(authError.message)
+      setError(mensajeErrorLogin(authError))
     }
     setSubmitting(false)
   }

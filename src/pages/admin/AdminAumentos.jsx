@@ -34,9 +34,11 @@ import {
   capitalizar,
   chipIndicador,
   DIA_CORTE_OPERATIVO,
+  DIA_INICIO_BANDEJA,
   esAumentoRezagado,
   esPeriodoOperativo,
   etiquetaPeriodoAumento,
+  fechaCorteOperativoIso,
   formatFechaAumento,
   formatPeriodoMesAnio,
   hoyIsoLocal,
@@ -144,6 +146,7 @@ export default function AdminAumentos() {
     cargarAumentos,
     confirmarSeleccionados,
     aplicarIndicesManuales,
+    refrescarIndicesContrato,
     limpiarError,
   } = useAumentos()
 
@@ -380,6 +383,7 @@ export default function AdminAumentos() {
   const abrirDetalle = (propuesta) => {
     setPropuestaDetalle(propuesta)
     setDetalleOpen(true)
+    refrescarIndicesContrato(propuesta.contrato_id)
   }
 
   const cerrarDetalle = () => {
@@ -472,7 +476,8 @@ export default function AdminAumentos() {
 
   const mensajeDeshacer = (() => {
     if (!deshacerTarget) return ''
-    return `Esto cancela el aumento acordado a futuro y elimina su comprobante. El contrato no se modifica. ¿Continuar?`
+    const monto = formatMonto(deshacerTarget.monto_anterior)
+    return `El contrato vuelve a ${monto}, se borra el registro del aumento y su comprobante PDF. Se puede deshacer hasta el ${formatFechaAumento(fechaCorteOperativoIso(deshacerTarget.fecha_aplicacion))}. ¿Continuar?`
   })()
 
   const mensajeConfirm = (() => {
@@ -481,12 +486,9 @@ export default function AdminAumentos() {
       const fecha = t.fecha_hasta ?? t.fecha_proximo_aumento
       const nombre = t.inquilino_nombre ?? 'este contrato'
       const monto = formatMonto(t.monto_propuesto)
-      if (fecha && fecha > hoy) {
-        return `¿Acordar el aumento de ${nombre}? Quedará registrado en ${monto} y se aplicará automáticamente el ${formatFechaAumento(fecha)}.`
-      }
-      return `¿Confirmar el aumento de ${nombre}? El monto pasará a ${monto}.`
+      return `¿Confirmar el aumento de ${nombre}? El monto pasa a ${monto} desde el ${formatFechaAumento(fecha)} y se genera el comprobante PDF.`
     }
-    return `¿Confirmar ${confirmTarget.length} aumento(s)? Los que ya vencieron se aplican ahora; los anticipados quedan acordados para su fecha. Queda registro en el historial.`
+    return `¿Confirmar ${confirmTarget.length} aumento(s)? Se fija el nuevo monto de cada contrato, se genera su comprobante PDF y queda registro en el historial.`
   })()
 
   const tituloConfirm =
@@ -503,7 +505,7 @@ export default function AdminAumentos() {
       <AdminListLayout
         compact
         title="Aumentos de Alquiler"
-        subtitle={`Período operativo: ${capitalizar(periodoOperativo.nombre)}. Ventana de confirmación hasta el día ${DIA_CORTE_OPERATIVO} de cada mes.`}
+        subtitle={`Aumentos de ${capitalizar(periodoOperativo.nombre)}: entran a la bandeja el día ${DIA_INICIO_BANDEJA} y se confirman hasta el día ${DIA_CORTE_OPERATIVO} del mes siguiente.`}
         titleAction={
           <button
             type="button"
@@ -853,24 +855,25 @@ export default function AdminAumentos() {
         <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
           <div className="space-y-3">
             <p>
-              El foco del módulo sigue el <span className="font-medium text-slate-800">período operativo</span> (arriba a
-              la izquierda): del día 1 al {DIA_CORTE_OPERATIVO} confirmás los aumentos del mes en curso; a partir del día{' '}
-              {DIA_CORTE_OPERATIVO + 1} el foco pasa al mes siguiente. Los montos se calculan al ingresar.
+              Cada aumento entra a la bandeja el <span className="font-medium text-slate-800">día {DIA_INICIO_BANDEJA}</span>{' '}
+              de su mes y permanece hasta el <span className="font-medium text-slate-800">día {DIA_CORTE_OPERATIVO}</span>{' '}
+              del mes siguiente. Ejemplo: un aumento de abril aparece desde el 11 de abril hasta el 10 de mayo. Los
+              montos se calculan al ingresar.
             </p>
             <p>
               <span className="font-medium text-slate-800">Pendientes de confirmar:</span> vista principal del módulo.
-              Muestra solo los del período operativo que todavía no confirmaste. A medida que confirmás, el contador baja.
-              Los acordados por adelantado se aplican solos en su fecha.
+              Muestra los aumentos del mes que se está trabajando que todavía no confirmaste. A medida que confirmás, el
+              contador baja.
             </p>
             <p>
-              <span className="font-medium text-slate-800">Confirmados:</span> aumentos del período operativo que ya
-              acordaste o aplicaste, aunque el contrato ya haya pasado al próximo ciclo. Podés revisar el detalle, el
-              historial o el comprobante desde ahí.
+              <span className="font-medium text-slate-800">Confirmados:</span> aumentos del mes trabajado que ya
+              confirmaste. Podés revisar el detalle, el historial o el comprobante, y deshacerlos hasta el día{' '}
+              {DIA_CORTE_OPERATIVO} del mes siguiente al mes de aumento.
             </p>
             <p>
-              <span className="font-medium text-slate-800">Rezagados:</span> aumentos cuyo mes ya pasó el día{' '}
-              {DIA_CORTE_OPERATIVO} sin confirmarse, así que el alquiler quedó sin actualizar. Es lo más urgente: abrí
-              el detalle y confirmalos para ponerlos al día.
+              <span className="font-medium text-slate-800">Rezagados:</span> aumentos que no se confirmaron dentro del
+              plazo de la bandeja, así que el alquiler quedó sin actualizar. Es lo más urgente: abrí el detalle y
+              confirmalos para ponerlos al día.
             </p>
             <p>
               <span className="font-medium text-slate-800">Cálculo:</span> consulta los índices
@@ -881,11 +884,6 @@ export default function AdminAumentos() {
               <span className="font-medium text-slate-800">Acciones:</span> tocá el ícono del ojo para
               abrir el detalle. Ahí ves el desglose y la fórmula, marcás &quot;Cálculo revisado&quot;
               y confirmás el aumento.
-            </p>
-            <p>
-              <span className="font-medium text-slate-800">Anticipado:</span> podés acordar un aumento
-              antes de su fecha. El alquiler vigente no cambia hasta ese día; se aplica solo cuando
-              llega la fecha.
             </p>
           </div>
 
@@ -912,17 +910,10 @@ export default function AdminAumentos() {
                   y el sistema calcula igual.
                 </p>
               </div>
-              <div className="rounded-lg border border-sky-100 bg-sky-50/80 px-3 py-2">
-                <p className="text-xs font-semibold text-sky-800">Acordado</p>
-                <p className="mt-0.5 text-xs leading-snug text-sky-900/80">
-                  Aumento confirmado por adelantado. El monto queda fijo y se aplica solo el día de
-                  la fecha.
-                </p>
-              </div>
               <div className="rounded-lg border border-brand-100 bg-brand-50/80 px-3 py-2">
                 <p className="text-xs font-semibold text-brand-800">Proyectado</p>
                 <p className="mt-0.5 text-xs leading-snug text-brand-900/80">
-                  Estimación sin índices definitivos. Solo vista previa.
+                  Todavía no entró a la bandeja (antes del día {DIA_INICIO_BANDEJA} de su mes). Solo vista previa.
                 </p>
               </div>
               <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">

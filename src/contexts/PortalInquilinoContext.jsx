@@ -64,7 +64,11 @@ export function PortalInquilinoProvider({ children }) {
     if (contratosRes.error) {
       setError(contratosRes.error.message)
     } else {
-      const lista = contratosRes.data ?? []
+      // Vigentes primero; después los finalizados (historial), cada grupo por fecha de inicio.
+      const lista = [...(contratosRes.data ?? [])].sort((a, b) => {
+        if (a.estado !== b.estado) return a.estado === 'activo' ? -1 : 1
+        return (b.fecha_inicio ?? '').localeCompare(a.fecha_inicio ?? '')
+      })
       setContratos(lista)
 
       const guardado = sessionStorage.getItem(STORAGE_KEY_CONTRATO)
@@ -109,7 +113,7 @@ export function PortalInquilinoProvider({ children }) {
       setSubmitting(true)
       setSubmitError(null)
 
-      const { error: err } = await crearReclamoPortal({
+      const { error: err, imagenesFallidas = [] } = await crearReclamoPortal({
         ...datos,
         inquilino_id: inquilino.id,
       })
@@ -122,7 +126,7 @@ export function PortalInquilinoProvider({ children }) {
 
       await refetchReclamos(inquilino.id)
       setSubmitting(false)
-      return true
+      return { ok: true, imagenesFallidas }
     },
     [inquilino, refetchReclamos]
   )
@@ -169,10 +173,13 @@ export function PortalInquilinoProvider({ children }) {
     setSubmitError(null)
   }, [])
 
+  const puedeReclamar = contratoActivo?.estado === 'activo'
+
   const value = {
     inquilino,
     contratos,
     contratoActivo,
+    puedeReclamar,
     contratoSeleccionadoId,
     setContratoSeleccionado,
     reclamos,

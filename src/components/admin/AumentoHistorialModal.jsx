@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@tremor/react'
 import { listarHistorialAumentos } from '../../services/aumentosService'
-import { badgeIndicador, formatFechaAumento } from '../../utils/aumentosUi'
+import { badgeIndicador, formatFechaAumento, puedeDeshacerAumento } from '../../utils/aumentosUi'
 
 const formatMonto = (monto) => {
   if (monto == null) return '—'
@@ -68,13 +68,13 @@ function EstadoTag({ aplicado }) {
   if (aplicado) {
     return (
       <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
-        Aplicado
+        Confirmado
       </span>
     )
   }
   return (
     <span className="inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700 ring-1 ring-sky-100">
-      Acordado · pendiente de aplicar
+      Pendiente de aplicar
     </span>
   )
 }
@@ -156,7 +156,7 @@ function FilaHistorial({ item, posicion, onVerComprobante, onDeshacer, disabled 
                 Ver comprobante
               </button>
             )}
-            {onDeshacer && !item.aplicado && (
+            {onDeshacer && puedeDeshacerAumento(item) && (
               <button
                 type="button"
                 onClick={() => onDeshacer(item)}
@@ -271,7 +271,7 @@ export default function AumentoHistorialModal({
                   item={item}
                   posicion={items.length - idx}
                   onVerComprobante={onVerComprobante}
-                  onDeshacer={onDeshacer}
+                  onDeshacer={idx === 0 ? onDeshacer : undefined}
                   disabled={accionDeshabilitada}
                 />
               ))}

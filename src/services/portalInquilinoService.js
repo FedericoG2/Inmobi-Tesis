@@ -1,9 +1,17 @@
 import { supabase } from '../supabaseClient'
-import { listarDocumentosVisiblesInquilino, obtenerUrlDescargaDocumento, etiquetaTipoArchivo } from './documentosService'
+import {
+  etiquetaTipoArchivo,
+  listarDocumentosVisiblesInquilino,
+  obtenerUrlDescargaDocumento,
+  subirAdjuntoReclamo,
+} from './documentosService'
+
+export const MAX_IMAGENES_RECLAMO = 5
 import { sinErrores, validarCamposReclamo } from '../utils/validarReclamo'
 import { obtenerSeriesArgly } from './arglyService'
 import { calcularPropuestaAumento, rangosIndicesParaContratos } from '../utils/calcularAumento'
 import { hoyIsoLocal } from '../utils/aumentosUi'
+import { eliminarReclamo } from './reclamosService'
 
 export { etiquetaTipoArchivo }
 
@@ -66,7 +74,7 @@ export async function listarContratosActivosInquilino(inquilinoId) {
       )
     `)
     .eq('inquilino_id', inquilinoId)
-    .eq('estado', 'activo')
+    .in('estado', ['activo', 'inactivo'])
     .order('fecha_inicio', { ascending: false })
     .order('fecha_aplicacion', { foreignTable: 'aumentos', ascending: true })
 
@@ -119,12 +127,25 @@ export async function crearReclamoPortal(datos) {
       descripcion: datos.descripcion.trim(),
       categoria: datos.categoria,
       prioridad: datos.prioridad ?? 'Media',
-      estado: 'Pendiente',
     })
     .select(SELECT_RECLAMO_PORTAL)
     .single()
 
-  return { data, error }
+  if (error || !data) return { data, error }
+
+  const imagenes = (datos.imagenes ?? []).slice(0, MAX_IMAGENES_RECLAMO)
+  const fallidas = []
+  for (const archivo of imagenes) {
+    const { error: errorImagen } = await subirAdjuntoReclamo({
+      reclamoId: data.id,
+      propiedadId: data.propiedad_id,
+      archivo,
+      visibleParaInquilino: true,
+    })
+    if (errorImagen) fallidas.push(archivo.name)
+  }
+
+  return { data, error: null, imagenesFallidas: fallidas }
 }
 
 /**
@@ -190,8 +211,6 @@ export async function obtenerProyeccionAumentoPortal(contratoId) {
   if (!contratoId) {
     return { data: null, error: { message: 'Contrato no especificado' } }
   }
-
-  await supabase.rpc('aplicar_aumentos_programados')
 
   const { data: contrato, error } = await supabase
     .from('contratos')
@@ -292,6 +311,5 @@ export async function eliminarReclamoPortal(id, inquilinoId) {
     return { error: { message: 'Solo podés eliminar reclamos en estado Pendiente.' } }
   }
 
-  const { error } = await supabase.from('reclamos').delete().eq('id', id)
-  return { error }
+  return eliminarReclamo(id)
 }

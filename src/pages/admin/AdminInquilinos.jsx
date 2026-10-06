@@ -94,21 +94,10 @@ function HeaderLabel({ icon: Icon, children, align = 'center' }) {
   )
 }
 
-function buildMensajeConfirmacionDelete(inquilino, deps) {
-  const partes = []
-  if (deps.contratos_historicos > 0) {
-    const n = deps.contratos_historicos
-    partes.push(`${n} contrato${n > 1 ? 's' : ''} histórico${n > 1 ? 's' : ''}`)
-  }
-  if (deps.reclamos > 0) {
-    const n = deps.reclamos
-    partes.push(`${n} reclamo${n > 1 ? 's' : ''}`)
-  }
+const MENSAJE_RECLAMOS_ASOCIADOS =
+  'No se puede eliminar el inquilino porque tiene reclamos asociados. Se conserva como historial.'
 
-  if (partes.length > 0) {
-    return `¡Atención! El inquilino "${inquilino.nombre_completo}" tiene ${partes.join(' y ')} asociados. Si lo eliminás, se borrará todo ese historial. ¿Querés continuar?`
-  }
-
+function buildMensajeConfirmacionDelete(inquilino) {
   return `¿Eliminar al inquilino "${inquilino.nombre_completo}"? Esta acción no se puede deshacer.`
 }
 
@@ -256,11 +245,15 @@ export default function AdminInquilinos() {
       return
     }
 
-    if (dependencias.contratos_activos > 0 || dependencias.contratos_programados > 0) {
+    const totalContratos =
+      (dependencias.contratos_activos ?? 0) +
+      (dependencias.contratos_programados ?? 0) +
+      (dependencias.contratos_historicos ?? 0)
+    if (totalContratos > 0 || (dependencias.reclamos ?? 0) > 0) {
       setAlerta({
         open: true,
         titulo: 'No se puede eliminar',
-        mensaje: mensajeContratosAsociados,
+        mensaje: totalContratos > 0 ? mensajeContratosAsociados : MENSAJE_RECLAMOS_ASOCIADOS,
       })
       return
     }
@@ -289,14 +282,9 @@ export default function AdminInquilinos() {
     }
   }
 
-  const tituloConfirmDelete =
-    dependenciasEliminar.contratos_historicos > 0 || dependenciasEliminar.reclamos > 0
-      ? 'Eliminar inquilino con historial'
-      : 'Eliminar inquilino'
+  const tituloConfirmDelete = 'Eliminar inquilino'
 
-  const mensajeConfirmacion = inquilinoAEliminar
-    ? buildMensajeConfirmacionDelete(inquilinoAEliminar, dependenciasEliminar)
-    : ''
+  const mensajeConfirmacion = inquilinoAEliminar ? buildMensajeConfirmacionDelete(inquilinoAEliminar) : ''
 
   return (
     <>

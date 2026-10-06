@@ -1,5 +1,6 @@
 import { supabase } from '../supabaseClient'
 import { sinErrores, validarCamposReclamo } from '../utils/validarReclamo'
+import { BUCKET_CONTRATOS } from './documentosService'
 
 function primerError(errores) {
   const claves = Object.keys(errores)
@@ -24,7 +25,7 @@ export async function listarReclamos() {
       propiedad_id,
       inquilino_id,
       contrato_id,
-      inquilinos ( nombre_completo ),
+      inquilinos ( nombre_completo, perfil_id ),
       propiedades ( direccion )
     `)
     .order('estado')
@@ -49,10 +50,8 @@ export async function crearReclamo(reclamo) {
       contrato_id: reclamo.contrato_id ?? null,
       titulo: reclamo.titulo.trim(),
       descripcion: reclamo.descripcion.trim(),
-      estado: reclamo.estado,
       prioridad: reclamo.prioridad ?? 'Media',
       categoria: reclamo.categoria,
-      
     })
     .select(`
       id,
@@ -63,7 +62,7 @@ export async function crearReclamo(reclamo) {
       fecha_creacion,
       propiedad_id,
       inquilino_id,
-      inquilinos ( nombre_completo ),
+      inquilinos ( nombre_completo, perfil_id ),
       propiedades ( direccion )
     `)
     .single()
@@ -99,7 +98,7 @@ export async function actualizarReclamo(id, datos) {
       fecha_creacion,
       propiedad_id,
       inquilino_id,
-      inquilinos ( nombre_completo ),
+      inquilinos ( nombre_completo, perfil_id ),
       propiedades ( direccion )
     `)
     .single()
@@ -112,9 +111,33 @@ export async function eliminarReclamo(id) {
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
 
-  const { error } = await supabase.from('reclamos').delete().eq('id', id)
+  const { data: actual, error: errorActual } = await supabase
+    .from('reclamos')
+    .select('estado')
+    .eq('id', id)
+    .maybeSingle()
+  if (errorActual) return { error: errorActual }
+  if (!actual) return { error: { message: 'El reclamo no existe.' } }
+  if (actual.estado === 'Resuelto') {
+    return { error: { message: 'Un reclamo resuelto no se puede eliminar: queda como historial.' } }
+  }
 
-  return { error }
+  // Los archivos se borran antes que el reclamo: la política de storage del inquilino
+  // exige que el reclamo siga existiendo en estado Pendiente.
+  const { data: adjuntos } = await supabase
+    .from('documentos')
+    .select('url_archivo')
+    .eq('reclamo_id', id)
+  const rutas = (adjuntos ?? []).map((d) => d.url_archivo).filter(Boolean)
+  if (rutas.length) await supabase.storage.from(BUCKET_CONTRATOS).remove(rutas)
+
+  // RLS no devuelve error si bloquea el borrado: se detecta por filas afectadas.
+  const { data, error } = await supabase.from('reclamos').delete().eq('id', id).select('id')
+  if (error) return { error }
+  if (!data?.length) {
+    return { error: { message: 'Este reclamo ya no se puede eliminar por su estado actual.' } }
+  }
+  return { error: null }
 }
 
 export async function listarEventosReclamo(reclamoId) {

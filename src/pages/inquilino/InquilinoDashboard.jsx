@@ -12,6 +12,12 @@ import PortalPageHeader from '../../components/inquilino/PortalPageHeader'
 
 const formatMonto = formatMontoInquilino
 
+const formatFechaCorta = (iso) => {
+  if (!iso) return '—'
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
+}
+
 function IconBuilding({ className = '' }) {
   return (
     <svg
@@ -79,10 +85,11 @@ const quickActions = [
 
 export default function InquilinoDashboard() {
   const { contratoActivo, loading, error } = usePortalInquilino()
+  const contratoFinalizado = contratoActivo && contratoActivo.estado !== 'activo'
 
   const resumen = useMemo(
-    () => armarResumenAlquilerInquilino(contratoActivo),
-    [contratoActivo]
+    () => (contratoFinalizado ? null : armarResumenAlquilerInquilino(contratoActivo)),
+    [contratoActivo, contratoFinalizado]
   )
 
   const { propuesta, loading: proyeccionLoading, error: proyeccionError } =
@@ -107,7 +114,26 @@ export default function InquilinoDashboard() {
         subtitle="Estado de tu contrato, próximo pago y accesos rápidos"
       />
 
-      {!contratoActivo || !resumen ? (
+      {contratoFinalizado ? (
+        <div className={`${portalCardClass} px-4 py-4 lg:px-5 lg:py-5`}>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium text-slate-500">Contrato finalizado</p>
+            <span className={portalBadge}>Historial</span>
+          </div>
+          <p className="mt-1 text-base font-semibold text-slate-900">
+            {contratoActivo.propiedades?.direccion ?? '—'}
+          </p>
+          <p className="mt-1 text-sm text-slate-600">
+            Vigencia: {formatFechaCorta(contratoActivo.fecha_inicio)} al {formatFechaCorta(contratoActivo.fecha_fin)}
+          </p>
+          <p className="mt-1 text-sm text-slate-600">
+            Último monto: <span className="font-semibold tabular-nums">{formatMonto(contratoActivo.monto_alquiler)}</span>
+          </p>
+          <p className="mt-2 text-xs text-slate-400">
+            Podés consultar los documentos y los reclamos de este contrato, pero no registrar reclamos nuevos.
+          </p>
+        </div>
+      ) : !contratoActivo || !resumen ? (
         <div className={portalEmptyState}>
           <p className="text-sm font-medium text-slate-600">No tenés un contrato activo actualmente.</p>
           <p className="mt-1 text-xs text-slate-400">Contactá a la inmobiliaria para más información.</p>

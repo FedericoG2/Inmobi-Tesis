@@ -7,6 +7,7 @@ import {
   claveMes,
   formatPeriodoMesAnio,
   MESES_LARGOS,
+  puedeDeshacerAumento,
 } from '../../utils/aumentosUi'
 
 const formatMonto = (monto) => {
@@ -62,14 +63,14 @@ function IconUndo({ className = 'h-4 w-4' }) {
   )
 }
 
-function EstadoTag({ aplicado }) {
-  return aplicado ? (
-    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
-      Aplicado
+function EstadoTag({ deshacible }) {
+  return deshacible ? (
+    <span className="inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700 ring-1 ring-sky-100">
+      Se puede deshacer
     </span>
   ) : (
-    <span className="inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700 ring-1 ring-sky-100">
-      Acordado
+    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
+      Fijo
     </span>
   )
 }
@@ -120,15 +121,27 @@ export default function AumentosHistorialGlobalModal({
     return Array.from(claves).sort((a, b) => b.localeCompare(a))
   }, [items])
 
+  // Solo el aumento más reciente de cada contrato se puede deshacer.
+  const deshaciblesIds = useMemo(() => {
+    const ultimoPorContrato = new Map()
+    for (const i of items) {
+      const actual = ultimoPorContrato.get(i.contrato_id)
+      if (!actual || i.fecha_aplicacion > actual.fecha_aplicacion) ultimoPorContrato.set(i.contrato_id, i)
+    }
+    return new Set(
+      [...ultimoPorContrato.values()].filter((i) => puedeDeshacerAumento(i)).map((i) => i.id)
+    )
+  }, [items])
+
   const itemsFiltrados = useMemo(() => {
     return items.filter((i) => {
       if (periodo !== 'todos' && claveMes(i.fecha_aplicacion) !== periodo) return false
       if (indice !== 'todos' && (i.indice_tipo ?? '').toLowerCase() !== indice) return false
-      if (estado === 'aplicado' && !i.aplicado) return false
-      if (estado === 'acordado' && i.aplicado) return false
+      if (estado === 'deshacible' && !deshaciblesIds.has(i.id)) return false
+      if (estado === 'fijo' && deshaciblesIds.has(i.id)) return false
       return true
     })
-  }, [items, periodo, indice, estado])
+  }, [items, periodo, indice, estado, deshaciblesIds])
 
   if (!open) return null
 
@@ -194,8 +207,8 @@ export default function AumentosHistorialGlobalModal({
             Estado
             <select value={estado} onChange={(e) => setEstado(e.target.value)} className={selectClass}>
               <option value="todos">Todos</option>
-              <option value="aplicado">Aplicado</option>
-              <option value="acordado">Acordado</option>
+              <option value="deshacible">Se puede deshacer</option>
+              <option value="fijo">Fijo</option>
             </select>
           </label>
           <span className="ml-auto text-xs text-slate-500">
@@ -268,7 +281,7 @@ export default function AumentosHistorialGlobalModal({
                         </span>
                       </td>
                       <td className="px-3 py-2 text-center">
-                        <EstadoTag aplicado={item.aplicado} />
+                        <EstadoTag deshacible={deshaciblesIds.has(item.id)} />
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center justify-end gap-1.5">
@@ -283,10 +296,10 @@ export default function AumentosHistorialGlobalModal({
                               <IconReceipt className="h-3.5 w-3.5" />
                             </button>
                           )}
-                          {onDeshacer && !item.aplicado && (
+                          {onDeshacer && deshaciblesIds.has(item.id) && (
                             <button
                               type="button"
-                              title="Deshacer aumento acordado"
+                              title="Deshacer aumento"
                               onClick={() => onDeshacer(item)}
                               disabled={accionDeshabilitada}
                               className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-red-200 text-red-600 transition hover:bg-red-50 disabled:opacity-40"

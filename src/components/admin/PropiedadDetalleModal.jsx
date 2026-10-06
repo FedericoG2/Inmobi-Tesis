@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@tremor/react'
 import { contarDependenciasPropiedad } from '../../services/propiedadesService'
+import FichaContratosReclamos from './FichaContratosReclamos'
 import { etiquetaPropietario } from '../../utils/etiquetaPropietario'
 import { BADGE_PROPIEDAD_ESTADO, BADGE_PROPIEDAD_TIPO } from '../../utils/adminModuleUi'
 
@@ -249,7 +250,7 @@ export default function PropiedadDetalleModal({ open, propiedad, onClose, onEdit
         role="dialog"
         aria-modal="true"
         aria-labelledby="propiedad-detalle-titulo"
-        className="relative z-10 w-full max-w-2xl rounded-2xl border border-slate-100 bg-white shadow-xl"
+        className="relative z-10 flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl"
       >
         <div className="border-b border-slate-100 px-6 py-4">
           <div className="flex items-center gap-4">
@@ -282,7 +283,7 @@ export default function PropiedadDetalleModal({ open, propiedad, onClose, onEdit
           </div>
         </div>
 
-        <div className="px-6 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <DetalleFila label="Calle" value={propiedad.calle ?? '—'} icon={IconPin} />
             <DetalleFila label="Altura" value={propiedad.altura ?? '—'} icon={IconPin} />
@@ -307,9 +308,13 @@ export default function PropiedadDetalleModal({ open, propiedad, onClose, onEdit
               className="sm:col-span-2"
             />
           </div>
+
+          <div className="mt-5">
+            <FichaContratosReclamos propiedadId={propiedad.id} />
+          </div>
         </div>
 
-        <div className="flex justify-end gap-3 border-t border-slate-100 px-6 py-3">
+        <div className="flex shrink-0 justify-end gap-3 border-t border-slate-100 px-6 py-3">
           <Button variant="secondary" onClick={onClose}>
             Cerrar
           </Button>

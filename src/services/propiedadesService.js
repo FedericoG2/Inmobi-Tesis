@@ -142,10 +142,6 @@ export async function crearPropiedad(propiedad) {
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
 
-  if (!propiedad.propietario_id) {
-    return { data: null, error: { message: 'Debe asignar un propietario a la propiedad' } }
-  }
-
   const sanitizado = sanitizarPropiedad(propiedad)
   if (sanitizado.error) return { data: null, error: sanitizado.error }
 
@@ -182,10 +178,6 @@ export async function crearPropiedad(propiedad) {
 export async function actualizarPropiedad(id, datos) {
   if (!supabase) {
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
-  }
-
-  if (!datos.propietario_id) {
-    return { data: null, error: { message: 'Debe asignar un propietario a la propiedad' } }
   }
 
   const deps = await contarDependenciasPropiedad(id)

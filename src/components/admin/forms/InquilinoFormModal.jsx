@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@tremor/react'
 import AdminFormModalHeader from '../AdminFormModalHeader'
+import { identidadInquilinoBloqueada } from '../../../services/inquilinosService'
 import {
   validarNombreCompleto,
   validarDniCuit,
@@ -85,8 +86,7 @@ export default function InquilinoFormModal({
   const [erroresCampo, setErroresCampo] = useState({})
   const esEdicion = Boolean(inquilino)
   const esJuridica = form.tipo_persona === 'Jurídica'
-  const tieneContratoActivo = (dependenciasInquilino?.contratos_activos ?? 0) > 0
-  const identidadBloqueada = esEdicion && tieneContratoActivo
+  const identidadBloqueada = esEdicion && identidadInquilinoBloqueada(dependenciasInquilino)
 
   useEffect(() => {
     if (!open) {
@@ -163,7 +163,7 @@ export default function InquilinoFormModal({
           <div className="custom-scrollbar flex-1 space-y-6 overflow-y-auto p-6">
             {esEdicion && identidadBloqueada && (
               <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                Este inquilino tiene un contrato activo. No podés cambiar el tipo de persona ni el
+                Este inquilino tiene o tuvo un contrato activo. No podés cambiar el tipo de persona ni el
                 DNI/CUIT mientras el contrato esté vigente.
               </div>
             )}

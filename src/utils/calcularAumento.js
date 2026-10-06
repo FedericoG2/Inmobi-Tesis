@@ -1,5 +1,5 @@
 /** Cálculo de aumentos ICL/IPC en el cliente. Sin tabla `indices`. */
-
+import { aumentoEnBandeja } from './aumentosUi'
 
 function pad2(n) {
   return String(n).padStart(2, '0')
@@ -357,10 +357,15 @@ export function calcularPropuestaAumento({
     }
   }
 
-  if (tipo === 'icl') return calcularIcl(base, serieIcl, override)
-  if (tipo === 'ipc') return calcularIpc(base, serieIpc, override)
+  let propuesta
+  if (tipo === 'icl') propuesta = calcularIcl(base, serieIcl, override)
+  else if (tipo === 'ipc') propuesta = calcularIpc(base, serieIpc, override)
+  else return propuestaFaltaIndice(base)
 
-  return propuestaFaltaIndice(base)
+  if (propuesta.confirmable && !aumentoEnBandeja(base.fecha_hasta, hoy)) {
+    propuesta.confirmable = false
+  }
+  return propuesta
 }
 
 export function ultimoIclDeSerie(serie) {

@@ -181,10 +181,7 @@ export default function AdminReclamos() {
     }
   }
 
-  const esResuelto = reclamoAEliminar?.estado === 'Resuelto'
-  const mensajeConfirmacion = esResuelto
-    ? `Este reclamo ya está marcado como Resuelto. Si lo eliminás, se pierde el registro de esa gestión. ¿Eliminar "${reclamoAEliminar?.titulo}" igualmente?`
-    : `¿Eliminar el reclamo "${reclamoAEliminar?.titulo}"? Esta acción no se puede deshacer.`
+  const mensajeConfirmacion = `¿Eliminar el reclamo "${reclamoAEliminar?.titulo}"? Se borran también su historial y sus imágenes. Esta acción no se puede deshacer.`
 
   // 1. Filtramos y ordenamos cronológicamente (los más antiguos arriba).
   const reclamosFiltrados = useMemo(() => {
@@ -426,7 +423,7 @@ export default function AdminReclamos() {
                       onView={() => abrirDetalle(r)}
                       onManage={() => abrirGestion(r)}
                       onEdit={() => abrirModalEditar(r)}
-                      onDelete={() => handleEliminar(r)}
+                      onDelete={r.estado !== 'Resuelto' ? () => handleEliminar(r) : undefined}
                     />
                   </AdminTableActionsCell>
                 </AdminTableRow>
@@ -479,7 +476,7 @@ export default function AdminReclamos() {
 
       <AdminConfirmModal
         open={confirmOpen}
-        title={esResuelto ? 'Eliminar reclamo resuelto' : 'Eliminar reclamo'}
+        title="Eliminar reclamo"
         message={mensajeConfirmacion}
         confirmLabel="Eliminar"
         onConfirm={confirmarEliminar}

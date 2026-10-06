@@ -1,8 +1,9 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
-export default function AdminRoute() {
-  const { isAdmin, isInquilino, loading } = useAuth()
+/** Deja pasar solo al rol indicado; los demás vuelven a su pantalla de inicio. */
+export default function RolRoute({ rol: rolPermitido }) {
+  const { rol, rutaInicio, loading } = useAuth()
 
   if (loading) {
     return (
@@ -12,12 +13,8 @@ export default function AdminRoute() {
     )
   }
 
-  if (isInquilino) {
-    return <Navigate to="/inquilino/dashboard" replace />
-  }
-
-  if (!isAdmin) {
-    return <Navigate to="/login" replace />
+  if (rol !== rolPermitido) {
+    return <Navigate to={rutaInicio ?? '/login'} replace />
   }
 
   return <Outlet />

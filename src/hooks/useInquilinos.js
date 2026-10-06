@@ -10,7 +10,7 @@ import {
 } from '../services/inquilinosService'
 
 const MENSAJE_CONTRATOS_ACTIVOS =
-  'No se puede eliminar el inquilino porque tiene contratos activos'
+  'No se puede eliminar el inquilino porque tiene contratos asociados (vigentes, programados o finalizados). Se conserva como historial.'
 
 export function useInquilinos() {
   const [inquilinos, setInquilinos] = useState([])

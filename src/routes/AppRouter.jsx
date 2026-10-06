@@ -1,7 +1,8 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import AdminRoute from '../guards/AdminRoute'
+import CuentasRoute from '../guards/CuentasRoute'
+import EncargadoRoute from '../guards/EncargadoRoute'
 import InquilinoRoute from '../guards/InquilinoRoute'
 import ProtectedRoute from '../guards/ProtectedRoute'
 import LoginPage from '../pages/auth/LoginPage'
@@ -15,6 +16,7 @@ const AdminInquilinos = lazy(() => import('../pages/admin/AdminInquilinos'))
 const AdminContratos = lazy(() => import('../pages/admin/AdminContratos'))
 const AdminReclamos = lazy(() => import('../pages/admin/AdminReclamos'))
 const AdminAumentos = lazy(() => import('../pages/admin/AdminAumentos'))
+const AdminCuentas = lazy(() => import('../pages/cuentas/AdminCuentas'))
 const InquilinoDashboard = lazy(() => import('../pages/inquilino/InquilinoDashboard'))
 const InquilinoReclamos = lazy(() => import('../pages/inquilino/InquilinoReclamos'))
 const InquilinoDocumentos = lazy(() => import('../pages/inquilino/InquilinoDocumentos'))
@@ -29,7 +31,7 @@ function PageLoader() {
 }
 
 function RootRedirect() {
-  const { isAuthenticated, isAdmin, isInquilino, loading } = useAuth()
+  const { isAuthenticated, rutaInicio, loading } = useAuth()
 
   if (loading) {
     return (
@@ -40,10 +42,7 @@ function RootRedirect() {
   }
 
   if (!isAuthenticated) return <Navigate to="/login" replace />
-  if (isAdmin) return <Navigate to="/admin/dashboard" replace />
-  if (isInquilino) return <Navigate to="/inquilino/dashboard" replace />
-
-  return <Navigate to="/login" replace />
+  return <Navigate to={rutaInicio ?? '/login'} replace />
 }
 
 export default function AppRouter() {
@@ -56,7 +55,13 @@ export default function AppRouter() {
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<RootRedirect />} />
 
-            <Route element={<AdminRoute />}>
+            <Route element={<CuentasRoute />}>
+              <Route path="/cuentas" element={<AdminLayout />}>
+                <Route index element={<AdminCuentas />} />
+              </Route>
+            </Route>
+
+            <Route element={<EncargadoRoute />}>
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<AdminDashboard />} />

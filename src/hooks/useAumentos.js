@@ -7,7 +7,9 @@ import {
   listarAumentosConfirmadosEnPeriodo,
   recalcularPropuestasConOverrides,
 } from '../services/aumentosService'
+import { obtenerSeriesArgly } from '../services/arglyService'
 import { diasHastaFinPeriodoOperativo, hoyIsoLocal, periodoOperativoInfo } from '../utils/aumentosUi'
+import { rangosIndicesParaContratos } from '../utils/calcularAumento'
 
 function formatearErroresConfirmacion(errores) {
   if (!Array.isArray(errores) || errores.length === 0) return ''
@@ -108,6 +110,39 @@ export function useAumentos() {
     })
   }, [colaCalculo])
 
+  /** Vuelve a consultar Argly para un contrato al abrir el detalle del cálculo. */
+  const refrescarIndicesContrato = useCallback(
+    async (contratoId) => {
+      const contrato = colaCalculo.contratos.find((c) => Number(c.id) === Number(contratoId))
+      if (!contrato) return
+      const hoy = hoyIsoLocal()
+      const { data, error: arglyError } = await obtenerSeriesArgly(rangosIndicesParaContratos([contrato], hoy))
+      if (arglyError || !data) return
+
+      const unir = (actual, nueva, clave) => {
+        const mapa = new Map((actual ?? []).map((row) => [clave(row), row]))
+        for (const row of nueva ?? []) mapa.set(clave(row), row)
+        return [...mapa.values()]
+      }
+      const series = {
+        icl: unir(colaCalculo.series.icl, data.icl, (r) => r.fecha),
+        ipc: unir(colaCalculo.series.ipc, data.ipc, (r) => `${r.anio}-${r.mes}`),
+      }
+
+      setColaCalculo((prev) => ({ ...prev, series }))
+      setPropuestas(
+        recalcularPropuestasConOverrides({
+          contratos: colaCalculo.contratos,
+          series,
+          acordadosPorClave: colaCalculo.acordadosPorClave,
+          overrides,
+          hoy,
+        })
+      )
+    },
+    [colaCalculo, overrides]
+  )
+
   const confirmarSeleccionados = useCallback(
     async (propuestasSeleccionadas) => {
       if (!propuestasSeleccionadas.length) {
@@ -180,6 +215,7 @@ export function useAumentos() {
     cargarAumentos,
     confirmarSeleccionados,
     aplicarIndicesManuales,
+    refrescarIndicesContrato,
     limpiarError,
   }
 }

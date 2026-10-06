@@ -33,7 +33,7 @@ import {
 } from '../../utils/contratoVigencia'
 import { chipIndicador, formatPeriodoMesAnio } from '../../utils/aumentosUi'
 
-const alertaInicial = { open: false, titulo: 'AtenciÃ³n', mensaje: '' }
+const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
 
 const FILAS_POR_PAGINA = 4
 
@@ -253,7 +253,7 @@ export default function AdminContratos() {
     if (loading) return 'Cargando contratos...'
     if (contratos.length === 0) return 'No hay contratos cargados'
     if (contratosFiltrados.length === 0 && hayFiltrosExtra) {
-      return 'No hay contratos que coincidan con la bÃºsqueda o los filtros aplicados'
+      return 'No hay contratos que coincidan con la búsqueda o los filtros aplicados'
     }
     if (filtroEstado === 'activos') return 'No hay contratos activos'
     if (filtroEstado === 'programados') return 'No hay contratos programados'
@@ -374,7 +374,7 @@ export default function AdminContratos() {
   const mensajeConfirmacionFinalizar = mensajeConfirmacionFinalizarContrato(contratoFinalizando)
 
   const mensajeConfirmacionAnular = contratoAnulando
-    ? `Â¿Eliminar el contrato ${contratoAnulando.estado === 'programado' ? 'programado' : 'finalizado'} de ${contratoAnulando.inquilinos?.nombre_completo ?? 'este inquilino'} en ${contratoAnulando.propiedades?.direccion ?? 'esta propiedad'}? Solo estÃ¡ permitido si no tiene aumentos confirmados ni reclamos para ese inquilino y propiedad. Los documentos adjuntos se eliminarÃ¡n junto con el contrato. Esta acciÃ³n no se puede deshacer.`
+    ? `¿Eliminar el contrato ${contratoAnulando.estado === 'programado' ? 'programado' : 'finalizado'} de ${contratoAnulando.inquilinos?.nombre_completo ?? 'este inquilino'} en ${contratoAnulando.propiedades?.direccion ?? 'esta propiedad'}? Solo está permitido si no tiene aumentos confirmados ni reclamos para ese inquilino y propiedad. Los documentos adjuntos se eliminarán junto con el contrato. Esta acción no se puede deshacer.`
     : ''
 
   return (
@@ -382,7 +382,7 @@ export default function AdminContratos() {
       <AdminListLayout
         compact
         title="Contratos de Alquiler"
-        subtitle="GestiÃ³n de la cartera de alquileres: vigencia, ajustes y ciclo de vida de cada contrato."
+        subtitle="Gestión de la cartera de alquileres: vigencia, ajustes y ciclo de vida de cada contrato."
         alerts={
           error ? (
             <Card className="border border-red-200 bg-red-50">
@@ -412,7 +412,7 @@ export default function AdminContratos() {
               value={loading ? 'â€¦' : resumen.porVencer}
               icon="calendar"
               theme="slate"
-              hint={`PrÃ³x. ${VENCE_PRONTO_DIAS} dÃ­as`}
+              hint={`Próx. ${VENCE_PRONTO_DIAS} días`}
             />
             <StatCard
               compact
@@ -434,7 +434,7 @@ export default function AdminContratos() {
                 value={busquedaInquilino}
                 onChange={(e) => setBusquedaInquilino(e.target.value)}
                 placeholder="Buscar por inquilino o propiedad..."
-                aria-label="Buscar por inquilino o direcciÃ³n de propiedad"
+                aria-label="Buscar por inquilino o dirección de propiedad"
                 className={`${toolbarInputClass} pl-9`}
                 disabled={loading}
               />
@@ -509,7 +509,7 @@ export default function AdminContratos() {
               <AdminTableHeaderCell className={COL_MONTO}>Monto</AdminTableHeaderCell>
               <AdminTableHeaderCell className={`${COL_AJUSTE} !text-center`}>Ajuste</AdminTableHeaderCell>
               <AdminTableHeaderCell className={`${COL_PROX_AUMENTO} whitespace-nowrap !text-center`}>
-                PrÃ³x. aumento
+                Próx. aumento
               </AdminTableHeaderCell>
               <AdminTableHeaderCell className={`${COL_ESTADO} !text-center`}>Estado</AdminTableHeaderCell>
               <AdminTableHeaderCell className={`${COL_ACCIONES} !text-right`}>Acciones</AdminTableHeaderCell>

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Button } from '@tremor/react'
 import AdminFormModalHeader from '../AdminFormModalHeader'
 import InquilinoPickerModal from './InquilinoPickerModal'
 import InquilinoDetalleModal from '../InquilinoDetalleModal'
@@ -10,23 +9,43 @@ import {
   contratosActivosPorInquilino,
   inquilinosConContratoActivo,
 } from '../../../utils/contratoActivo'
-import { CATEGORIAS_RECLAMO, PRIORIDADES_RECLAMO } from '../../../utils/reclamosUi'
+import { CATEGORIAS_RECLAMO, PRIORIDAD_SEGMENTO_ACTIVO, PRIORIDADES_RECLAMO } from '../../../utils/reclamosUi'
 import { RECLAMO_LIMITES, sinErrores, validarReclamoAdmin } from '../../../utils/validarReclamo'
+import {
+  IconArrowRight,
+  IconBuilding,
+  IconImage,
+  IconInfo,
+  IconPlus,
+  IconUser,
+  IconWrench,
+  IconX,
+} from '../../icons/Icons'
+import Modal from '../../ui/Modal'
+import Button from '../../ui/Button'
+import DetalleFila from '../../ui/DetailField'
+import {
+  calloutClass,
+  cn,
+  eyebrow,
+  fieldErrorClass,
+  inputClass,
+  inputErrorClass,
+  labelClass,
+  modalFooterClass,
+  modalFormClass,
+  optionCardClass,
+  segmentedClass,
+  textareaClass,
+  textareaErrorClass,
+} from '../../../utils/ui'
 
-// Mapeo estético para mantener tus strings exactos de categoría pero con íconos visuales
 const CATEGORIAS_OPTIONS = CATEGORIAS_RECLAMO
 const prioridades = PRIORIDADES_RECLAMO
 
 // Tope de imágenes por reclamo (cada una se valida a 10 MB en el service).
 const MAX_IMAGENES = 5
 
-// Color del botón activo según la prioridad seleccionada
-const COLOR_PRIORIDAD_ACTIVA = {
-  Baja: 'bg-blue-500 text-white shadow-sm font-semibold',
-  Media: 'bg-emerald-500 text-white shadow-sm font-semibold',
-  Alta: 'bg-amber-500 text-white shadow-sm font-semibold',
-  Urgente: 'bg-red-600 text-white shadow-sm font-semibold',
-}
 
 const formInicial = {
   inquilino_id: '',
@@ -35,117 +54,21 @@ const formInicial = {
   titulo: '',
   descripcion: '',
   prioridad: 'Media',
-  categoria: 'Plomeria', 
+  categoria: 'Plomeria',
 }
-
-const inputClass =
-  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100'
 
 const verDetalleLinkClass =
-  'shrink-0 text-xs font-semibold text-brand-600 transition hover:text-brand-700 hover:underline'
-
-const inputErrorClass = 'border-red-400 focus:border-red-500 focus:ring-red-100'
-
-function IconWrench({ className = 'h-5 w-5' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden>
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l5.654-4.654m5.292-8.93a3 3 0 0 1 4.243 4.242M5.196 5.196l13.608 13.608"
-      />
-    </svg>
-  )
-}
-
-function IconUser({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden>
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
-      />
-    </svg>
-  )
-}
-
-function IconBuilding({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden>
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M2.25 21h19.5M3.75 21V7.5a1.5 1.5 0 0 1 1.5-1.5h4.5a1.5 1.5 0 0 1 1.5 1.5V21M13.5 21V4.5a1.5 1.5 0 0 1 1.5-1.5h3.75a1.5 1.5 0 0 1 1.5 1.5V21M6.75 9h.008v.008H6.75V9Zm0 3h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Z"
-      />
-    </svg>
-  )
-}
-
-function IconImage({ className = 'h-5 w-5' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden>
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
-      />
-    </svg>
-  )
-}
+  'inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand-600 transition hover:text-brand-800'
 
 function SeccionTitulo({ children, className = '' }) {
   return (
-    <h3 className={`text-[11px] font-semibold uppercase tracking-wide text-slate-500 ${className}`}>
-      {children}
-    </h3>
-  )
-}
-
-function DetalleFila({ label, value, icon: Icon, action, children, className = '' }) {
-  return (
-    <div
-      className={`flex items-center gap-2.5 rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2 ${className}`}
-    >
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white text-slate-400 ring-1 ring-slate-100">
-        <Icon className="h-3.5 w-3.5" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-        {children ? (
-          <div className="mt-0.5">{children}</div>
-        ) : (
-          <p className="text-sm font-medium leading-tight text-slate-800 break-words">{value}</p>
-        )}
-      </div>
-      {action}
-    </div>
-  )
-}
-
-function SeccionCard({ children, className = '' }) {
-  return (
-    <section className={`rounded-lg border border-slate-200 bg-white px-3 py-2.5 ${className}`}>
-      {children}
-    </section>
+    <h3 className={`${eyebrow} ${className}`}>{children}</h3>
   )
 }
 
 function MensajeError({ children }) {
   if (!children) return null
-  return <p className="text-xs font-medium text-red-600">{children}</p>
-}
-
-function IconInfo({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden>
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M11.25 11.25l.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
-      />
-    </svg>
-  )
+  return <p className={fieldErrorClass}>{children}</p>
 }
 
 function formDesdeReclamo(reclamo) {
@@ -156,7 +79,7 @@ function formDesdeReclamo(reclamo) {
     titulo: reclamo.titulo ?? '',
     descripcion: reclamo.descripcion ?? '',
     prioridad: reclamo.prioridad ?? 'Media',
-    categoria: reclamo.categoria ?? 'Plomeria', 
+    categoria: reclamo.categoria ?? 'Plomeria',
   }
 }
 
@@ -460,23 +383,23 @@ export default function ReclamoFormModal({
   const formDeshabilitado = esEdicion ? false : formDeshabilitadoCrear
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <button
-        type="button"
-        aria-label="Cerrar modal"
-        className="fixed inset-0 bg-slate-900/50"
-        onClick={onClose}
-      />
-
-      <div className="relative z-10 flex max-h-[96vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl">
+    <>
+      <Modal
+        open={open}
+        onClose={submitting || subiendoImagenes ? undefined : onClose}
+        size="5xl"
+        labelledBy="reclamo-form-titulo"
+      >
         <AdminFormModalHeader
-          title={esEdicion ? 'Editar Reclamo' : 'Nuevo Reclamo'}
-          icon={<IconWrench />}
+          titleId="reclamo-form-titulo"
+          title={esEdicion ? 'Editar reclamo' : 'Nuevo reclamo'}
+          icon={<IconWrench className="h-5 w-5" />}
+          onClose={submitting || subiendoImagenes ? undefined : onClose}
         />
 
-        <div className="border-b border-slate-100 px-6 py-3">
-          <SeccionTitulo className="mb-2">Partes</SeccionTitulo>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="shrink-0 border-b border-slate-100 px-6 py-4">
+          <SeccionTitulo className="mb-2.5">Partes</SeccionTitulo>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               {esEdicion ? (
                 <DetalleFila
@@ -485,22 +408,17 @@ export default function ReclamoFormModal({
                   icon={IconUser}
                   action={
                     inquilinoFull ? (
-                      <button
-                        type="button"
-                        onClick={() => setDetalleInquilinoOpen(true)}
-                        className={verDetalleLinkClass}
-                      >
-                        Ver detalle
-                      </button>
+                      <button type="button" onClick={() => setDetalleInquilinoOpen(true)} className={verDetalleLinkClass}>
+                      Ver ficha
+                      <IconArrowRight className="h-3 w-3" />
+                    </button>
                     ) : null
                   }
                 />
               ) : inquilinosLoading || contratosLoading ? (
                 <DetalleFila label="Inquilino" value="Cargando…" icon={IconUser} />
               ) : sinInquilinosElegibles ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                  No hay inquilinos con contrato activo.
-                </div>
+                <div className={calloutClass('warning')}>No hay inquilinos con contrato activo.</div>
               ) : inquilinoSeleccionado ? (
                 <DetalleFila
                   label="Inquilino"
@@ -508,22 +426,17 @@ export default function ReclamoFormModal({
                   icon={IconUser}
                   action={
                     <div className="flex shrink-0 items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setDetalleInquilinoOpen(true)}
-                        className={verDetalleLinkClass}
-                      >
-                        Ver detalle
-                      </button>
+                      <button type="button" onClick={() => setDetalleInquilinoOpen(true)} className={verDetalleLinkClass}>
+                      Ver ficha
+                      <IconArrowRight className="h-3 w-3" />
+                    </button>
                       <button
                         type="button"
                         onClick={limpiarInquilino}
-                        className="rounded-md p-0.5 text-slate-400 transition hover:bg-white hover:text-slate-600"
+                        className="rounded-md p-1 text-slate-400 transition hover:bg-white hover:text-slate-600"
                         aria-label="Quitar inquilino seleccionado"
                       >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                        </svg>
+                        <IconX className="h-4 w-4" strokeWidth={2} />
                       </button>
                     </div>
                   }
@@ -533,7 +446,7 @@ export default function ReclamoFormModal({
                   <button
                     type="button"
                     onClick={() => setPickerOpen(true)}
-                    className="text-sm font-medium text-brand-600 transition hover:text-brand-700 hover:underline"
+                    className="text-sm font-medium text-brand-600 transition hover:text-brand-800"
                   >
                     Seleccioná un inquilino
                   </button>
@@ -550,13 +463,10 @@ export default function ReclamoFormModal({
                   icon={IconBuilding}
                   action={
                     propiedadSeleccionada ? (
-                      <button
-                        type="button"
-                        onClick={() => setDetallePropiedadOpen(true)}
-                        className={verDetalleLinkClass}
-                      >
-                        Ver detalle
-                      </button>
+                      <button type="button" onClick={() => setDetallePropiedadOpen(true)} className={verDetalleLinkClass}>
+                      Ver ficha
+                      <IconArrowRight className="h-3 w-3" />
+                    </button>
                     ) : null
                   }
                 />
@@ -565,9 +475,7 @@ export default function ReclamoFormModal({
               ) : !form.inquilino_id ? (
                 <DetalleFila label="Propiedad" value="Seleccioná un inquilino primero" icon={IconBuilding} />
               ) : sinContratoActivo ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                  Este inquilino no tiene un contrato activo.
-                </div>
+                <div className={calloutClass('warning')}>Este inquilino no tiene un contrato activo.</div>
               ) : multiplesContratos ? (
                 <DetalleFila label="Propiedad" icon={IconBuilding}>
                   <select
@@ -575,7 +483,7 @@ export default function ReclamoFormModal({
                     required
                     value={form.contrato_id}
                     onChange={handleContratoChange}
-                    className={`${inputClass} mt-0.5 py-1.5`}
+                    className={cn(inputClass, 'mt-0.5 h-9')}
                   >
                     <option value="">Seleccioná una propiedad</option>
                     {contratosDelInquilino.map((c) => (
@@ -592,13 +500,10 @@ export default function ReclamoFormModal({
                   icon={IconBuilding}
                   action={
                     propiedadSeleccionada ? (
-                      <button
-                        type="button"
-                        onClick={() => setDetallePropiedadOpen(true)}
-                        className={verDetalleLinkClass}
-                      >
-                        Ver detalle
-                      </button>
+                      <button type="button" onClick={() => setDetallePropiedadOpen(true)} className={verDetalleLinkClass}>
+                      Ver ficha
+                      <IconArrowRight className="h-3 w-3" />
+                    </button>
                     ) : null
                   }
                 />
@@ -608,12 +513,12 @@ export default function ReclamoFormModal({
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
-          <div className="custom-scrollbar flex-1 overflow-y-auto px-6 py-3">
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-              <div className="space-y-3">
-                <div className="rounded-lg border border-brand-100 bg-brand-50/60 px-3 py-2">
-                  <label htmlFor="titulo" className="text-[11px] font-medium text-brand-700">
+        <form onSubmit={handleSubmit} className={modalFormClass}>
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+              <div className="space-y-5">
+                <div>
+                  <label htmlFor="titulo" className={labelClass}>
                     Título del reclamo
                   </label>
                   <input
@@ -623,7 +528,7 @@ export default function ReclamoFormModal({
                     maxLength={RECLAMO_LIMITES.TITULO_MAX}
                     value={form.titulo}
                     onChange={handleChange('titulo')}
-                    className={`mt-1 w-full rounded-lg border border-brand-100 bg-white/90 px-3 py-2 text-base font-semibold text-brand-950 outline-none transition placeholder:font-normal placeholder:text-brand-300 focus:border-brand-300 focus:ring-2 focus:ring-brand-100 ${errores.titulo ? inputErrorClass : ''}`}
+                    className={cn(errores.titulo ? inputErrorClass : inputClass, 'font-medium')}
                     placeholder="Ej: Pérdida de presión de agua"
                     disabled={formDeshabilitado}
                     aria-invalid={Boolean(errores.titulo)}
@@ -631,8 +536,10 @@ export default function ReclamoFormModal({
                   <MensajeError>{errores.titulo}</MensajeError>
                 </div>
 
-                <SeccionCard>
-                  <SeccionTitulo className="mb-1.5">Descripción</SeccionTitulo>
+                <div>
+                  <label htmlFor="descripcion" className={labelClass}>
+                    Descripción
+                  </label>
                   <textarea
                     id="descripcion"
                     required
@@ -640,29 +547,26 @@ export default function ReclamoFormModal({
                     maxLength={RECLAMO_LIMITES.DESCRIPCION_MAX}
                     value={form.descripcion}
                     onChange={handleChange('descripcion')}
-                    className={`w-full resize-none rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2.5 text-sm leading-relaxed text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 ${errores.descripcion ? inputErrorClass : ''}`}
+                    className={cn(errores.descripcion ? textareaErrorClass : textareaClass, 'resize-none')}
                     placeholder="Describí el problema con precisión…"
                     disabled={formDeshabilitado}
                     aria-invalid={Boolean(errores.descripcion)}
                   />
                   <div className="mt-1.5 flex items-center justify-between gap-2">
                     <MensajeError>{errores.descripcion}</MensajeError>
-                    <span className="ml-auto text-[11px] text-slate-400">
+                    <span className="ml-auto text-xs tabular-nums text-slate-400">
                       {form.descripcion.length}/{RECLAMO_LIMITES.DESCRIPCION_MAX}
                     </span>
                   </div>
-                </SeccionCard>
+                </div>
 
-                <SeccionCard>
-                  <SeccionTitulo className="mb-1.5">
-                    Imágenes
-                    <span className="ml-1 font-normal normal-case text-slate-400">
-                      (opcional · hasta {MAX_IMAGENES})
-                    </span>
-                  </SeccionTitulo>
+                <div>
+                  <p className={labelClass}>
+                    Imágenes <span className="font-normal text-slate-400">(opcional · hasta {MAX_IMAGENES})</span>
+                  </p>
 
                   {cargandoAdjuntos ? (
-                    <p className="text-xs text-slate-400">Cargando imágenes…</p>
+                    <p className="text-sm text-slate-500">Cargando imágenes…</p>
                   ) : (
                     <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                       {adjuntosExistentes.map((doc) => (
@@ -679,7 +583,7 @@ export default function ReclamoFormModal({
                             />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center text-slate-300">
-                              <IconImage />
+                              <IconImage className="h-6 w-6" />
                             </div>
                           )}
                         </div>
@@ -695,11 +599,9 @@ export default function ReclamoFormModal({
                             onClick={() => quitarImagen(idx)}
                             disabled={subiendoImagenes}
                             aria-label={`Quitar ${p.file.name}`}
-                            className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-md bg-white/90 text-red-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-red-50 disabled:opacity-60"
+                            className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-md bg-white/90 text-slate-600 shadow-card ring-1 ring-slate-200 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-60"
                           >
-                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                            </svg>
+                            <IconX className="h-3.5 w-3.5" strokeWidth={2} />
                           </button>
                         </div>
                       ))}
@@ -708,12 +610,10 @@ export default function ReclamoFormModal({
                           type="button"
                           onClick={() => imagenInputRef.current?.click()}
                           disabled={formDeshabilitado || subiendoImagenes}
-                          className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 transition hover:border-brand-400 hover:text-brand-500 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 transition hover:border-brand-400 hover:bg-brand-50/40 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                          </svg>
-                          <span className="text-[11px] font-medium">Agregar</span>
+                          <IconPlus className="h-5 w-5" />
+                          <span className="text-xs font-medium">Agregar</span>
                         </button>
                       )}
                     </div>
@@ -728,43 +628,38 @@ export default function ReclamoFormModal({
                     onChange={handleAgregarImagenes}
                   />
                   <MensajeError>{imagenesError}</MensajeError>
-                </SeccionCard>
+                </div>
               </div>
 
-              <div className="space-y-3 lg:self-start">
-                <SeccionCard>
-                  <SeccionTitulo className="mb-2">Categoría</SeccionTitulo>
+              <div className="space-y-5 lg:self-start">
+                <div>
+                  <p className={labelClass}>Categoría</p>
                   <div className="grid grid-cols-2 gap-2">
                     {CATEGORIAS_OPTIONS.map((cat) => {
                       const esSeleccionado = form.categoria === cat.id
+                      const Icon = cat.icon
                       return (
                         <button
                           key={cat.id}
                           type="button"
                           disabled={formDeshabilitado}
                           onClick={() => handleDirectChange('categoria', cat.id)}
-                          className={`flex items-center gap-2 rounded-xl border p-2.5 text-left text-sm transition ${
-                            esSeleccionado
-                              ? 'border-brand-500 bg-brand-50 text-brand-800 font-semibold ring-2 ring-brand-100'
-                              : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50'
-                          }`}
+                          className={cn(optionCardClass(esSeleccionado), 'disabled:opacity-50')}
                         >
-                          <span className="text-base">{cat.icon}</span>
+                          <Icon className={cn('h-4 w-4 shrink-0', esSeleccionado ? 'text-brand-600' : 'text-slate-400')} />
                           <span className="truncate">{cat.label}</span>
                         </button>
                       )
                     })}
                   </div>
                   <MensajeError>{errores.categoria}</MensajeError>
-                </SeccionCard>
+                </div>
 
-                <SeccionCard>
-                  <SeccionTitulo className="mb-2">Prioridad</SeccionTitulo>
-                  <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1">
+                <div>
+                  <p className={labelClass}>Prioridad</p>
+                  <div className={segmentedClass}>
                     {prioridades.map((prio) => {
                       const esSeleccionado = form.prioridad === prio
-                      const estiloActivo =
-                        COLOR_PRIORIDAD_ACTIVA[prio] ?? 'bg-white text-slate-900 shadow-sm font-semibold'
 
                       return (
                         <button
@@ -772,58 +667,44 @@ export default function ReclamoFormModal({
                           type="button"
                           disabled={formDeshabilitado}
                           onClick={() => handleDirectChange('prioridad', prio)}
-                          className={`flex-1 rounded-lg py-2 text-center text-xs transition ${
+                          className={cn(
+                            'flex-1 rounded-md px-3 py-1.5 text-center text-sm font-medium transition disabled:opacity-50',
                             esSeleccionado
-                              ? estiloActivo
-                              : 'text-slate-600 hover:text-slate-900 disabled:opacity-50'
-                          }`}
+                              ? PRIORIDAD_SEGMENTO_ACTIVO[prio] ?? 'bg-white text-slate-900 shadow-card'
+                              : 'text-slate-500 hover:text-slate-900'
+                          )}
                         >
                           {prio}
                         </button>
                       )
                     })}
                   </div>
-                </SeccionCard>
+                </div>
 
                 {esEdicion && (
-                  <div className="flex items-start gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs leading-relaxed text-sky-800">
-                    <IconInfo className="mt-0.5 h-4 w-4 shrink-0 text-sky-500" />
+                  <div className={cn(calloutClass('info'), 'flex items-start gap-2')}>
+                    <IconInfo className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
                     <p>
-                      La gestión de estados y el seguimiento se hace desde{' '}
-                      <span className="font-semibold">Gestionar</span>.
+                      La gestión de estados y el seguimiento se hace desde <span className="font-medium">Gestionar</span>.
                     </p>
                   </div>
                 )}
 
-                {submitError && (
-                  <p className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
-                    {submitError}
-                  </p>
-                )}
+                {submitError && <p className={calloutClass('danger')}>{submitError}</p>}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={onClose}
-              disabled={submitting || subiendoImagenes}
-            >
+          <div className={modalFooterClass}>
+            <Button variant="secondary" onClick={onClose} disabled={submitting || subiendoImagenes}>
               {guardado ? 'Cerrar' : 'Cancelar'}
             </Button>
-            <Button
-              type="submit"
-              loading={submitting || subiendoImagenes}
-              disabled={submitting || subiendoImagenes || formDeshabilitado}
-              className="border-none bg-brand-600 text-white hover:bg-brand-700"
-            >
+            <Button type="submit" loading={submitting || subiendoImagenes} disabled={formDeshabilitado}>
               {guardado ? 'Reintentar' : esEdicion ? 'Guardar cambios' : 'Guardar'}
             </Button>
           </div>
         </form>
-      </div>
+      </Modal>
 
       {!esEdicion && (
         <InquilinoPickerModal
@@ -849,6 +730,6 @@ export default function ReclamoFormModal({
         onClose={() => setDetallePropiedadOpen(false)}
         apilado
       />
-    </div>
+    </>
   )
 }

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Card } from '@tremor/react'
 import AdminAlertModal from '../../components/admin/AdminAlertModal'
 import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
 import AdminListLayout from '../../components/admin/AdminListLayout'
@@ -11,85 +10,32 @@ import {
   AdminTableHead,
   AdminTableHeaderCell,
   AdminTableRow,
+  AdminTableToolbar,
 } from '../../components/admin/AdminDataTable'
 import PropiedadFormModal from '../../components/admin/forms/PropiedadFormModal'
 import PropiedadDetalleModal from '../../components/admin/PropiedadDetalleModal'
 import PropiedadRowActions from '../../components/admin/PropiedadRowActions'
 import AdminTablePagination from '../../components/admin/AdminTablePagination'
 import AdminNuevoButton from '../../components/admin/AdminNuevoButton'
+import FilterSelect from '../../components/admin/FilterSelect'
 import { usePropiedades } from '../../hooks/usePropiedades'
 import { usePropietarios } from '../../hooks/usePropietarios'
 import { etiquetaPropietario } from '../../utils/etiquetaPropietario'
 import { ESTADOS_PROPIEDAD, TIPOS_PROPIEDAD } from '../../utils/validaciones'
 import {
   BADGE_PROPIEDAD_ESTADO,
+  BADGE_PROPIEDAD_ESTADO_DEFAULT,
   BADGE_PROPIEDAD_TIPO,
+  BADGE_PROPIEDAD_TIPO_DEFAULT,
   celdaTexto,
   inputToolbarClass,
-  selectToolbarClass,
 } from '../../utils/adminModuleUi'
+import { IconSearch } from '../../components/icons/Icons'
+import { calloutClass } from '../../utils/ui'
 
 const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
 const dependenciasIniciales = { contratos_activos: 0, contratos_historicos: 0, reclamos: 0 }
 const FILAS_POR_PAGINA = 4
-
-function IconSearch({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-      />
-    </svg>
-  )
-}
-
-function IconUser({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
-      />
-    </svg>
-  )
-}
-
-function IconHome({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"
-      />
-    </svg>
-  )
-}
-
-function IconSignal({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M9.348 14.652a3.75 3.75 0 0 1 0-5.304m5.304 0a3.75 3.75 0 0 1 0 5.304m-7.425 2.122a6.75 6.75 0 0 1 0-9.546m9.546 0a6.75 6.75 0 0 1 0 9.546M5.106 18.894c-3.808-3.807-3.808-9.98 0-13.788m13.788 0c3.808 3.807 3.808 9.98 0 13.788M12 12h.008v.008H12V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
-      />
-    </svg>
-  )
-}
-
-function HeaderLabel({ icon: Icon, children, align = 'center' }) {
-  const justify = align === 'left' ? 'justify-start' : 'justify-center'
-  return (
-    <span className={`inline-flex w-full items-center gap-2 text-slate-600 ${justify}`}>
-      {Icon && <Icon className="h-4 w-4 shrink-0 text-slate-400" />}
-      {children}
-    </span>
-  )
-}
 
 const celdaDestacada = 'text-sm font-medium text-slate-900'
 
@@ -356,15 +302,15 @@ export default function AdminPropiedades() {
     <>
       <AdminListLayout
         title="Propiedades"
+        subtitle="Cartera de inmuebles administrados y su estado de ocupación."
+        actions={<AdminNuevoButton label="Nueva propiedad" onClick={abrirModalCrear} />}
         alerts={
           error ? (
-            <Card className="border border-red-200 bg-red-50">
-              <p className="text-sm text-red-700">Error al cargar propiedades: {error}</p>
-            </Card>
+            <div className={calloutClass('danger')}>Error al cargar propiedades: {error}</div>
           ) : null
         }
       >
-        <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-3 sm:flex-row sm:items-center sm:gap-3 lg:px-6">
+        <AdminTableToolbar>
           <div className="relative min-w-0 flex-1">
             <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -372,17 +318,17 @@ export default function AdminPropiedades() {
               type="search"
               value={filtroTexto}
               onChange={(e) => setFiltroTexto(e.target.value)}
-              placeholder="Buscar por dirección o propietario..."
+              placeholder="Buscar por dirección o propietario…"
               className={`${inputToolbarClass} pl-9`}
             />
           </div>
 
-          <select
+          <FilterSelect
             id="filtro-tipo-propiedad"
             value={filtroTipo}
             onChange={(e) => setFiltroTipo(e.target.value)}
-            className={selectToolbarClass}
-            aria-label="Filtrar por tipo de propiedad"
+            onClear={() => setFiltroTipo('')}
+            ariaLabel="Filtrar por tipo de propiedad"
           >
             <option value="">Tipo: Todos</option>
             {TIPOS_PROPIEDAD.map((tipo) => (
@@ -390,14 +336,14 @@ export default function AdminPropiedades() {
                 {tipo}
               </option>
             ))}
-          </select>
+          </FilterSelect>
 
-          <select
+          <FilterSelect
             id="filtro-estado-propiedad"
             value={filtroEstado}
             onChange={(e) => setFiltroEstado(e.target.value)}
-            className={selectToolbarClass}
-            aria-label="Filtrar por estado de propiedad"
+            onClear={() => setFiltroEstado('')}
+            ariaLabel="Filtrar por estado de propiedad"
           >
             <option value="">Estado: Todos</option>
             {ESTADOS_PROPIEDAD.map((estado) => (
@@ -405,33 +351,23 @@ export default function AdminPropiedades() {
                 {estado}
               </option>
             ))}
-          </select>
-
-          <div className="shrink-0 sm:ml-auto">
-            <AdminNuevoButton
-              label="NUEVA PROPIEDAD"
-              onClick={abrirModalCrear}
-              className="w-full sm:w-auto"
-            />
-          </div>
-        </div>
+          </FilterSelect>
+        </AdminTableToolbar>
 
         <AdminTable className="w-full">
-          <AdminTableHead className="!bg-slate-100/90">
+          <AdminTableHead>
             <AdminTableRow className="hover:bg-transparent">
               <AdminTableHeaderCell className="w-[30%] !text-left">
                 Dirección
               </AdminTableHeaderCell>
               <AdminTableHeaderCell className="w-[14%] !text-center">
-                <HeaderLabel icon={IconHome}>Tipo</HeaderLabel>
+                Tipo
               </AdminTableHeaderCell>
               <AdminTableHeaderCell className="w-[14%] !text-center">
-                <HeaderLabel icon={IconSignal}>Estado</HeaderLabel>
+                Estado
               </AdminTableHeaderCell>
               <AdminTableHeaderCell className="w-[24%] !text-left">
-                <HeaderLabel icon={IconUser} align="left">
-                  Propietario
-                </HeaderLabel>
+                Propietario
               </AdminTableHeaderCell>
               <AdminTableHeaderCell className="w-[18%] !text-center">Acciones</AdminTableHeaderCell>
             </AdminTableRow>
@@ -439,7 +375,7 @@ export default function AdminPropiedades() {
           <AdminTableBody>
             {loading && (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={5}>Cargando propiedades...</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={5}>Cargando propiedades…</AdminTableEmptyCell>
               </AdminTableRow>
             )}
 
@@ -459,38 +395,23 @@ export default function AdminPropiedades() {
 
             {!loading &&
               propiedadesFiltradas.length > 0 &&
-              propiedadesPagina.map((p, index) => {
-                const badgeTipo = BADGE_PROPIEDAD_TIPO[p.tipo] ?? {
-                  label: p.tipo,
-                  className: 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200',
-                }
-                const badgeEstado = BADGE_PROPIEDAD_ESTADO[p.estado] ?? {
-                  label: p.estado,
-                  className: 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200',
-                }
-                const zebra = index % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'
+              propiedadesPagina.map((p) => {
+                const badgeTipo = BADGE_PROPIEDAD_TIPO[p.tipo] ?? { ...BADGE_PROPIEDAD_TIPO_DEFAULT, label: p.tipo }
+                const badgeEstado = BADGE_PROPIEDAD_ESTADO[p.estado] ?? { ...BADGE_PROPIEDAD_ESTADO_DEFAULT, label: p.estado }
                 const sinPropietario = !p.propietario_id
 
                 return (
-                  <AdminTableRow key={p.id} className={`${zebra} hover:bg-brand-50/40`}>
+                  <AdminTableRow key={p.id}>
                     <AdminTableCell className="!text-left">
                       <CeldaDireccion propiedad={p} />
                     </AdminTableCell>
 
                     <AdminTableCell className="!text-center">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${badgeTipo.className}`}
-                      >
-                        {badgeTipo.label}
-                      </span>
+                      <span className={badgeTipo.className}>{badgeTipo.label}</span>
                     </AdminTableCell>
 
                     <AdminTableCell className="!text-center">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${badgeEstado.className}`}
-                      >
-                        {badgeEstado.label}
-                      </span>
+                      <span className={badgeEstado.className}>{badgeEstado.label}</span>
                     </AdminTableCell>
 
                     <AdminTableCell className="!text-left">

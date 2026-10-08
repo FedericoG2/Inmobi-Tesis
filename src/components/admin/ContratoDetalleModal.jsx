@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Button } from '@tremor/react'
-import { IconClipboard } from '../icons/NavIcons'
 import ContratoDocumentosPanel from './ContratoDocumentosPanel'
 import { calcularAumentosPendientes } from '../../services/aumentosService'
 import { obtenerContratoDetalle } from '../../services/contratosService'
@@ -19,6 +17,21 @@ import {
   puedeFinalizarContrato,
 } from '../../utils/contratoVigencia'
 import { formatPeriodoMesAnio } from '../../utils/aumentosUi'
+import {
+  IconArrowRight,
+  IconCalendar,
+  IconChart,
+  IconCheckCircle,
+  IconClipboard,
+  IconCurrency,
+  IconPin,
+  IconUser,
+} from '../icons/Icons'
+import Modal, { ModalBody, ModalFooter, ModalHeader } from '../ui/Modal'
+import Button from '../ui/Button'
+import Badge from '../ui/Badge'
+import { calloutClass, eyebrow, surfaceMuted } from '../../utils/ui'
+import DetalleFila from '../ui/DetailField'
 
 function formatFecha(fecha) {
   if (!fecha) return '—'
@@ -29,67 +42,6 @@ function formatFecha(fecha) {
 const formatMonto = (monto) => {
   if (monto == null || monto === '') return '—'
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(Number(monto))
-}
-
-function IconUser({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
-      />
-    </svg>
-  )
-}
-
-function IconPin({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"
-      />
-    </svg>
-  )
-}
-
-function IconCalendar({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"
-      />
-    </svg>
-  )
-}
-
-function IconCurrency({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-      />
-    </svg>
-  )
-}
-
-function IconChart({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"
-      />
-    </svg>
-  )
 }
 
 function textoMontoCronograma(fila) {
@@ -107,37 +59,15 @@ function textoMontoCronograma(fila) {
   return <span className="text-slate-400">—</span>
 }
 
-function DetalleFila({ label, value, icon: Icon, className = '', children }) {
-  return (
-    <div
-      className={`flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 ${className}`}
-    >
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-slate-400 ring-1 ring-slate-100">
-        <Icon className="h-4 w-4" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-        {children ?? <p className="truncate text-sm font-medium text-slate-800">{value}</p>}
-      </div>
-    </div>
-  )
-}
-
 function SeccionTitulo({ children }) {
   return (
-    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{children}</h3>
+    <h3 className={`${eyebrow} mb-2.5`}>{children}</h3>
   )
 }
 
 function EstadoContratoBadge({ contrato }) {
   const badge = badgeEstadoContratoUi(contrato)
-  return (
-    <span
-      className={`inline-flex shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ${badge.className}`}
-    >
-      {badge.label}
-    </span>
-  )
+  return <span className={badge.className}>{badge.label}</span>
 }
 
 export default function ContratoDetalleModal({
@@ -229,59 +159,39 @@ export default function ContratoDetalleModal({
   const propiedad = contrato?.propiedades
 
   return (
-    <div className={`fixed inset-0 ${apilado ? 'z-[60]' : 'z-50'} flex items-center justify-center p-4`}>
-      <button
-        type="button"
-        aria-label="Cerrar detalle"
-        className="fixed inset-0 bg-slate-900/50"
-        onClick={onClose}
+    <Modal
+      open={open}
+      onClose={onClose}
+      size="3xl"
+      layer={apilado ? 'stacked' : 'base'}
+      labelledBy="contrato-detalle-titulo"
+    >
+      <ModalHeader
+        titleId="contrato-detalle-titulo"
+        icon={IconClipboard}
+        title={cargando ? 'Cargando contrato…' : (inquilino?.nombre_completo ?? 'Contrato')}
+        subtitle={
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="truncate">{propiedad?.direccion ?? '—'}</span>
+            {contrato && <EstadoContratoBadge contrato={contrato} />}
+          </span>
+        }
+        onClose={onClose}
       />
 
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="contrato-detalle-titulo"
-        className="relative z-10 flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl"
-      >
-        <div className="shrink-0 border-b border-slate-100 px-6 py-3">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-700">
-              <IconClipboard className="h-5 w-5" />
-            </span>
+      <ModalBody>
+          {cargando && <p className="text-sm text-slate-500">Cargando datos del contrato…</p>}
 
-            <div className="min-w-0 flex-1">
-              <h2
-                id="contrato-detalle-titulo"
-                className="truncate text-base font-semibold text-slate-900"
-              >
-                {cargando ? 'Cargando contrato...' : (inquilino?.nombre_completo ?? 'Contrato')}
-              </h2>
-              <p className="truncate text-sm text-slate-600">
-                {propiedad?.direccion ?? '—'}
-              </p>
-            </div>
-
-            {contrato && <EstadoContratoBadge contrato={contrato} />}
-          </div>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
-          {cargando && (
-            <p className="text-sm text-slate-500">Cargando datos del contrato...</p>
-          )}
-
-          {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-          )}
+          {error && <p className={calloutClass('danger')}>{error}</p>}
 
           {!cargando && !error && contrato && (
             <div className="space-y-6">
               {esContratoPlazoVencido(contrato) && (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
-                  <p className="text-sm font-medium text-red-900">
+                <div className={calloutClass('danger')}>
+                  <p className="font-medium">
                     El plazo contractual venció el {formatFecha(contrato.fecha_fin)}.
                   </p>
-                  <p className="mt-1 text-sm text-red-700">
+                  <p className="mt-1">
                     El contrato sigue activo en el sistema. Finalizalo para liberar la propiedad y dejar de
                     incluirlo en aumentos.
                   </p>
@@ -294,15 +204,16 @@ export default function ContratoDetalleModal({
                   <DetalleFila label="Inquilino" value={inquilino?.nombre_completo ?? '—'} icon={IconUser}>
                     {onVerInquilino && inquilino ? (
                       <div className="flex items-center gap-2">
-                        <p className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">
+                        <p className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900">
                           {inquilino.nombre_completo}
                         </p>
                         <button
                           type="button"
                           onClick={() => onVerInquilino(inquilino)}
-                          className="shrink-0 text-xs font-medium text-brand-600 hover:text-brand-800 hover:underline"
+                          className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-800"
                         >
-                          Ver detalle
+                          Ver ficha
+                          <IconArrowRight className="h-3 w-3" />
                         </button>
                       </div>
                     ) : undefined}
@@ -315,15 +226,16 @@ export default function ContratoDetalleModal({
                   >
                     {onVerPropiedad && propiedad ? (
                       <div className="flex items-center gap-2">
-                        <p className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">
+                        <p className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900">
                           {propiedad.direccion}
                         </p>
                         <button
                           type="button"
                           onClick={() => onVerPropiedad(propiedad)}
-                          className="shrink-0 text-xs font-medium text-brand-600 hover:text-brand-800 hover:underline"
+                          className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-800"
                         >
-                          Ver detalle
+                          Ver ficha
+                          <IconArrowRight className="h-3 w-3" />
                         </button>
                       </div>
                     ) : undefined}
@@ -389,16 +301,16 @@ export default function ContratoDetalleModal({
                   </p>
                 ) : null}
                 {cargandoAumento && cronogramaAumentos.some((f) => !f.aplicado) ? (
-                  <p className="mb-2 text-xs text-slate-500">Actualizando montos estimados...</p>
+                  <p className="mb-2 text-xs text-slate-500">Actualizando montos estimados…</p>
                 ) : null}
                 {cronogramaAumentos.length === 0 ? (
-                  <p className="rounded-lg border border-dashed border-slate-200 px-3 py-2.5 text-sm text-slate-500">
+                  <p className="rounded-lg border border-dashed border-slate-300 px-3 py-3 text-center text-sm text-slate-500">
                     Este contrato no tiene fechas de aumento programadas en su vigencia.
                   </p>
                 ) : (
-                  <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <div className="overflow-x-auto rounded-lg border border-slate-200">
                     <table className="min-w-full text-left text-sm">
-                      <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-medium uppercase tracking-wider text-slate-500">
                         <tr>
                           <th className="px-3 py-2.5">Período</th>
                           <th className="px-3 py-2.5">Estado</th>
@@ -411,13 +323,11 @@ export default function ContratoDetalleModal({
                             <td className="px-3 py-2.5 tabular-nums">{formatPeriodoMesAnio(fila.fecha)}</td>
                             <td className="px-3 py-2.5">
                               {fila.aplicado ? (
-                                <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                                <Badge tone="success" icon={IconCheckCircle}>
                                   Aplicado
-                                </span>
+                                </Badge>
                               ) : (
-                                <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                                  Pendiente
-                                </span>
+                                <Badge tone="warning">Pendiente</Badge>
                               )}
                             </td>
                             <td className="px-3 py-2.5 tabular-nums text-slate-900">
@@ -440,30 +350,25 @@ export default function ContratoDetalleModal({
               {contrato.observaciones?.trim() && (
                 <section>
                   <SeccionTitulo>Observaciones</SeccionTitulo>
-                  <p className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 text-sm text-slate-700">
+                  <p className={`${surfaceMuted} whitespace-pre-line px-3 py-2.5 text-sm text-slate-700`}>
                     {contrato.observaciones.trim()}
                   </p>
                 </section>
               )}
             </div>
           )}
-        </div>
+      </ModalBody>
 
-        <div className="flex shrink-0 justify-end gap-3 border-t border-slate-100 px-6 py-3">
-          <Button variant="secondary" onClick={onClose}>
-            Cerrar
+      <ModalFooter>
+        <Button variant="secondary" onClick={onClose}>
+          Cerrar
+        </Button>
+        {onFinalizar && contrato && puedeFinalizarContrato(contrato) && (
+          <Button variant="warning" onClick={() => onFinalizar(contrato)}>
+            {etiquetaFinalizarContrato(contrato)}
           </Button>
-          {onFinalizar && contrato && puedeFinalizarContrato(contrato) && (
-            <Button
-              type="button"
-              onClick={() => onFinalizar(contrato)}
-              className="!border-amber-500 !bg-amber-600 !text-white hover:!border-amber-600 hover:!bg-amber-700"
-            >
-              {etiquetaFinalizarContrato(contrato)}
-            </Button>
-          )}
-        </div>
-      </div>
-    </div>
+        )}
+      </ModalFooter>
+    </Modal>
   )
 }

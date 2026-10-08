@@ -13,8 +13,10 @@ export default function InquilinoLayout() {
         <div className="flex min-h-screen flex-col lg:ml-64">
           <InquilinoHeader />
 
-          <main className="w-full flex-1 px-4 py-5 pb-28 lg:px-8 lg:py-6 lg:pb-8 xl:px-10">
-            <Outlet />
+          <main className="w-full flex-1 px-4 pb-28 pt-6 sm:px-6 lg:px-8 lg:pb-10">
+            <div className="mx-auto w-full max-w-6xl">
+              <Outlet />
+            </div>
           </main>
         </div>
 

@@ -3,6 +3,7 @@ import { usePortalInquilino } from '../../contexts/PortalInquilinoContext'
 import PortalPageHeader from '../../components/inquilino/PortalPageHeader'
 import { PortalInfoCard, PortalInfoRow } from '../../components/inquilino/PortalInfoList'
 import { formatearDniCuit } from '../../utils/normalizarContacto'
+import Badge from '../../components/ui/Badge'
 import {
   portalColHalf,
   portalErrorState,
@@ -18,7 +19,7 @@ export default function InquilinoPerfil() {
   if (loading) {
     return (
       <div className={portalLoadingState}>
-        <p>Cargando tu perfil...</p>
+        <p>Cargando tu perfil…</p>
       </div>
     )
   }
@@ -29,7 +30,7 @@ export default function InquilinoPerfil() {
 
   return (
     <div className={portalPageShell}>
-      <PortalPageHeader title="Mi Perfil" subtitle="Datos personales y acceso al portal" />
+      <PortalPageHeader title="Mi perfil" subtitle="Datos personales y acceso al portal." />
 
       <div className={portalGridPage}>
         <PortalInfoCard titulo="Datos personales" className={portalColHalf}>
@@ -43,7 +44,7 @@ export default function InquilinoPerfil() {
         <PortalInfoCard titulo="Acceso al portal" className={portalColHalf}>
           <ul className="divide-y divide-slate-100">
             <PortalInfoRow label="Email de acceso" value={user?.email} />
-            <PortalInfoRow label="Estado" value="Cuenta activa" />
+            <PortalInfoRow label="Estado" value={<Badge tone="success" dot>Cuenta activa</Badge>} />
           </ul>
         </PortalInfoCard>
       </div>

@@ -1,3 +1,6 @@
+import { IconChart, IconDocument, IconHome } from '../components/icons/Icons'
+import { badgeClass } from './ui'
+
 export function formatPeriodoIpc(anio, mes) {
   if (anio == null || mes == null) return '—'
   const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
@@ -348,17 +351,17 @@ export function mensajeConfirmarDeshabilitado(ui) {
 }
 
 export const BADGE_INDICADOR = {
-  ipc: { label: 'IPC', className: 'bg-violet-600 text-white' },
-  icl: { label: 'ICL', className: 'bg-slate-600 text-white' },
+  ipc: { label: 'IPC', className: badgeClass('neutral', 'font-semibold') },
+  icl: { label: 'ICL', className: badgeClass('neutral', 'font-semibold') },
 }
 
 export const TONO_SITUACION = {
-  emerald: 'bg-emerald-50 text-emerald-800 ring-emerald-100',
-  amber: 'bg-amber-50 text-amber-800 ring-amber-100',
-  red: 'bg-red-50 text-red-800 ring-red-100',
-  indigo: 'bg-brand-50 text-brand-800 ring-brand-100',
-  sky: 'bg-sky-50 text-sky-800 ring-sky-100',
-  slate: 'bg-slate-100 text-slate-600 ring-slate-200',
+  emerald: 'bg-emerald-50 text-emerald-800 ring-emerald-600/15',
+  amber: 'bg-amber-50 text-amber-900 ring-amber-600/20',
+  red: 'bg-red-50 text-red-800 ring-red-600/15',
+  indigo: 'bg-brand-50 text-brand-800 ring-brand-600/15',
+  sky: 'bg-brand-50 text-brand-800 ring-brand-600/15',
+  slate: 'bg-slate-50 text-slate-700 ring-slate-500/15',
 }
 
 /** @deprecated usar TONO_SITUACION */
@@ -366,20 +369,20 @@ export const TONO_BADGE = TONO_SITUACION
 
 export function badgeIndicador(tipo) {
   const key = (tipo ?? '').toLowerCase()
-  return BADGE_INDICADOR[key] ?? { label: (tipo ?? '—').toUpperCase(), className: 'bg-slate-500 text-white' }
+  return BADGE_INDICADOR[key] ?? { label: (tipo ?? '—').toUpperCase(), className: badgeClass('neutral', 'font-semibold') }
 }
 
 /** Chip de índice estilo categoría de reclamos: ícono + sigla. */
 export const CHIP_INDICADOR = {
   ipc: {
     label: 'IPC',
-    icon: '📈',
+    icon: IconChart,
     tooltip:
       'IPC — Índice de Precios al Consumidor (INDEC). Variación mensual de inflación del nivel general. Inmobi sincroniza este índice desde Argly (fuente INDEC) y lo guarda en Supabase para calcular el aumento del período.',
   },
   icl: {
     label: 'ICL',
-    icon: '🏠',
+    icon: IconHome,
     tooltip:
       'ICL — Índice para Contratos de Locación (BCRA). Índice oficial para actualizar alquileres. Inmobi sincroniza ICL desde Argly (fuente BCRA) y lo guarda en Supabase para calcular el aumento del período.',
   },
@@ -390,7 +393,7 @@ export function chipIndicador(tipo) {
   return (
     CHIP_INDICADOR[key] ?? {
       label: (tipo ?? '—').toUpperCase(),
-      icon: '📄',
+      icon: IconDocument,
       tooltip: null,
     }
   )

@@ -2,28 +2,30 @@ import { useState } from 'react'
 import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
 import PortalPageHeader from '../../components/inquilino/PortalPageHeader'
 import { usePortalInquilino } from '../../contexts/PortalInquilinoContext'
-import {
-  badgePrioridad,
-  CATEGORIAS_RECLAMO,
-  infoCategoria,
-  infoEstado,
-  PILL_RING_CLASS,
-  PRIORIDADES_RECLAMO,
-  RECLAMO_CHIP_CLASS,
-} from '../../utils/reclamosUi'
+import { CATEGORIAS_RECLAMO, PRIORIDAD_SEGMENTO_ACTIVO, PRIORIDADES_RECLAMO } from '../../utils/reclamosUi'
 import { RECLAMO_LIMITES } from '../../utils/validarReclamo'
 import {
   portalBtnDanger,
-  portalBtnGhost,
-  portalBtnPrimary,
   portalBtnSecondary,
   portalCardClass,
   portalEmptyState,
   portalInputClass,
   portalLabelClass,
   portalPageShell,
-  portalSectionTitle,
 } from '../../utils/portalInquilinoUi'
+import { ReclamoCategoriaChip, ReclamoEstadoChip, ReclamoPrioridadChip } from '../../components/admin/ReclamoChips'
+import Modal, { ModalBody, ModalFooter, ModalHeader } from '../../components/ui/Modal'
+import Button from '../../components/ui/Button'
+import { IconPencil, IconPlus, IconTrash, IconWrench, IconX } from '../../components/icons/Icons'
+import {
+  calloutClass,
+  cn,
+  iconTileClass,
+  modalFormClass,
+  optionCardClass,
+  segmentedClass,
+  textareaClass,
+} from '../../utils/ui'
 
 const formInicial = { titulo: '', descripcion: '', categoria: 'Plomeria', prioridad: 'Media' }
 
@@ -131,101 +133,82 @@ export default function InquilinoReclamos() {
   }
 
   const nuevoReclamoBtn = (
-    <button
-      type="button"
-      onClick={abrirFormCrear}
-      disabled={!contratoActivo}
-      className={`${portalBtnPrimary} inline-flex w-full sm:w-auto`}
-    >
-      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" aria-hidden="true">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
-      </svg>
+    <Button icon={IconPlus} onClick={abrirFormCrear} disabled={!contratoActivo} className="w-full sm:w-auto">
       Nuevo reclamo
-    </button>
+    </Button>
   )
 
   return (
     <div className={portalPageShell}>
       <PortalPageHeader
-        title="Mis Reclamos"
-        subtitle="Reportá y seguí el estado de tus solicitudes de mantenimiento"
+        title="Mis reclamos"
+        subtitle="Reportá y seguí el estado de tus pedidos de mantenimiento."
         action={nuevoReclamoBtn}
       />
 
       {errorAccion && (
-        <div className="flex items-start justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3">
-          <p className="text-sm text-red-700">{errorAccion}</p>
-          <button type="button" onClick={() => setErrorAccion(null)} className={`${portalBtnGhost} !h-auto !px-2 text-red-600`}>
-            Cerrar
+        <div className={cn(calloutClass('danger'), 'flex items-start justify-between gap-3')}>
+          <p>{errorAccion}</p>
+          <button
+            type="button"
+            onClick={() => setErrorAccion(null)}
+            aria-label="Cerrar aviso"
+            className="rounded-md p-0.5 text-red-500 transition hover:bg-red-100 hover:text-red-700"
+          >
+            <IconX className="h-4 w-4" strokeWidth={2} />
           </button>
         </div>
       )}
 
-      {reclamosLoading && (
-        <p className="text-sm text-slate-500">Actualizando reclamos...</p>
-      )}
+      {reclamosLoading && <p className="text-sm text-slate-500">Actualizando reclamos…</p>}
 
       {reclamos.length === 0 && !reclamosLoading && (
         <div className={portalEmptyState}>
+          <span className={`${iconTileClass('neutral', 'lg', 'circle')} mx-auto mb-3`}>
+            <IconWrench className="h-5 w-5" />
+          </span>
           <p className="text-sm font-medium text-slate-700">No tenés reclamos registrados</p>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-sm text-slate-500">
             {contratoActivo
-              ? 'Usá el botón Nuevo reclamo para reportar un problema'
-              : 'Necesitás tener un contrato activo para registrar reclamos'}
+              ? 'Usá el botón Nuevo reclamo para reportar un problema.'
+              : 'Necesitás tener un contrato activo para registrar reclamos.'}
           </p>
         </div>
       )}
 
-      <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 xl:gap-4">
+      <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {reclamos.map((r) => {
           const esPendiente = r.estado === 'Pendiente'
-          const catInfo = infoCategoria(r.categoria)
-          const prioBadge = badgePrioridad(r.prioridad)
-          const estadoInfo = infoEstado(r.estado)
 
           return (
-            <li key={r.id} className={`${portalCardClass} p-4`}>
+            <li key={r.id} className={`${portalCardClass} flex flex-col p-4`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-slate-900">{r.titulo}</p>
-                  <p className="mt-0.5 text-xs text-slate-400">{formatFecha(r.fecha_creacion)}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">{formatFecha(r.fecha_creacion)}</p>
                 </div>
-                {estadoInfo && (
-                  <span className={RECLAMO_CHIP_CLASS}>
-                    <span className="text-sm leading-none">{estadoInfo.icon}</span>
-                    <span>{estadoInfo.label}</span>
-                  </span>
-                )}
+                <ReclamoEstadoChip estado={r.estado} />
               </div>
 
-              {(catInfo || prioBadge) && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {catInfo && (
-                    <span className={RECLAMO_CHIP_CLASS}>
-                      <span className="text-sm leading-none">{catInfo.icon}</span>
-                      <span>{catInfo.label}</span>
-                    </span>
-                  )}
-                  {prioBadge && (
-                    <span className={`${PILL_RING_CLASS} ${prioBadge.className}`}>{prioBadge.label}</span>
-                  )}
-                </div>
-              )}
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <ReclamoCategoriaChip categoria={r.categoria} />
+                <ReclamoPrioridadChip prioridad={r.prioridad} />
+              </div>
 
-              {r.descripcion && (
-                <p className="mt-2 line-clamp-2 text-sm text-slate-600">{r.descripcion}</p>
-              )}
+              {r.descripcion && <p className="mt-3 line-clamp-2 text-sm text-slate-600">{r.descripcion}</p>}
 
               {r.propiedades?.direccion && (
-                <p className="mt-1.5 text-xs text-slate-400">{r.propiedades.direccion}</p>
+                <p className="mt-2 truncate text-xs text-slate-500">{r.propiedades.direccion}</p>
               )}
 
               {esPendiente && (
-                <div className="mt-3 flex gap-2">
+                <div className="mt-4 flex gap-2 border-t border-slate-100 pt-3">
                   <button type="button" onClick={() => abrirFormEditar(r)} className={portalBtnSecondary}>
+                    <IconPencil className="h-4 w-4" />
                     Editar
                   </button>
                   <button type="button" onClick={() => handleEliminar(r)} className={portalBtnDanger}>
+                    <IconTrash className="h-4 w-4" />
                     Eliminar
                   </button>
                 </div>
@@ -235,151 +218,113 @@ export default function InquilinoReclamos() {
         })}
       </ul>
 
-      {showForm && (
-        <div
-          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 px-4 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] lg:items-center lg:px-6 lg:pb-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="reclamo-form-title"
-        >
-          <button
-            type="button"
-            aria-label="Cerrar formulario"
-            className="absolute inset-0"
-            onClick={cerrarForm}
-          />
-          <div className={`relative z-10 max-h-[min(85vh,40rem)] w-full max-w-lg overflow-y-auto ${portalCardClass} p-5 shadow-2xl lg:max-h-[90vh] lg:max-w-xl lg:p-6`}>
-            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-200 lg:hidden" aria-hidden="true" />
+      <Modal open={showForm} onClose={submitting ? undefined : cerrarForm} size="xl" labelledBy="reclamo-form-title">
+        <ModalHeader
+          titleId="reclamo-form-title"
+          icon={reclamoEditando ? IconPencil : IconWrench}
+          title={reclamoEditando ? 'Editar reclamo' : 'Nuevo reclamo'}
+          subtitle={!reclamoEditando ? contratoActivo?.propiedades?.direccion : undefined}
+          onClose={submitting ? undefined : cerrarForm}
+        />
 
-            <div className="relative mb-5 text-center">
-              <h3 id="reclamo-form-title" className={portalSectionTitle}>
-                {reclamoEditando ? 'Editar reclamo' : 'Nuevo reclamo'}
-              </h3>
-              <button
-                type="button"
-                onClick={cerrarForm}
-                disabled={submitting}
-                className={`${portalBtnGhost} absolute right-0 top-1/2 -translate-y-1/2`}
-                aria-label="Cerrar"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                </svg>
-              </button>
+        <form onSubmit={handleSubmit} className={modalFormClass}>
+          <ModalBody className="space-y-5">
+            <div>
+              <p className={portalLabelClass}>
+                Tipo de problema <span className="text-red-500">*</span>
+              </p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {CATEGORIAS_RECLAMO.map((cat) => {
+                  const seleccionada = form.categoria === cat.id
+                  const Icon = cat.icon
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      disabled={submitting}
+                      onClick={() => handleDirectChange('categoria', cat.id)}
+                      className={cn(optionCardClass(seleccionada), 'disabled:opacity-50')}
+                    >
+                      <Icon className={cn('h-4 w-4 shrink-0', seleccionada ? 'text-brand-600' : 'text-slate-400')} />
+                      <span className="truncate">{cat.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
-            {!reclamoEditando && contratoActivo?.propiedades?.direccion && (
-              <p className="mb-5 rounded-lg bg-brand-50 px-4 py-2.5 text-center text-xs font-medium leading-relaxed text-brand-700 ring-1 ring-inset ring-brand-100">
-                {contratoActivo.propiedades.direccion}
+            <div>
+              <p className={portalLabelClass}>
+                Urgencia <span className="text-red-500">*</span>
               </p>
-            )}
-
-            <form onSubmit={handleSubmit} className="mx-auto w-full max-w-md space-y-4">
-              <div>
-                <label className={portalLabelClass}>
-                  Tipo de problema <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
-                  {CATEGORIAS_RECLAMO.map((cat) => {
-                    const seleccionada = form.categoria === cat.id
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        disabled={submitting}
-                        onClick={() => handleDirectChange('categoria', cat.id)}
-                        className={`flex items-center gap-2 rounded-lg border p-2.5 text-left text-sm transition ${
-                          seleccionada
-                            ? 'border-brand-600 bg-brand-50 font-semibold text-brand-700 ring-2 ring-brand-100'
-                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50'
-                        }`}
-                      >
-                        <span className="text-base" aria-hidden="true">{cat.icon}</span>
-                        <span className="truncate">{cat.label}</span>
-                      </button>
-                    )
-                  })}
-                </div>
+              <div className={segmentedClass}>
+                {PRIORIDADES_RECLAMO.map((prio) => {
+                  const seleccionada = form.prioridad === prio
+                  return (
+                    <button
+                      key={prio}
+                      type="button"
+                      disabled={submitting}
+                      onClick={() => handleDirectChange('prioridad', prio)}
+                      className={cn(
+                        'flex-1 rounded-md px-3 py-1.5 text-center text-sm font-medium transition disabled:opacity-50',
+                        seleccionada ? PRIORIDAD_SEGMENTO_ACTIVO[prio] : 'text-slate-500 hover:text-slate-900'
+                      )}
+                    >
+                      {prio}
+                    </button>
+                  )
+                })}
               </div>
+            </div>
 
-              <div>
-                <label className={portalLabelClass}>
-                  Urgencia <span className="text-red-500">*</span>
-                </label>
-                <div className="flex rounded-lg border border-slate-200 bg-slate-100 p-1">
-                  {PRIORIDADES_RECLAMO.map((prio) => {
-                    const seleccionada = form.prioridad === prio
-                    let estiloActivo = 'bg-white text-slate-900 shadow-sm font-semibold'
-                    if (seleccionada && prio === 'Urgente') estiloActivo = 'bg-red-500 text-white shadow-sm font-semibold'
-                    if (seleccionada && prio === 'Alta') estiloActivo = 'bg-amber-500 text-white shadow-sm font-semibold'
+            <div>
+              <label htmlFor="reclamo-titulo" className={portalLabelClass}>
+                Título <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="reclamo-titulo"
+                type="text"
+                required
+                maxLength={RECLAMO_LIMITES.TITULO_MAX}
+                value={form.titulo}
+                onChange={handleChange('titulo')}
+                className={portalInputClass}
+                placeholder="Ej: Gotera en el techo del baño"
+                disabled={submitting}
+              />
+            </div>
 
-                    return (
-                      <button
-                        key={prio}
-                        type="button"
-                        disabled={submitting}
-                        onClick={() => handleDirectChange('prioridad', prio)}
-                        className={`flex-1 rounded-md py-2 text-center text-xs transition ${
-                          seleccionada ? estiloActivo : 'text-slate-600 hover:text-slate-900 disabled:opacity-50'
-                        }`}
-                      >
-                        {prio}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
+            <div>
+              <label htmlFor="reclamo-descripcion" className={portalLabelClass}>
+                Descripción <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                id="reclamo-descripcion"
+                required
+                maxLength={RECLAMO_LIMITES.DESCRIPCION_MAX}
+                rows={4}
+                value={form.descripcion}
+                onChange={handleChange('descripcion')}
+                className={cn(textareaClass, 'resize-none')}
+                placeholder="Describí el problema con el mayor detalle posible…"
+                disabled={submitting}
+              />
+            </div>
 
-              <div>
-                <label className={portalLabelClass}>
-                  Título <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  maxLength={RECLAMO_LIMITES.TITULO_MAX}
-                  value={form.titulo}
-                  onChange={handleChange('titulo')}
-                  className={portalInputClass}
-                  placeholder="Ej: Gotera en el techo del baño"
-                  disabled={submitting}
-                />
-              </div>
+            {submitError && <p className={calloutClass('danger')}>{submitError}</p>}
+          </ModalBody>
 
-              <div>
-                <label className={portalLabelClass}>
-                  Descripción <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  required
-                  maxLength={RECLAMO_LIMITES.DESCRIPCION_MAX}
-                  rows={4}
-                  value={form.descripcion}
-                  onChange={handleChange('descripcion')}
-                  className={`${portalInputClass} resize-none`}
-                  placeholder="Describí el problema con el mayor detalle posible..."
-                  disabled={submitting}
-                />
-              </div>
-
-              {submitError && (
-                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-inset ring-red-100">
-                  {submitError}
-                </p>
-              )}
-
-              <div className="flex gap-3 pt-1">
-                <button type="button" onClick={cerrarForm} disabled={submitting} className={portalBtnSecondary}>
-                  Cancelar
-                </button>
-                <button type="submit" disabled={submitting} className={`${portalBtnPrimary} flex-1`}>
-                  {submitting ? 'Guardando...' : reclamoEditando ? 'Guardar cambios' : 'Enviar reclamo'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+          <ModalFooter>
+            <Button variant="secondary" onClick={cerrarForm} disabled={submitting}>
+              Cancelar
+            </Button>
+            <Button type="submit" loading={submitting}>
+              {reclamoEditando ? 'Guardar cambios' : 'Enviar reclamo'}
+            </Button>
+          </ModalFooter>
+        </form>
+      </Modal>
 
       <AdminConfirmModal
         open={confirmOpen}

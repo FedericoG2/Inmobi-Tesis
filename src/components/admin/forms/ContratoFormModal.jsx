@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Button } from '@tremor/react'
 import {
   calcularPreviewAumentos,
   etiquetaCantidadAumentos,
@@ -30,12 +29,27 @@ import AdminFormModalHeader from '../AdminFormModalHeader'
 import ContratoDocumentoAltaPicker from './ContratoDocumentoAltaPicker'
 import InquilinoDetalleModal from '../InquilinoDetalleModal'
 import PropiedadDetalleModal from '../PropiedadDetalleModal'
+import Modal from '../../ui/Modal'
+import Button from '../../ui/Button'
+import { IconCheck, IconChevronLeft, IconChevronRight } from '../../icons/Icons'
+import {
+  calloutClass,
+  cn,
+  fieldHintClass,
+  inputClass as inputBaseClass,
+  labelClass,
+  modalFooterClass,
+  modalFormClass,
+  surfaceMuted,
+  textareaClass,
+} from '../../../utils/ui'
 
-const inputClass =
-  'w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200'
+const inputClass = inputBaseClass
 
-const inputClassSinSpinner =
-  'w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
+const inputClassSinSpinner = cn(
+  inputBaseClass,
+  '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
+)
 
 const formatMonto = (monto) =>
   new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(monto)
@@ -54,7 +68,7 @@ function PanelProximosAumentos({ preview, fechaInicio, fechaFin }) {
   }
 
   if (!fechasValidas(fechaInicio, fechaFin)) {
-    return <p className="text-sm text-amber-700">La fecha de fin debe ser posterior al inicio.</p>
+    return <p className="text-sm text-amber-800">La fecha de fin debe ser posterior al inicio.</p>
   }
 
   if (preview.length === 0) {
@@ -66,15 +80,15 @@ function PanelProximosAumentos({ preview, fechaInicio, fechaFin }) {
   }
 
   return (
-    <ul className="space-y-2">
+    <ul className="divide-y divide-slate-200/70">
       {preview.map((fila) => (
         <li
           key={`${fila.numero}-${fila.fecha}`}
-          className="flex items-start justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-sm"
+          className="flex items-start justify-between gap-2 py-2 text-sm first:pt-0 last:pb-0"
         >
-          <span className="font-medium text-slate-700">{fila.numero}º</span>
-          <span className="text-slate-600">{formatPeriodoMesAnio(fila.fecha)}</span>
-          <span className="text-right text-slate-800">
+          <span className="w-6 shrink-0 tabular-nums text-slate-400">{fila.numero}º</span>
+          <span className="flex-1 text-slate-600">{formatPeriodoMesAnio(fila.fecha)}</span>
+          <span className="text-right tabular-nums text-slate-900">
             {fila.esMontoNumerico ? formatMonto(fila.montoEstimado) : fila.montoEstimado}
           </span>
         </li>
@@ -85,9 +99,9 @@ function PanelProximosAumentos({ preview, fechaInicio, fechaFin }) {
 
 function CampoResumen({ label, value }) {
   return (
-    <div>
-      <p className="mb-1 block text-sm font-medium text-slate-700">{label}</p>
-      <p className="rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-900">{value}</p>
+    <div className="flex items-baseline justify-between gap-6 py-2.5">
+      <dt className="shrink-0 text-sm text-slate-500">{label}</dt>
+      <dd className="min-w-0 break-words text-right text-sm font-medium text-slate-900">{value}</dd>
     </div>
   )
 }
@@ -95,7 +109,7 @@ function CampoResumen({ label, value }) {
 function StepperProgreso({ secciones, activa }) {
   return (
     <div
-      className="flex items-center justify-center border-b border-slate-200 px-4 py-4 sm:px-6"
+      className="flex shrink-0 items-center justify-center border-b border-slate-100 px-4 py-4 sm:px-6"
       aria-label="Progreso del formulario"
     >
       {secciones.map((sec, i) => (
@@ -103,25 +117,23 @@ function StepperProgreso({ secciones, activa }) {
           <div className="flex flex-col items-center gap-1.5">
             <div
               aria-current={i === activa ? 'step' : undefined}
-              className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition-colors ${
+              className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold tabular-nums transition-colors ${
                 i < activa
                   ? 'bg-brand-600 text-white'
                   : i === activa
-                    ? 'border-2 border-brand-600 bg-white text-brand-700'
-                    : 'border-2 border-slate-200 bg-white text-slate-400'
+                    ? 'bg-white text-brand-700 ring-2 ring-brand-600'
+                    : 'bg-white text-slate-400 ring-1 ring-slate-300'
               }`}
             >
               {i < activa ? (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
+                <IconCheck className="h-4 w-4" strokeWidth={2.5} />
               ) : (
                 i + 1
               )}
             </div>
             <span
-              className={`max-w-[4.5rem] text-center text-[10px] font-semibold uppercase leading-tight sm:max-w-none sm:text-xs ${
-                i === activa ? 'text-brand-700' : i < activa ? 'text-slate-600' : 'text-slate-400'
+              className={`max-w-[4.5rem] text-center text-xs leading-tight sm:max-w-none ${
+                i === activa ? 'font-medium text-slate-900' : i < activa ? 'text-slate-600' : 'text-slate-400'
               }`}
             >
               {sec.stepLabel ?? sec.label}
@@ -129,7 +141,7 @@ function StepperProgreso({ secciones, activa }) {
           </div>
           {i < secciones.length - 1 && (
             <div
-              className={`mx-1 mb-5 h-0.5 w-6 sm:mx-2 sm:w-10 ${i < activa ? 'bg-brand-500' : 'bg-slate-200'}`}
+              className={`mx-1 mb-5 h-px w-6 sm:mx-2 sm:w-12 ${i < activa ? 'bg-brand-500' : 'bg-slate-200'}`}
               aria-hidden
             />
           )}
@@ -142,8 +154,8 @@ function StepperProgreso({ secciones, activa }) {
 function BloqueProximosAumentos({ preview, fechaInicio, fechaFin }) {
   return (
     <div>
-      <p className="mb-1 block text-sm font-medium text-slate-700">Próximos aumentos</p>
-      <div className="rounded-lg border border-slate-300 bg-slate-50 px-4 py-3">
+      <p className={labelClass}>Próximos aumentos</p>
+      <div className={`${surfaceMuted} px-4 py-3`}>
         <PanelProximosAumentos preview={preview} fechaInicio={fechaInicio} fechaFin={fechaFin} />
       </div>
     </div>
@@ -373,41 +385,38 @@ export default function ContratoFormModal({
 
   return (
     <>
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <button
-        type="button"
-        aria-label="Cerrar modal"
-        className="absolute inset-0 bg-slate-900/50"
-        onClick={onClose}
-      />
-
-      <div
-        className={`relative z-10 flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl ${
-          tamanoFijoWizard ? 'h-[min(620px,90vh)]' : 'max-h-[94vh]'
-        }`}
+      <Modal
+        open={open}
+        onClose={submitting ? undefined : onClose}
+        size="4xl"
+        className={tamanoFijoWizard ? 'h-[min(640px,calc(100dvh-2rem))]' : ''}
       >
-        <AdminFormModalHeader title="Nuevo Contrato" />
+        <AdminFormModalHeader
+          title="Nuevo contrato"
+          subtitle={`Paso ${seccionActiva + 1} de ${SECCIONES_CONTRATO.length}`}
+          onClose={submitting ? undefined : onClose}
+        />
 
         <StepperProgreso secciones={SECCIONES_CONTRATO} activa={seccionActiva} />
 
         <form
           onSubmit={handleSubmit}
           onKeyDown={handleFormKeyDown}
-          className="flex min-h-0 flex-1 flex-col"
+          className={modalFormClass}
         >
           <div className={`flex min-h-0 flex-1 ${tamanoFijoWizard ? 'overflow-hidden' : 'overflow-y-auto'}`}>
             <div
               className={`flex min-w-0 flex-1 flex-col ${
-                tamanoFijoWizard ? 'p-5 pb-4' : 'p-6 pb-8'
+                tamanoFijoWizard ? 'px-6 py-5' : 'px-6 pb-8 pt-5'
               } ${esSeccionAjustes ? 'lg:pr-4' : ''}`}
             >
               {seccionActiva === 0 && (
                 <ContenidoPasoWizard className="max-w-md lg:max-w-md">
                   <div>
                     {inquilinosLoading ? (
-                      <p className="text-sm text-slate-500">Cargando inquilinos...</p>
+                      <p className="text-sm text-slate-500">Cargando inquilinos…</p>
                     ) : sinInquilinos ? (
-                      <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                      <p className={calloutClass('warning')}>
                         No hay inquilinos cargados. Creá uno antes de agregar un contrato.
                       </p>
                     ) : (
@@ -424,24 +433,24 @@ export default function ContratoFormModal({
                           value: i.id,
                           label: i.nombre_completo,
                         }))}
-                        emptySelectionLabel="Buscar inquilino..."
-                        searchPlaceholder="Buscar inquilino..."
+                        emptySelectionLabel="Buscar inquilino…"
+                        searchPlaceholder="Buscar inquilino…"
                         disabled={formDeshabilitado}
                         onVerDetalle={() => setDetalleInquilinoOpen(true)}
-                        verDetalleLabel="Ver detalles"
+                        verDetalleLabel="Ver ficha del inquilino"
                       />
                     )}
                   </div>
 
                   <div>
                     {propiedadesLoading ? (
-                      <p className="text-sm text-slate-500">Cargando propiedades...</p>
+                      <p className="text-sm text-slate-500">Cargando propiedades…</p>
                     ) : sinPropiedades ? (
-                      <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                      <p className={calloutClass('warning')}>
                         No hay propiedades cargadas. Creá una antes de agregar un contrato.
                       </p>
                     ) : sinPropiedadesElegibles ? (
-                      <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                      <p className={calloutClass('warning')}>
                         No hay propiedades disponibles. Solo podés contratar unidades en estado
                         Disponible y sin contrato activo.
                       </p>
@@ -464,14 +473,14 @@ export default function ContratoFormModal({
                               disabled: !elegible,
                             }
                           })}
-                          emptySelectionLabel="Buscar propiedad..."
-                          searchPlaceholder="Buscar propiedad..."
+                          emptySelectionLabel="Buscar propiedad…"
+                          searchPlaceholder="Buscar propiedad…"
                           disabled={formDeshabilitado}
                           onVerDetalle={() => setDetallePropiedadOpen(true)}
-                          verDetalleLabel="Ver detalles"
+                          verDetalleLabel="Ver ficha de la propiedad"
                         />
                         {propiedadNoDisponible && (
-                          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                          <p className={calloutClass('warning', 'mt-2')}>
                             {MENSAJE_PROPIEDAD_NO_DISPONIBLE}
                           </p>
                         )}
@@ -485,7 +494,7 @@ export default function ContratoFormModal({
                 <ContenidoPasoWizard>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <label htmlFor="fecha_inicio" className="mb-1 block text-sm font-medium text-slate-700">
+                      <label htmlFor="fecha_inicio" className={labelClass}>
                         Fecha inicio de vigencia
                       </label>
                       <input
@@ -499,7 +508,7 @@ export default function ContratoFormModal({
                       />
                     </div>
                     <div>
-                      <label htmlFor="duracion_anios" className="mb-1 block text-sm font-medium text-slate-700">
+                      <label htmlFor="duracion_anios" className={labelClass}>
                         Duración del contrato
                       </label>
                       {!form.fecha_inicio ? (
@@ -533,7 +542,7 @@ export default function ContratoFormModal({
 
                   {form.fecha_inicio && form.duracion_anios && form.fecha_fin && (
                     <div>
-                      <label htmlFor="fecha_fin" className="mb-1 block text-sm font-medium text-slate-700">
+                      <label htmlFor="fecha_fin" className={labelClass}>
                         Fecha fin (calculada)
                       </label>
                       <input
@@ -549,13 +558,13 @@ export default function ContratoFormModal({
                   )}
 
                   {solapaConContratoExistente && (
-                    <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    <p className={calloutClass('warning')}>
                       {MENSAJE_SOLAPAMIENTO_CONTRATO}
                     </p>
                   )}
 
                   <div>
-                    <label htmlFor="monto_alquiler" className="mb-1 block text-sm font-medium text-slate-700">
+                    <label htmlFor="monto_alquiler" className={labelClass}>
                       Monto de alquiler
                     </label>
                     <input
@@ -572,7 +581,7 @@ export default function ContratoFormModal({
                   </div>
 
                   <div>
-                    <label htmlFor="dia_vencimiento" className="mb-1 block text-sm font-medium text-slate-700">
+                    <label htmlFor="dia_vencimiento" className={labelClass}>
                       Día de vencimiento (opcional)
                     </label>
                     <input
@@ -591,13 +600,13 @@ export default function ContratoFormModal({
 
               {seccionActiva === 2 && (
                 <ContenidoPasoWizard>
-                  <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm leading-snug text-emerald-900">
+                  <p className={calloutClass('info')}>
                     La periodicidad y el tipo de ajuste definen todos los aumentos futuros del contrato. Revisá
                     el calendario antes de continuar.
                   </p>
 
                   <div>
-                    <label htmlFor="periodicidad_key" className="mb-1 block text-sm font-medium text-slate-700">
+                    <label htmlFor="periodicidad_key" className={labelClass}>
                       Periodicidad del ajuste
                     </label>
                     <select
@@ -613,14 +622,14 @@ export default function ContratoFormModal({
                       ))}
                     </select>
                     {fechaProximoAumento && (
-                      <p className="mt-0.5 text-xs text-slate-500">
+                      <p className={fieldHintClass}>
                         Primer ajuste estimado: {formatPeriodoMesAnio(fechaProximoAumento)}
                       </p>
                     )}
                   </div>
 
                   <div>
-                    <label htmlFor="tipo_ajuste" className="mb-1 block text-sm font-medium text-slate-700">
+                    <label htmlFor="tipo_ajuste" className={labelClass}>
                       Tipo de ajuste
                     </label>
                     <select
@@ -638,7 +647,7 @@ export default function ContratoFormModal({
                   </div>
 
                   <div>
-                    <label htmlFor="observaciones" className="mb-1 block text-sm font-medium text-slate-700">
+                    <label htmlFor="observaciones" className={labelClass}>
                       Observaciones (opcional)
                     </label>
                     <textarea
@@ -646,7 +655,7 @@ export default function ContratoFormModal({
                       rows={2}
                       value={form.observaciones}
                       onChange={handleChange('observaciones')}
-                      className={`${inputClass} resize-none`}
+                      className={cn(textareaClass, 'min-h-0 resize-none')}
                       placeholder="Cláusulas o notas del contrato"
                     />
                   </div>
@@ -678,23 +687,18 @@ export default function ContratoFormModal({
               )}
 
               {seccionActiva === 4 && (
-                <div className="space-y-4">
+                <dl className="divide-y divide-slate-100 rounded-xl border border-slate-200 px-4">
                   <CampoResumen label="Inquilino" value={inquilinoSeleccionado?.nombre_completo ?? '—'} />
                   <CampoResumen label="Propiedad" value={propiedadSeleccionada?.direccion ?? '—'} />
                   <CampoResumen
                     label="Propietario"
                     value={propiedadSeleccionada?.propietarios?.nombre_completo ?? '—'}
                   />
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <CampoResumen label="Fecha inicio" value={formatFecha(form.fecha_inicio)} />
-                    <CampoResumen
-                      label="Duración"
-                      value={
-                        DURACION_CONTRATO_OPCIONES.find((o) => o.key === form.duracion_anios)?.label ??
-                        '—'
-                      }
-                    />
-                  </div>
+                  <CampoResumen label="Fecha inicio" value={formatFecha(form.fecha_inicio)} />
+                  <CampoResumen
+                    label="Duración"
+                    value={DURACION_CONTRATO_OPCIONES.find((o) => o.key === form.duracion_anios)?.label ?? '—'}
+                  />
                   <CampoResumen label="Fecha fin" value={formatFecha(form.fecha_fin)} />
                   <CampoResumen
                     label="Monto inicial / vigente"
@@ -704,13 +708,8 @@ export default function ContratoFormModal({
                     label="Día de vencimiento"
                     value={form.dia_vencimiento ? `Día ${form.dia_vencimiento}` : '—'}
                   />
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <CampoResumen label="Periodicidad del ajuste" value={periodicidadLabel} />
-                    <CampoResumen
-                      label="Tipo de ajuste"
-                      value={TIPO_AJUSTE_LABELS[form.tipo_ajuste] ?? form.tipo_ajuste}
-                    />
-                  </div>
+                  <CampoResumen label="Periodicidad del ajuste" value={periodicidadLabel} />
+                  <CampoResumen label="Tipo de ajuste" value={TIPO_AJUSTE_LABELS[form.tipo_ajuste] ?? form.tipo_ajuste} />
                   <CampoResumen
                     label="Próximo aumento"
                     value={fechaProximoAumento ? formatPeriodoMesAnio(fechaProximoAumento) : '—'}
@@ -728,6 +727,10 @@ export default function ContratoFormModal({
                         : 'Sin adjuntar (opcional)'
                     }
                   />
+                </dl>
+              )}
+              {seccionActiva === 4 && (
+                <div className="mt-5">
                   <BloqueProximosAumentos
                     preview={preview}
                     fechaInicio={form.fecha_inicio}
@@ -737,15 +740,15 @@ export default function ContratoFormModal({
               )}
 
               {errorPaso && (
-                <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">{errorPaso}</p>
+                <p className={calloutClass('warning', 'mt-4')}>{errorPaso}</p>
               )}
               {submitError && (
-                <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{submitError}</p>
+                <p className={calloutClass('danger', 'mt-4')}>{submitError}</p>
               )}
             </div>
 
             {mostrarPanelLateral && (
-              <aside className="hidden w-64 shrink-0 self-start border-l border-slate-200 p-4 lg:block">
+              <aside className="hidden w-72 shrink-0 self-stretch overflow-y-auto border-l border-slate-100 p-5 lg:block">
                 <BloqueProximosAumentos
                   preview={preview}
                   fechaInicio={form.fecha_inicio}
@@ -755,19 +758,19 @@ export default function ContratoFormModal({
             )}
           </div>
 
-          <div className="flex justify-between gap-3 border-t border-slate-200 px-6 py-4">
-            <Button type="button" variant="secondary" onClick={onClose} disabled={submitting}>
+          <div className={cn(modalFooterClass, 'justify-between')}>
+            <Button variant="ghost" onClick={onClose} disabled={submitting}>
               Cancelar
             </Button>
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               {seccionActiva > 0 && (
-                <Button type="button" variant="secondary" onClick={irAnterior} disabled={submitting}>
+                <Button variant="secondary" icon={IconChevronLeft} onClick={irAnterior} disabled={submitting}>
                   Anterior
                 </Button>
               )}
               {!esUltimaSeccion ? (
                 <Button
-                  type="button"
+                  iconRight={IconChevronRight}
                   onClick={(e) => {
                     e.preventDefault()
                     irSiguiente()
@@ -777,28 +780,27 @@ export default function ContratoFormModal({
                   {seccionActiva === SECCIONES_CONTRATO.length - 2 ? 'Ver resumen' : 'Siguiente'}
                 </Button>
               ) : (
-                <Button type="submit" loading={submitting} disabled={submitting || formDeshabilitado}>
+                <Button type="submit" icon={IconCheck} loading={submitting} disabled={formDeshabilitado}>
                   Confirmar y guardar
                 </Button>
               )}
             </div>
           </div>
         </form>
-      </div>
-    </div>
+      </Modal>
 
-    <InquilinoDetalleModal
-      open={detalleInquilinoOpen}
-      inquilino={inquilinoSeleccionado}
-      onClose={() => setDetalleInquilinoOpen(false)}
-      apilado
-    />
-    <PropiedadDetalleModal
-      open={detallePropiedadOpen}
-      propiedad={propiedadSeleccionada}
-      onClose={() => setDetallePropiedadOpen(false)}
-      apilado
-    />
+      <InquilinoDetalleModal
+        open={detalleInquilinoOpen}
+        inquilino={inquilinoSeleccionado}
+        onClose={() => setDetalleInquilinoOpen(false)}
+        apilado
+      />
+      <PropiedadDetalleModal
+        open={detallePropiedadOpen}
+        propiedad={propiedadSeleccionada}
+        onClose={() => setDetallePropiedadOpen(false)}
+        apilado
+      />
     </>
   )
 }

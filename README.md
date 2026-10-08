@@ -1,6 +1,6 @@
 # Inmobi — Frontend
 
-Plataforma de gestión inmobiliaria con React, React Router v6, Tailwind CSS, Tremor v3 y Supabase.
+Plataforma de gestión inmobiliaria con React, React Router v6, Tailwind CSS (sistema de diseño propio en `src/components/ui` y `src/utils/ui.js`), Tremor v3 y Supabase.
 
 > **Contexto completo para IA / onboarding:** ver [`docs/CONTEXTO_PROYECTO.md`](docs/CONTEXTO_PROYECTO.md) (arquitectura, capas, rutas, schema, reglas de negocio, qué está mock y qué está en Supabase).
 

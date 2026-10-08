@@ -1,12 +1,13 @@
 import { formatMontoInquilino } from '../../utils/proyeccionAumentoInquilino'
 import { portalCardClass } from '../../utils/portalInquilinoUi'
+import Badge from '../ui/Badge'
 
 export default function HistorialMontosInquilino({ filas, className = '' }) {
   if (!filas?.length) {
     return (
-      <div className={`${portalCardClass} px-5 py-6 text-center ${className}`.trim()}>
+      <div className={`${portalCardClass} px-5 py-8 text-center ${className}`.trim()}>
         <p className="text-sm font-medium text-slate-700">Sin meses para mostrar</p>
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-sm text-slate-500">
           Cuando el contrato esté en curso, vas a ver acá el alquiler mes a mes.
         </p>
       </div>
@@ -17,7 +18,7 @@ export default function HistorialMontosInquilino({ filas, className = '' }) {
 
   return (
     <div className={`${portalCardClass} overflow-hidden ${className}`.trim()}>
-      <p className="border-b border-slate-100 px-4 py-2.5 text-xs text-slate-500 lg:px-5">
+      <p className="border-b border-slate-100 px-4 py-3 text-sm text-slate-500 lg:px-5">
         Alquiler mensual vigente en cada mes. No incluye comprobantes de pago.
       </p>
 
@@ -25,24 +26,14 @@ export default function HistorialMontosInquilino({ filas, className = '' }) {
         {filasRecientes.map((fila) => (
           <li
             key={fila.id}
-            className="flex items-center justify-between gap-2 bg-white px-3 py-2.5 lg:flex-col lg:items-start lg:gap-1 lg:py-3"
+            className="flex items-center justify-between gap-2 bg-white px-4 py-3 lg:flex-col lg:items-start lg:gap-1.5"
           >
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <p className="text-xs font-medium text-slate-800 lg:text-sm">{fila.mesLabel}</p>
-                {fila.esMesActual && (
-                  <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-inset ring-emerald-200">
-                    Actual
-                  </span>
-                )}
-                {fila.huboAumento && (
-                  <span className="rounded-full bg-brand-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-brand-700 ring-1 ring-inset ring-brand-200">
-                    Aumento
-                  </span>
-                )}
-              </div>
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+              <p className="text-sm text-slate-600">{fila.mesLabel}</p>
+              {fila.esMesActual && <Badge tone="success">Actual</Badge>}
+              {fila.huboAumento && <Badge tone="brand">Aumento</Badge>}
             </div>
-            <p className="shrink-0 text-sm font-bold tabular-nums text-slate-900 lg:text-base">
+            <p className="shrink-0 text-base font-semibold tabular-nums text-slate-900">
               {formatMontoInquilino(fila.monto)}
             </p>
           </li>

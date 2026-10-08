@@ -1,4 +1,6 @@
 import { ReclamoEstadoChip } from './ReclamoChips'
+import { IconArrowRight } from '../icons/Icons'
+import { surfaceCard } from '../../utils/ui'
 
 function formatearFechaHora(fecha) {
   if (!fecha) return '—'
@@ -12,7 +14,7 @@ function formatearFechaHora(fecha) {
 }
 
 function EstadoTag({ estado }) {
-  return <ReclamoEstadoChip estado={estado} compact />
+  return <ReclamoEstadoChip estado={estado} />
 }
 
 function tipoEvento(evento) {
@@ -35,23 +37,23 @@ function EventoItem({ evento, numero, ultimo }) {
     <li className="relative flex gap-3 pb-6 last:pb-0">
       {!ultimo && (
         <span
-          className="absolute left-4 top-8 bottom-0 w-px bg-emerald-200"
+          className="absolute bottom-0 left-3.5 top-8 w-px bg-slate-200"
           aria-hidden
         />
       )}
 
-      <span className="relative z-[1] flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-xs font-bold tabular-nums text-emerald-700 ring-2 ring-emerald-200">
+      <span className="relative z-[1] flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-xs font-semibold tabular-nums text-slate-600 ring-1 ring-slate-200">
         {numero}
       </span>
 
       <div className="min-w-0 flex-1 pt-0.5">
-        <p className="text-sm font-semibold text-slate-900">{titulo}</p>
+        <p className="text-sm font-medium text-slate-900">{titulo}</p>
         <p className="mt-0.5 text-xs text-slate-500">{formatearFechaHora(evento.fecha_creacion)}</p>
 
         {tipo === 'cambio' && evento.estado_anterior && (
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <EstadoTag estado={evento.estado_anterior} />
-            <span className="text-xs text-slate-400">→</span>
+            <IconArrowRight className="h-3.5 w-3.5 text-slate-400" />
             <EstadoTag estado={evento.estado_nuevo} />
           </div>
         )}
@@ -72,7 +74,7 @@ export default function ReclamoTimeline({
   error = null,
   className = '',
 }) {
-  const panelClass = `rounded-xl border border-slate-200 bg-white px-4 py-3 ${className}`.trim()
+  const panelClass = `${surfaceCard} px-4 py-3 ${className}`.trim()
 
   if (loading) {
     return (

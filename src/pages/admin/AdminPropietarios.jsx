@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Card } from '@tremor/react'
 import AdminAlertModal from '../../components/admin/AdminAlertModal'
 import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
 import AdminListLayout from '../../components/admin/AdminListLayout'
@@ -11,12 +10,14 @@ import {
   AdminTableHead,
   AdminTableHeaderCell,
   AdminTableRow,
+  AdminTableToolbar,
 } from '../../components/admin/AdminDataTable'
 import PropietarioFormModal from '../../components/admin/forms/PropietarioFormModal'
 import PropietarioDetalleModal from '../../components/admin/PropietarioDetalleModal'
 import PropietarioRowActions from '../../components/admin/PropietarioRowActions'
 import AdminTablePagination from '../../components/admin/AdminTablePagination'
 import AdminNuevoButton from '../../components/admin/AdminNuevoButton'
+import FilterSelect from '../../components/admin/FilterSelect'
 import { usePropietarios } from '../../hooks/usePropietarios'
 import { formatearDniCuit, formatearTelefono } from '../../utils/normalizarContacto'
 import {
@@ -25,93 +26,12 @@ import {
   celdaNumero,
   celdaTexto,
   inputToolbarClass,
-  selectToolbarClass,
 } from '../../utils/adminModuleUi'
+import { IconSearch } from '../../components/icons/Icons'
+import { calloutClass } from '../../utils/ui'
 
 const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
 const FILAS_POR_PAGINA = 4
-
-function IconSearch({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-      />
-    </svg>
-  )
-}
-
-function IconUser({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
-      />
-    </svg>
-  )
-}
-
-function IconIdCard({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm3-9.75a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 3a2.25 2.25 0 0 0-2.25 2.25v.75a2.25 2.25 0 0 0 2.25 2.25h3a2.25 2.25 0 0 0 2.25-2.25v-.75A2.25 2.25 0 0 0 10.5 12.75h-3Z"
-      />
-    </svg>
-  )
-}
-
-function IconHome({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"
-      />
-    </svg>
-  )
-}
-
-function IconEnvelope({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
-      />
-    </svg>
-  )
-}
-
-function IconPhone({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.72 1.062a12.042 12.042 0 0 1-7.21-7.21l1.062-.72c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z"
-      />
-    </svg>
-  )
-}
-
-function HeaderLabel({ icon: Icon, children, align = 'center' }) {
-  const justify = align === 'left' ? 'justify-start' : 'justify-center'
-  return (
-    <span className={`inline-flex w-full items-center gap-2 text-slate-600 ${justify}`}>
-      {Icon && <Icon className="h-4 w-4 shrink-0 text-slate-400" />}
-      {children}
-    </span>
-  )
-}
 
 export default function AdminPropietarios() {
   const [modalOpen, setModalOpen] = useState(false)
@@ -281,15 +201,13 @@ export default function AdminPropietarios() {
     <>
       <AdminListLayout
         title="Propietarios"
+        subtitle="Personas y empresas dueñas de las propiedades administradas."
+        actions={<AdminNuevoButton label="Nuevo propietario" onClick={abrirModalCrear} />}
         alerts={
-          error ? (
-            <Card className="border border-red-200 bg-red-50">
-              <p className="text-sm text-red-700">Error al cargar propietarios: {error}</p>
-            </Card>
-          ) : null
+          error ? <div className={calloutClass('danger')}>Error al cargar propietarios: {error}</div> : null
         }
       >
-        <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-3 sm:flex-row sm:items-center sm:gap-3 lg:px-6">
+        <AdminTableToolbar>
           <div className="relative min-w-0 flex-1">
             <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -297,58 +215,44 @@ export default function AdminPropietarios() {
               type="search"
               value={filtroTexto}
               onChange={(e) => setFiltroTexto(e.target.value)}
-              placeholder="Buscar por nombre, DNI/CUIT o email..."
+              placeholder="Buscar por nombre, DNI/CUIT o email…"
               className={`${inputToolbarClass} pl-9`}
             />
           </div>
 
-          <select
+          <FilterSelect
             id="filtro-tipo-propietario"
             value={filtroTipo}
             onChange={(e) => setFiltroTipo(e.target.value)}
-            className={selectToolbarClass}
-            aria-label="Filtrar por tipo de propietario"
+            onClear={() => setFiltroTipo('')}
+            ariaLabel="Filtrar por tipo de propietario"
           >
             <option value="">Tipo: Todos</option>
             <option value="Física">Particular</option>
             <option value="Jurídica">Empresa</option>
-          </select>
-
-          <div className="shrink-0 sm:ml-auto">
-            <AdminNuevoButton
-              label="NUEVO PROPIETARIO"
-              onClick={abrirModalCrear}
-              className="w-full sm:w-auto"
-            />
-          </div>
-        </div>
+          </FilterSelect>
+        </AdminTableToolbar>
 
         <AdminTable className="w-full">
-          <AdminTableHead className="!bg-slate-100/90">
+          <AdminTableHead>
             <AdminTableRow className="hover:bg-transparent">
               <AdminTableHeaderCell className="w-[11%] !text-center">
-                <HeaderLabel icon={IconUser}>Tipo</HeaderLabel>
+                Tipo
               </AdminTableHeaderCell>
               <AdminTableHeaderCell className="w-[22%] !text-left">
                 Nombre / Razón social
               </AdminTableHeaderCell>
               <AdminTableHeaderCell className="w-[13%] whitespace-nowrap !text-left">
-                <HeaderLabel icon={IconIdCard} align="left">
-                  DNI/CUIT
-                </HeaderLabel>
+                DNI/CUIT
               </AdminTableHeaderCell>
               <AdminTableHeaderCell className="w-[12%] whitespace-nowrap !text-left">
-                <HeaderLabel icon={IconPhone} align="left">
-                  Teléfono
-                </HeaderLabel>
+                Teléfono
               </AdminTableHeaderCell>
               <AdminTableHeaderCell className="w-[18%] !text-left">
-                <HeaderLabel icon={IconEnvelope} align="left">
-                  Email
-                </HeaderLabel>
+                Email
               </AdminTableHeaderCell>
               <AdminTableHeaderCell className="w-[10%] !text-center">
-                <HeaderLabel icon={IconHome}>Propiedades</HeaderLabel>
+                Propiedades
               </AdminTableHeaderCell>
               <AdminTableHeaderCell className="w-[14%] !text-center">Acciones</AdminTableHeaderCell>
             </AdminTableRow>
@@ -356,7 +260,7 @@ export default function AdminPropietarios() {
           <AdminTableBody>
             {loading && (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={7}>Cargando propietarios...</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={7}>Cargando propietarios…</AdminTableEmptyCell>
               </AdminTableRow>
             )}
 
@@ -376,18 +280,13 @@ export default function AdminPropietarios() {
 
             {!loading &&
               propietariosFiltrados.length > 0 &&
-              propietariosPagina.map((p, index) => {
+              propietariosPagina.map((p) => {
                 const badge = BADGE_PROPIETARIO_TIPO[p.tipo_persona] ?? BADGE_PROPIETARIO_TIPO['Física']
-                const zebra = index % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'
 
                 return (
-                  <AdminTableRow key={p.id ?? p.dni_cuit} className={`${zebra} hover:bg-brand-50/40`}>
+                  <AdminTableRow key={p.id ?? p.dni_cuit}>
                     <AdminTableCell className="!text-center">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${badge.className}`}
-                      >
-                        {badge.label}
-                      </span>
+                      <span className={badge.className}>{badge.label}</span>
                     </AdminTableCell>
 
                     <AdminTableCell className="!text-left">

@@ -1,37 +1,17 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-
-const inputClass =
-  'w-full rounded-lg border border-slate-300 py-2.5 pl-10 pr-9 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200'
-
-function IconX({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-    </svg>
-  )
-}
-
-function IconSearch({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-      />
-    </svg>
-  )
-}
+import Button from '../ui/Button'
+import { IconCheck, IconSearch, IconX } from '../icons/Icons'
+import { cn, inputClass, labelClass, surfacePopover } from '../../utils/ui'
 
 const btnLimpiar =
-  'absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600'
+  'absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600'
 
 function normalizar(texto) {
   return (texto ?? '')
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[̀-ͯ]/g, '')
 }
 
 /**
@@ -151,10 +131,10 @@ export default function AdminSearchSelect({
               width: menuRect.width,
               zIndex: 9999,
             }}
-            className="max-h-52 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-xl"
+            className={cn(surfacePopover, 'max-h-56 overflow-y-auto p-1')}
           >
             {opcionesFiltradas.length === 0 ? (
-              <li className="px-4 py-2.5 text-sm text-slate-500">{noResultsLabel}</li>
+              <li className="px-3 py-2.5 text-sm text-slate-500">{noResultsLabel}</li>
             ) : (
               opcionesFiltradas.map((option) => {
                 const activa = String(option.value) === String(value)
@@ -164,15 +144,17 @@ export default function AdminSearchSelect({
                       type="button"
                       disabled={option.disabled}
                       onClick={() => elegir(option)}
-                      className={`w-full px-4 py-2.5 text-left text-sm transition-colors ${
+                      className={cn(
+                        'flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors',
                         option.disabled
                           ? 'cursor-not-allowed text-slate-400'
                           : activa
                             ? 'bg-brand-50 font-medium text-brand-800'
-                            : 'text-slate-800 hover:bg-slate-50'
-                      }`}
+                            : 'text-slate-700 hover:bg-slate-100'
+                      )}
                     >
-                      {option.label}
+                      <span className="truncate">{option.label}</span>
+                      {activa ? <IconCheck className="h-4 w-4 shrink-0 text-brand-600" strokeWidth={2} /> : null}
                     </button>
                   </li>
                 )
@@ -186,16 +168,14 @@ export default function AdminSearchSelect({
   return (
     <div className="relative">
       {label && (
-        <label htmlFor={`${id ?? reactId}-search`} className="mb-1 block text-sm font-medium text-slate-700">
+        <label htmlFor={`${id ?? reactId}-search`} className={labelClass}>
           {label}
           {required ? <span className="text-red-500"> *</span> : null}
         </label>
       )}
 
       <div ref={wrapperRef} className="relative min-w-0">
-        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-          <IconSearch />
-        </span>
+        <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
           ref={inputRef}
           id={`${id ?? reactId}-search`}
@@ -208,7 +188,7 @@ export default function AdminSearchSelect({
           onFocus={abrirLista}
           disabled={disabled}
           placeholder={placeholder}
-          className={`${inputClass} ${disabled ? 'opacity-60' : ''}`}
+          className={cn(inputClass, 'pl-9 pr-9')}
           autoComplete="off"
           role="combobox"
           aria-expanded={open}
@@ -222,19 +202,15 @@ export default function AdminSearchSelect({
             className={btnLimpiar}
             onClick={limpiar}
           >
-            <IconX className="h-3.5 w-3.5" />
+            <IconX className="h-3.5 w-3.5" strokeWidth={2} />
           </button>
         )}
       </div>
 
       {mostrarBotonDetalle && (
-        <button
-          type="button"
-          onClick={onVerDetalle}
-          className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-        >
+        <Button variant="secondary" block onClick={onVerDetalle} className="mt-2">
           {verDetalleLabel}
-        </button>
+        </Button>
       )}
 
       {required && (

@@ -8,6 +8,7 @@ import {
   actualizarReclamoPortal,
   eliminarReclamoPortal,
 } from '../services/portalInquilinoService'
+import { suscribirActividad } from '../services/actividadService'
 
 const STORAGE_KEY_CONTRATO = 'portal_inquilino_contrato_id'
 
@@ -83,6 +84,22 @@ export function PortalInquilinoProvider({ children }) {
   useEffect(() => {
     cargarDatos()
   }, [cargarDatos])
+
+  // En vivo: cuando la inmobiliaria gestiona un reclamo, confirma un aumento o cambia
+  // el contrato, el portal se actualiza sin recargar (RLS filtra los eventos ajenos).
+  const inquilinoId = inquilino?.id
+  useEffect(() => {
+    if (!inquilinoId) return undefined
+    return suscribirActividad(async (evento) => {
+      if (evento.entidad === 'reclamo') {
+        const { data, error: err } = await listarReclamosInquilino(inquilinoId)
+        if (!err) setReclamos(data ?? [])
+      } else if (['contrato', 'aumento', 'documento'].includes(evento.entidad)) {
+        const { data, error: err } = await listarContratosActivosInquilino(inquilinoId)
+        if (!err) setContratos(data ?? [])
+      }
+    })
+  }, [inquilinoId])
 
   const setContratoSeleccionado = useCallback((id) => {
     const numId = Number(id)

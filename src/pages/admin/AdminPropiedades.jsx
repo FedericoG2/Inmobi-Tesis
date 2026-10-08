@@ -19,6 +19,7 @@ import AdminTablePagination from '../../components/admin/AdminTablePagination'
 import AdminNuevoButton from '../../components/admin/AdminNuevoButton'
 import FilterSelect from '../../components/admin/FilterSelect'
 import { usePropiedades } from '../../hooks/usePropiedades'
+import { useToast } from '../../contexts/ToastContext'
 import { usePropietarios } from '../../hooks/usePropietarios'
 import { etiquetaPropietario } from '../../utils/etiquetaPropietario'
 import { ESTADOS_PROPIEDAD, TIPOS_PROPIEDAD } from '../../utils/validaciones'
@@ -86,6 +87,7 @@ function buildMensajeConfirmacionDelete(propiedad, deps) {
 }
 
 export default function AdminPropiedades() {
+  const toast = useToast()
   const [modalOpen, setModalOpen] = useState(false)
   const [propiedadEditando, setPropiedadEditando] = useState(null)
   const [dependenciasEditando, setDependenciasEditando] = useState(dependenciasIniciales)
@@ -221,9 +223,18 @@ export default function AdminPropiedades() {
         return false
       }
 
-      return actualizar(propiedadEditando.id, form)
+      const ok = await actualizar(propiedadEditando.id, form)
+      if (ok) avisarPropiedadGuardada('Propiedad actualizada', form)
+      return ok
     }
-    return crear(form)
+    const ok = await crear(form)
+    if (ok) avisarPropiedadGuardada('Propiedad creada', form)
+    return ok
+  }
+
+  function avisarPropiedadGuardada(titulo, form) {
+    const direccion = [form.calle, form.altura].filter(Boolean).join(' ') || 'La propiedad'
+    toast.success(titulo, `${direccion} · estado: ${form.estado ?? 'Disponible'}.`)
   }
 
   const confirmarCambioPropietario = async () => {
@@ -231,7 +242,10 @@ export default function AdminPropiedades() {
     const ok = await actualizar(propiedadEditando.id, pendingForm)
     setConfirmCambioPropietario(false)
     setPendingForm(null)
-    if (ok) cerrarModal()
+    if (ok) {
+      toast.success('Propietario reasignado', 'La propiedad quedó a nombre del nuevo propietario. El contrato activo no cambia.')
+      cerrarModal()
+    }
   }
 
   const cancelarCambioPropietario = () => {
@@ -283,6 +297,7 @@ export default function AdminPropiedades() {
     setEliminando(false)
 
     if (ok) {
+      toast.success('Propiedad eliminada', `${propiedadAEliminar.direccion ?? 'La propiedad'} se quitó de la cartera.`)
       cancelarEliminar()
     }
   }

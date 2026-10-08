@@ -10,6 +10,7 @@ import {
 } from '../../services/documentosService'
 import { IconDocument, IconDownload, IconTrash, IconUpload } from '../icons/Icons'
 import Button from '../ui/Button'
+import { useToast } from '../../contexts/ToastContext'
 import { calloutClass, eyebrow, iconTileClass, surfaceMuted } from '../../utils/ui'
 
 function formatFecha(fecha) {
@@ -24,6 +25,7 @@ export default function ContratoDocumentosPanel({
   propiedadId,
   activo = true,
 }) {
+  const toast = useToast()
   const inputRef = useRef(null)
   const [documentos, setDocumentos] = useState([])
   const [cargando, setCargando] = useState(false)
@@ -85,6 +87,7 @@ export default function ContratoDocumentosPanel({
 
     setDocumentos((prev) => [data, ...prev])
     setMensaje('Contrato legal adjuntado correctamente.')
+    toast.success('Documento adjuntado', visibleParaInquilino ? 'El inquilino ya lo puede descargar desde su portal.' : 'Queda visible solo para la administración.')
   }
 
   const descargar = async (documento) => {
@@ -111,6 +114,7 @@ export default function ContratoDocumentosPanel({
     }
     setDocumentos((prev) => prev.filter((d) => d.id !== documento.id))
     setMensaje('Documento eliminado.')
+    toast.success('Documento eliminado', documento.nombre)
   }
 
   const toggleVisibilidad = async (documento) => {
@@ -122,6 +126,7 @@ export default function ContratoDocumentosPanel({
       return
     }
     setDocumentos((prev) => prev.map((d) => (d.id === documento.id ? data : d)))
+    toast.info(nuevoValor ? 'Documento compartido con el inquilino' : 'Documento oculto al inquilino', documento.nombre)
   }
 
   return (

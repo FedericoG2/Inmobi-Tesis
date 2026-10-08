@@ -24,6 +24,7 @@ import {
   AdminTableRow,
 } from '../../components/admin/AdminDataTable'
 import { useAumentos } from '../../hooks/useAumentos'
+import { useToast } from '../../contexts/ToastContext'
 import { deshacerAumento } from '../../services/aumentosService'
 import { listarInquilinos } from '../../services/inquilinosService'
 import { listarPropiedades } from '../../services/propiedadesService'
@@ -110,6 +111,7 @@ const formatMonto = (monto) => {
 }
 
 export default function AdminAumentos() {
+  const toast = useToast()
   const [filtro, setFiltro] = useState('pendientes')
   const [paginaActual, setPaginaActual] = useState(1)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -374,8 +376,28 @@ export default function AdminAumentos() {
   }
 
   const ejecutarConfirm = async () => {
-    const { ok } = await confirmarSeleccionados(confirmTarget)
+    const { ok, contratoIdsConfirmados } = await confirmarSeleccionados(confirmTarget)
     if (ok) {
+      const hoyIso = hoyIsoLocal()
+      const confirmadas = confirmTarget.filter((p) =>
+        contratoIdsConfirmados.some((id) => String(id) === String(p.contrato_id))
+      )
+      const acordadas = confirmadas.filter((p) => (p.fechaAumento ?? p.fecha_proximo_aumento ?? '') > hoyIso)
+      const aplicadas = confirmadas.length - acordadas.length
+      if (confirmadas.length === 1) {
+        const p = confirmadas[0]
+        toast.success(
+          acordadas.length ? 'Aumento acordado' : 'Aumento confirmado',
+          acordadas.length
+            ? `${p.inquilino_nombre}: el nuevo monto rige desde ${formatFechaAumento(p.fechaAumento ?? p.fecha_proximo_aumento)}. Se generó el comprobante.`
+            : `${p.inquilino_nombre}: el contrato ya tiene el monto actualizado. Se generó el comprobante.`
+        )
+      } else {
+        const partes = []
+        if (aplicadas) partes.push(`${aplicadas} aplicado${aplicadas === 1 ? '' : 's'} al contrato`)
+        if (acordadas.length) partes.push(`${acordadas.length} acordado${acordadas.length === 1 ? '' : 's'} a futuro`)
+        toast.success(`${confirmadas.length} aumentos confirmados`, `${partes.join(' y ')}. Se generaron los comprobantes.`)
+      }
       cerrarConfirm()
       cerrarDetalle()
       setFiltro('confirmados')
@@ -468,6 +490,7 @@ export default function AdminAumentos() {
     }
 
     setDeshacerTarget(null)
+    toast.success('Aumento deshecho', 'Se canceló el aumento acordado y su comprobante. El contrato sigue con el monto vigente.')
     setReloadHistorialToken((n) => n + 1)
     await cargarAumentos()
   }
@@ -497,10 +520,11 @@ export default function AdminAumentos() {
   const tituloConfirm =
     confirmTarget.length === 1 ? 'Confirmar Aumento' : 'Confirmar Aumentos'
 
-  const handleActualizar = () => {
+  const handleActualizar = async () => {
     limpiarError()
     setRevisados(new Set())
-    cargarAumentos()
+    const ok = await cargarAumentos()
+    if (ok) toast.info('Índices y montos actualizados', 'Se recalcularon los aumentos con los últimos valores publicados.')
   }
 
   return (

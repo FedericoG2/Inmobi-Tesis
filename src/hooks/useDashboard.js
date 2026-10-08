@@ -14,7 +14,23 @@ export function useDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const refetch = useCallback(async () => {
+  const [actualizado, setActualizado] = useState(null)
+
+  /** silencioso: recalcula los indicadores sin mostrar el estado de carga ni volver a pedir el IPC. */
+  const refetch = useCallback(async ({ silencioso = false } = {}) => {
+    if (silencioso) {
+      const dashboardResult = await obtenerDashboardAdmin()
+      if (!dashboardResult.error) {
+        setKpis(dashboardResult.data.kpis)
+        setReclamosPendientes(dashboardResult.data.reclamosPendientes)
+        setContratosPorVencer(dashboardResult.data.contratosPorVencer)
+        setIngresoMensual(dashboardResult.data.ingresoMensual)
+        setAumentosPeriodo(dashboardResult.data.aumentosPeriodo)
+        setActualizado(new Date())
+      }
+      return
+    }
+
     setLoading(true)
     setError(null)
     setIpcError(null)
@@ -51,6 +67,7 @@ export function useDashboard() {
       setIpcError(null)
     }
 
+    setActualizado(new Date())
     setLoading(false)
   }, [])
 
@@ -69,6 +86,7 @@ export function useDashboard() {
     ipcError,
     loading,
     error,
+    actualizado,
     refetch,
   }
 }

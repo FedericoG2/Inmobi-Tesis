@@ -23,10 +23,12 @@ import ContratoRowActions from '../../components/admin/ContratoRowActions'
 import InquilinoDetalleModal from '../../components/admin/InquilinoDetalleModal'
 import PropiedadDetalleModal from '../../components/admin/PropiedadDetalleModal'
 import { useContratos } from '../../hooks/useContratos'
+import { useToast } from '../../contexts/ToastContext'
 import { useInquilinos } from '../../hooks/useInquilinos'
 import { usePropiedades } from '../../hooks/usePropiedades'
 import { TIPO_AJUSTE_OPCIONES } from '../../utils/contratoAumentosPreview'
 import {
+  badgeEstadoContratoUi,
   esContratoPlazoVencido,
   hoyIsoLocal,
   mensajeConfirmacionFinalizarContrato,
@@ -45,6 +47,7 @@ const COL_INQUILINO = 'w-[11rem]'
 const COL_MONTO = 'w-[8.5rem]'
 const COL_AJUSTE = 'w-[5.5rem]'
 const COL_PROX_AUMENTO = 'w-[7.5rem]'
+const COL_ESTADO = 'w-[7rem]'
 const COL_ACCIONES = 'w-[7rem]'
 
 const FILTRO_ESTADO = [
@@ -94,6 +97,7 @@ const formatFecha = (fecha) => {
 }
 
 export default function AdminContratos() {
+  const toast = useToast()
   const [modalOpen, setModalOpen] = useState(false)
   const [filtroEstado, setFiltroEstado] = useState('activos')
   const [filtroTipoAjuste, setFiltroTipoAjuste] = useState('todos')
@@ -264,8 +268,15 @@ export default function AdminContratos() {
     if (!contratoFinalizando) return
 
     const idFinalizado = contratoFinalizando.id
+    const eraProgramado = contratoFinalizando.estado === 'programado'
+    const inquilinoNombre = contratoFinalizando.inquilinos?.nombre_completo ?? 'el inquilino'
+    const direccion = contratoFinalizando.propiedades?.direccion ?? 'La propiedad'
     const ok = await finalizar(idFinalizado)
     if (ok) {
+      toast.success(
+        eraProgramado ? 'Reserva cancelada' : 'Contrato finalizado',
+        `${inquilinoNombre} · ${direccion} quedó Disponible y deja de incluirse en aumentos.`
+      )
       await refetchPropiedades()
       setConfirmOpen(false)
       setContratoFinalizando(null)
@@ -293,6 +304,10 @@ export default function AdminContratos() {
 
     const ok = await anular(contratoAnulando)
     if (ok) {
+      toast.success(
+        'Contrato anulado',
+        `Se eliminó el contrato de ${contratoAnulando.inquilinos?.nombre_completo ?? 'el inquilino'} y sus documentos.`
+      )
       await refetchPropiedades()
       setConfirmAnularOpen(false)
       setContratoAnulando(null)
@@ -301,7 +316,19 @@ export default function AdminContratos() {
 
   const handleCrear = async (form) => {
     const ok = await crear(form)
-    if (ok) await refetchPropiedades()
+    if (ok) {
+      const inquilino = inquilinos.find((i) => String(i.id) === String(form.inquilino_id))
+      const propiedad = propiedades.find((p) => String(p.id) === String(form.propiedad_id))
+      const programado = form.fecha_inicio > hoyIsoLocal()
+      const partes = [inquilino?.nombre_completo, propiedad?.direccion].filter(Boolean).join(' · ')
+      toast.success(
+        programado ? 'Contrato creado y programado' : 'Contrato creado',
+        programado
+          ? `${partes}. Arranca el ${formatFecha(form.fecha_inicio)}; mientras tanto la propiedad queda Reservada.`
+          : `${partes}. El contrato está activo y la propiedad pasó a Alquilada.`
+      )
+      await refetchPropiedades()
+    }
     return ok
   }
 
@@ -474,19 +501,20 @@ export default function AdminContratos() {
               <AdminTableHeaderCell className={`${COL_PROX_AUMENTO} whitespace-nowrap !text-center`}>
                 Próx. aumento
               </AdminTableHeaderCell>
+              <AdminTableHeaderCell className={`${COL_ESTADO} !text-center`}>Estado</AdminTableHeaderCell>
               <AdminTableHeaderCell className={`${COL_ACCIONES} !text-right`}>Acciones</AdminTableHeaderCell>
             </AdminTableRow>
           </AdminTableHead>
           <AdminTableBody>
             {loading && (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={6}>Cargando contratos…</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={7}>Cargando contratos…</AdminTableEmptyCell>
               </AdminTableRow>
             )}
 
             {!loading && !error && contratosFiltrados.length === 0 && (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={6}>{mensajeListadoVacio}</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={7}>{mensajeListadoVacio}</AdminTableEmptyCell>
               </AdminTableRow>
             )}
 
@@ -514,6 +542,12 @@ export default function AdminContratos() {
                   </AdminTableCell>
                   <AdminTableCell className={`${COL_PROX_AUMENTO} whitespace-nowrap !text-center text-slate-600 tabular-nums`}>
                     {formatPeriodoMesAnio(c.fecha_proximo_aumento)}
+                  </AdminTableCell>
+                  <AdminTableCell className={`${COL_ESTADO} !text-center`}>
+                    {(() => {
+                      const estado = badgeEstadoContratoUi(c)
+                      return <span className={estado.className}>{estado.label}</span>
+                    })()}
                   </AdminTableCell>
                   <AdminTableActionsCell className={COL_ACCIONES}>
                     <ContratoRowActions

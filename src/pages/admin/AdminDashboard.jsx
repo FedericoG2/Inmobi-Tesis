@@ -1,8 +1,11 @@
 import DashboardAlertPanel, { DashboardInboxItem } from '../../components/admin/DashboardAlertPanel'
+import DashboardActividadPanel from '../../components/admin/DashboardActividadPanel'
 import DashboardQuickActions from '../../components/admin/DashboardQuickActions'
 import IpcBarChart from '../../components/admin/IpcBarChart'
 import StatCard from '../../components/admin/StatCard'
+import { useActividad } from '../../hooks/useActividad'
 import { useDashboard } from '../../hooks/useDashboard'
+import { tiempoRelativo } from '../../utils/actividadUi'
 import { capitalizar } from '../../utils/aumentosUi'
 import {
   badgeClass,
@@ -55,7 +58,15 @@ export default function AdminDashboard() {
     ipcError,
     loading,
     error,
+    actualizado,
+    refetch,
   } = useDashboard()
+
+  // Cada evento nuevo del sistema recalcula los indicadores: el tablero siempre muestra el estado actual.
+  const actividad = useActividad({
+    limite: 12,
+    onNuevo: () => refetch({ silencioso: true }),
+  })
 
   if (loading) {
     return (
@@ -83,6 +94,7 @@ export default function AdminDashboard() {
           <p className={pageSubtitle}>
             Resumen operativo · {alertasPendientes} alerta{alertasPendientes === 1 ? '' : 's'} activa
             {alertasPendientes === 1 ? '' : 's'}
+            {actualizado ? ` · actualizado ${tiempoRelativo(actualizado)}` : ''}
           </p>
         </div>
         <DashboardQuickActions />
@@ -190,25 +202,29 @@ export default function AdminDashboard() {
           </DashboardAlertPanel>
         </div>
 
-        <div className="xl:col-span-7">
-          <div className={`${surfaceCard} flex h-full min-h-[22rem] flex-col p-5`}>
-            <p className={sectionTitle}>Evolución IPC {ipcAnio}</p>
-            <p className={sectionHint}>
-              Variación mensual · Fuente Argly
-              {ipcAnual.at(-1)?.mes ? ` · hasta ${ipcAnual.at(-1).mes}` : ''}
-            </p>
-            <div className="mt-4 min-h-0 flex-1">
-              {ipcError ? (
-                <p className="mt-4 text-sm text-slate-600">
-                  No se pudo cargar el IPC ({ipcError}).
-                </p>
-              ) : ipcAnual.length === 0 ? (
-                <p className="mt-4 text-sm text-slate-500">Sin datos de IPC para {ipcAnio}.</p>
-              ) : (
-                <IpcBarChart data={ipcAnual} />
-              )}
-            </div>
-          </div>
+        <DashboardActividadPanel
+          className="max-h-[42rem] min-h-[22rem] xl:col-span-7"
+          eventos={actividad.eventos}
+          loading={actividad.loading}
+          error={actividad.error}
+          faltaMigracion={actividad.faltaMigracion}
+        />
+      </div>
+
+      <div className={`${surfaceCard} flex flex-col p-5`}>
+        <p className={sectionTitle}>Evolución IPC {ipcAnio}</p>
+        <p className={sectionHint}>
+          Variación mensual · Fuente Argly
+          {ipcAnual.at(-1)?.mes ? ` · hasta ${ipcAnual.at(-1).mes}` : ''}
+        </p>
+        <div className="mt-4">
+          {ipcError ? (
+            <p className="text-sm text-slate-600">No se pudo cargar el IPC ({ipcError}).</p>
+          ) : ipcAnual.length === 0 ? (
+            <p className="text-sm text-slate-500">Sin datos de IPC para {ipcAnio}.</p>
+          ) : (
+            <IpcBarChart data={ipcAnual} height={260} />
+          )}
         </div>
       </div>
     </div>

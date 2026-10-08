@@ -2,6 +2,7 @@ import { useState } from 'react'
 import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
 import PortalPageHeader from '../../components/inquilino/PortalPageHeader'
 import { usePortalInquilino } from '../../contexts/PortalInquilinoContext'
+import { useToast } from '../../contexts/ToastContext'
 import { CATEGORIAS_RECLAMO, PRIORIDAD_SEGMENTO_ACTIVO, PRIORIDADES_RECLAMO } from '../../utils/reclamosUi'
 import { RECLAMO_LIMITES } from '../../utils/validarReclamo'
 import {
@@ -39,6 +40,7 @@ const formatFecha = (fechaStr) => {
 }
 
 export default function InquilinoReclamos() {
+  const toast = useToast()
   const {
     contratoActivo,
     reclamos,
@@ -106,7 +108,15 @@ export default function InquilinoReclamos() {
         contrato_id: contratoActivo?.id ?? null,
       })
     }
-    if (ok) cerrarForm()
+    if (ok) {
+      toast.success(
+        reclamoEditando ? 'Reclamo actualizado' : 'Reclamo enviado',
+        reclamoEditando
+          ? 'Los cambios ya los ve la inmobiliaria.'
+          : 'La inmobiliaria ya lo recibió. Vas a ver acá cada cambio de estado.'
+      )
+      cerrarForm()
+    }
   }
 
   const handleEliminar = (reclamo) => {
@@ -127,6 +137,8 @@ export default function InquilinoReclamos() {
     setEliminando(false)
     if (result.error) {
       setErrorAccion(result.error)
+    } else {
+      toast.success('Reclamo eliminado', `"${reclamoAEliminar.titulo}" se quitó de tu lista.`)
     }
     setConfirmOpen(false)
     setReclamoAEliminar(null)

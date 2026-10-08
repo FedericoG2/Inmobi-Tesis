@@ -19,6 +19,7 @@ import AdminTablePagination from '../../components/admin/AdminTablePagination'
 import AdminNuevoButton from '../../components/admin/AdminNuevoButton'
 import FilterSelect from '../../components/admin/FilterSelect'
 import { usePropietarios } from '../../hooks/usePropietarios'
+import { useToast } from '../../contexts/ToastContext'
 import { formatearDniCuit, formatearTelefono } from '../../utils/normalizarContacto'
 import {
   BADGE_PROPIETARIO_TIPO,
@@ -34,6 +35,7 @@ const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
 const FILAS_POR_PAGINA = 4
 
 export default function AdminPropietarios() {
+  const toast = useToast()
   const [modalOpen, setModalOpen] = useState(false)
   const [propietarioEditando, setPropietarioEditando] = useState(null)
   const [alerta, setAlerta] = useState(alertaInicial)
@@ -142,10 +144,15 @@ export default function AdminPropietarios() {
   }
 
   const handleSubmit = async (form) => {
+    const nombre = form.nombre_completo?.trim()
     if (propietarioEditando) {
-      return actualizar(propietarioEditando.id, form)
+      const ok = await actualizar(propietarioEditando.id, form)
+      if (ok) toast.success('Propietario actualizado', `Se guardaron los cambios de ${nombre}.`)
+      return ok
     }
-    return crear(form)
+    const ok = await crear(form)
+    if (ok) toast.success('Propietario creado', `${nombre} ya está disponible para asignarle propiedades.`)
+    return ok
   }
 
   const cerrarAlerta = () => {
@@ -193,6 +200,7 @@ export default function AdminPropietarios() {
     setEliminando(false)
 
     if (ok) {
+      toast.success('Propietario eliminado', `${propietarioAEliminar.nombre_completo} se quitó del sistema.`)
       cancelarEliminar()
     }
   }

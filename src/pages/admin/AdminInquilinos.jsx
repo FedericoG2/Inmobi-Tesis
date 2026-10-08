@@ -19,6 +19,7 @@ import AdminTablePagination from '../../components/admin/AdminTablePagination'
 import AdminNuevoButton from '../../components/admin/AdminNuevoButton'
 import FilterSelect from '../../components/admin/FilterSelect'
 import { useInquilinos } from '../../hooks/useInquilinos'
+import { useToast } from '../../contexts/ToastContext'
 import { formatearDniCuit, formatearTelefono } from '../../utils/normalizarContacto'
 import {
   BADGE_PERSONA_TIPO,
@@ -57,6 +58,7 @@ function buildMensajeConfirmacionDelete(inquilino, deps) {
 }
 
 export default function AdminInquilinos() {
+  const toast = useToast()
   const [modalOpen, setModalOpen] = useState(false)
   const [inquilinoEditando, setInquilinoEditando] = useState(null)
   const [dependenciasEditando, setDependenciasEditando] = useState(dependenciasIniciales)
@@ -180,10 +182,15 @@ export default function AdminInquilinos() {
   }
 
   const handleSubmit = async (form) => {
+    const nombre = form.nombre_completo?.trim()
     if (inquilinoEditando) {
-      return actualizar(inquilinoEditando.id, form)
+      const ok = await actualizar(inquilinoEditando.id, form)
+      if (ok) toast.success('Inquilino actualizado', `Se guardaron los cambios de ${nombre}.`)
+      return ok
     }
-    return crear(form)
+    const ok = await crear(form)
+    if (ok) toast.success('Inquilino creado', `${nombre} quedó registrado. Ya podés asignarle un contrato.`)
+    return ok
   }
 
   const cerrarAlerta = () => {
@@ -229,6 +236,7 @@ export default function AdminInquilinos() {
     setEliminando(false)
 
     if (ok) {
+      toast.success('Inquilino eliminado', `${inquilinoAEliminar.nombre_completo} se quitó del sistema.`)
       cancelarEliminar()
     }
   }

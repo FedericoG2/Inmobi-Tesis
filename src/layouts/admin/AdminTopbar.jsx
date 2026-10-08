@@ -5,6 +5,8 @@ import { supabase } from '../../supabaseClient'
 import { brandAvatarClass } from '../../utils/brandUi'
 import { buttonClass, surfacePopover } from '../../utils/ui'
 import { IconLogout, IconSidebar } from '../../components/icons/Icons'
+import NotificacionesBell from '../../components/ui/NotificacionesBell'
+import { rutaAdminActividad } from '../../utils/actividadUi'
 
 function nombreDesdeEmail(email) {
   if (!email) return 'Administrador'
@@ -68,40 +70,44 @@ export default function AdminTopbar() {
         <IconSidebar className="h-5 w-5" />
       </button>
 
-      <div className="relative" ref={menuRef}>
-        <button
-          type="button"
-          onClick={() => setMenuOpen((open) => !open)}
-          className="flex items-center gap-2.5 rounded-lg py-1 pl-1 pr-1 transition hover:bg-slate-100 sm:pr-2.5"
-          aria-expanded={menuOpen}
-          aria-haspopup="menu"
-          aria-label="Cuenta y sesión"
-        >
-          <UserAvatar inicial={inicial} />
-          <span className="hidden min-w-0 text-left sm:block">
-            <span className="block truncate text-sm font-medium leading-tight text-slate-900">{nombreVisible}</span>
-            <span className="block truncate text-xs leading-tight text-slate-500">{user?.email ?? 'Sin sesión'}</span>
-          </span>
-        </button>
+      <div className="flex items-center gap-2">
+        <NotificacionesBell rutaDe={rutaAdminActividad} subtitulo="Actividad del sistema en tiempo real" />
+        <div className="h-6 w-px bg-slate-200" aria-hidden />
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((open) => !open)}
+            className="flex items-center gap-2.5 rounded-lg py-1 pl-1 pr-1 transition hover:bg-slate-100 sm:pr-2.5"
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
+            aria-label="Cuenta y sesión"
+          >
+            <UserAvatar inicial={inicial} />
+            <span className="hidden min-w-0 text-left sm:block">
+              <span className="block truncate text-sm font-medium leading-tight text-slate-900">{nombreVisible}</span>
+              <span className="block truncate text-xs leading-tight text-slate-500">{user?.email ?? 'Sin sesión'}</span>
+            </span>
+          </button>
 
-        {menuOpen && (
-          <div role="menu" className={`${surfacePopover} absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden p-1`}>
-            <div className="px-3 py-2.5">
-              <p className="truncate text-sm font-medium text-slate-900">{nombreVisible}</p>
-              <p className="truncate text-xs text-slate-500">{user?.email}</p>
+          {menuOpen && (
+            <div role="menu" className={`${surfacePopover} absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden p-1`}>
+              <div className="px-3 py-2.5">
+                <p className="truncate text-sm font-medium text-slate-900">{nombreVisible}</p>
+                <p className="truncate text-xs text-slate-500">{user?.email}</p>
+              </div>
+              <div className="my-1 h-px bg-slate-100" />
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleSignOut}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
+              >
+                <IconLogout className="h-4 w-4 text-slate-400" />
+                Cerrar sesión
+              </button>
             </div>
-            <div className="my-1 h-px bg-slate-100" />
-            <button
-              type="button"
-              role="menuitem"
-              onClick={handleSignOut}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
-            >
-              <IconLogout className="h-4 w-4 text-slate-400" />
-              Cerrar sesión
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </header>
   )

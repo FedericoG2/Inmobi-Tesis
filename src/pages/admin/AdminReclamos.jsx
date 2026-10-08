@@ -29,6 +29,7 @@ import { useInquilinos } from '../../hooks/useInquilinos'
 import { useContratos } from '../../hooks/useContratos'
 import { usePropiedades } from '../../hooks/usePropiedades'
 import { useReclamos } from '../../hooks/useReclamos'
+import { useToast } from '../../contexts/ToastContext'
 import { celdaNombre, celdaNumero } from '../../utils/adminModuleUi'
 import { IconSearch } from '../../components/icons/Icons'
 import { calloutClass, cn, inputClass } from '../../utils/ui'
@@ -54,6 +55,7 @@ const CATEGORIAS = [
 ]
 
 export default function AdminReclamos() {
+  const toast = useToast()
   const [modalOpen, setModalOpen] = useState(false)
   const [reclamoEditando, setReclamoEditando] = useState(null)
   const [detalleOpen, setDetalleOpen] = useState(false)
@@ -144,9 +146,32 @@ export default function AdminReclamos() {
 
   const handleSubmit = async (form) => {
     if (reclamoEditando) {
-      return actualizar(reclamoEditando.id, form)
+      const resultado = await actualizar(reclamoEditando.id, form)
+      if (resultado) toast.success('Reclamo actualizado', `Se guardaron los cambios de "${form.titulo}".`)
+      return resultado
     }
-    return crear(form)
+    const resultado = await crear(form)
+    if (resultado) {
+      toast.success('Reclamo creado', `"${form.titulo}" quedó en estado Pendiente con prioridad ${form.prioridad}.`)
+    }
+    return resultado
+  }
+
+  const handleGestionar = async ({ reclamoId, estado, comentario }) => {
+    const res = await gestionar({ reclamoId, estado, comentario })
+    if (res?.ok) {
+      if (estado) {
+        toast.success(
+          `Reclamo en estado ${estado === 'Revision' ? 'Revisión' : estado}`,
+          estado === 'Resuelto'
+            ? 'Se cerró el reclamo y el inquilino lo ve como resuelto en su portal.'
+            : 'El cambio quedó registrado en el historial y lo ve el inquilino.'
+        )
+      } else {
+        toast.success('Nota agregada', 'El comentario quedó registrado en el historial del reclamo.')
+      }
+    }
+    return res
   }
 
   const handleEliminar = (reclamo) => {
@@ -167,6 +192,7 @@ export default function AdminReclamos() {
     const ok = await eliminar(reclamoAEliminar.id)
     setEliminando(false)
     if (ok) {
+      toast.success('Reclamo eliminado', `"${reclamoAEliminar.titulo}" se quitó del sistema.`)
       cancelarEliminar()
     }
   }
@@ -447,7 +473,7 @@ export default function AdminReclamos() {
         open={gestionOpen}
         reclamo={reclamoGestion}
         onClose={cerrarGestion}
-        onGestionar={gestionar}
+        onGestionar={handleGestionar}
       />
 
       <AdminConfirmModal

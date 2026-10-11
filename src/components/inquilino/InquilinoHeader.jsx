@@ -1,5 +1,4 @@
 import { supabase } from '../../supabaseClient'
-import InquilinoNotificacionesBell from './InquilinoNotificacionesBell'
 import InquilinoContratoSelector from './InquilinoContratoSelector'
 
 function IconLogout({ className = 'h-5 w-5' }) {
@@ -24,7 +23,6 @@ export default function InquilinoHeader() {
 
   const acciones = (
     <div className="flex shrink-0 items-center gap-2">
-      <InquilinoNotificacionesBell />
       <button
         type="button"
         onClick={handleSignOut}

@@ -39,18 +39,6 @@ function IconWrench() {
   )
 }
 
-function IconPhone() {
-  return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z"
-      />
-    </svg>
-  )
-}
-
 const quickActions = [
   {
     to: '/inquilino/contrato',
@@ -72,14 +60,6 @@ const quickActions = [
     subtitle: 'Nombre, teléfono y email',
     icon: IconUser,
     iconClass: 'bg-slate-100 text-slate-600',
-  },
-  {
-    title: 'Contactar inmobiliaria',
-    subtitle: 'Teléfono, WhatsApp y email',
-    icon: IconPhone,
-    iconClass: 'bg-emerald-100 text-emerald-600',
-    badge: 'Próximamente',
-    disabled: true,
   },
 ]
 
@@ -191,22 +171,15 @@ export default function InquilinoDashboard() {
       <section className={portalSection}>
         <h2 className={portalSectionTitle}>Acciones rápidas</h2>
 
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:gap-4">
           {quickActions.map((action) => {
             const Icon = action.icon
             const content = (
               <>
-                <div className="flex items-start justify-between gap-2">
-                  <div
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${action.iconClass}`}
-                  >
-                    <Icon />
-                  </div>
-                  {action.badge && (
-                    <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
-                      {action.badge}
-                    </span>
-                  )}
+                <div
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${action.iconClass}`}
+                >
+                  <Icon />
                 </div>
                 <div>
                   <p className="text-sm font-semibold leading-snug text-slate-800">{action.title}</p>
@@ -214,18 +187,6 @@ export default function InquilinoDashboard() {
                 </div>
               </>
             )
-
-            if (action.disabled) {
-              return (
-                <div
-                  key={action.title}
-                  className={`${portalCardClass} flex flex-col gap-2.5 p-3.5 lg:p-4`}
-                  aria-disabled="true"
-                >
-                  {content}
-                </div>
-              )
-            }
 
             return (
               <Link

@@ -62,7 +62,7 @@ export default function AdminDashboard() {
   }
 
   const alertasPendientes =
-    (kpis?.reclamos_pendientes ?? 0) + (kpis?.contratos_por_vencer_90d ?? 0)
+    (kpis?.reclamos_pendientes ?? 0) + (kpis?.contratos_por_vencer_60d ?? 0)
 
   return (
     <div className="space-y-3">
@@ -98,10 +98,10 @@ export default function AdminDashboard() {
         <StatCard
           compact
           label="Contratos por vencer"
-          value={kpis?.contratos_por_vencer_90d ?? 0}
+          value={kpis?.contratos_por_vencer_60d ?? 0}
           icon="calendar"
           theme="slate"
-          hint="Próx. 90 días"
+          hint="Próx. 60 días"
         />
         <StatCard
           compact
@@ -162,12 +162,12 @@ export default function AdminDashboard() {
           <DashboardAlertPanel
             compact
             icon="calendar"
-            titulo="Contratos por vencer (90 días)"
-            cantidad={kpis?.contratos_por_vencer_90d ?? 0}
+            titulo="Contratos por vencer (60 días)"
+            cantidad={kpis?.contratos_por_vencer_60d ?? 0}
             linkTo="/admin/contratos"
             linkLabel="Ver contratos"
             vacio={contratosPorVencer.length === 0}
-            vacioMensaje="No hay contratos por vencer en 90 días."
+            vacioMensaje="No hay contratos por vencer en 60 días."
             tono="slate"
           >
             {contratosPorVencer.map((item) => (

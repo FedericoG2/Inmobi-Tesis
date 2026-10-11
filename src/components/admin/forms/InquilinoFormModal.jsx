@@ -189,7 +189,7 @@ export default function InquilinoFormModal({
                         activo ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
                       }`}
                     >
-                      {tipo === 'Física' ? 'Particular' : 'Empresa'}
+                      {tipo === 'Física' ? 'Persona física' : 'Persona jurídica'}
                     </button>
                   )
                 })}

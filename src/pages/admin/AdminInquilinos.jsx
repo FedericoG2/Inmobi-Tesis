@@ -319,8 +319,8 @@ export default function AdminInquilinos() {
             aria-label="Filtrar por tipo de inquilino"
           >
             <option value="">Tipo: Todos</option>
-            <option value="Física">Particular</option>
-            <option value="Jurídica">Empresa</option>
+            <option value="Física">Persona física</option>
+            <option value="Jurídica">Persona jurídica</option>
           </select>
 
           <div className="shrink-0 sm:ml-auto">

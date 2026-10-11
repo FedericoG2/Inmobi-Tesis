@@ -21,12 +21,12 @@ export const celdaNumero = 'text-sm tabular-nums text-slate-700 whitespace-nowra
 
 export const BADGE_PROPIETARIO_TIPO = {
   Física: {
-    label: 'Particular',
+    label: 'Persona física',
     className: BADGE_INDIGO,
     avatarClass: 'rounded-full bg-brand-100 text-brand-700',
   },
   Jurídica: {
-    label: 'Empresa',
+    label: 'Persona jurídica',
     className: BADGE_SLATE,
     avatarClass: 'rounded-lg bg-slate-100 text-slate-700',
   },

@@ -124,7 +124,7 @@ const sumarDiasIso = (iso, dias) => {
 }
 
 const formatFecha = (fecha) => {
-  if (!fecha) return 'â€”'
+  if (!fecha) return '—'
   const [year, month, day] = fecha.split('-')
   return `${day}/${month}/${year}`
 }
@@ -395,21 +395,21 @@ export default function AdminContratos() {
             <StatCard
               compact
               label="Ingreso mensual"
-              value={loading ? 'â€¦' : formatMontoCompacto(resumen.ingresoMensual)}
+              value={loading ? '…' : formatMontoCompacto(resumen.ingresoMensual)}
               icon="chart"
               theme="slate"
             />
             <StatCard
               compact
               label="Contratos activos"
-              value={loading ? 'â€¦' : resumen.activos}
+              value={loading ? '…' : resumen.activos}
               icon="clipboard"
               theme="slate"
             />
             <StatCard
               compact
               label="Por vencer pronto"
-              value={loading ? 'â€¦' : resumen.porVencer}
+              value={loading ? '…' : resumen.porVencer}
               icon="calendar"
               theme="slate"
               hint={`Próx. ${VENCE_PRONTO_DIAS} días`}
@@ -417,7 +417,7 @@ export default function AdminContratos() {
             <StatCard
               compact
               label="Vencidos"
-              value={loading ? 'â€¦' : resumen.vencidos}
+              value={loading ? '…' : resumen.vencidos}
               icon="alert"
               theme="slate"
             />
@@ -475,7 +475,7 @@ export default function AdminContratos() {
             >
               {FILTRO_ESTADO.map(({ value, label }) => {
                 const activo = filtroEstado === value
-                const count = loading ? 'â€¦' : conteosEstado[value]
+                const count = loading ? '…' : conteosEstado[value]
                 const esVencidos = value === 'vencidos'
                 return (
                   <button
@@ -538,12 +538,12 @@ export default function AdminContratos() {
                 >
                   <AdminTableCell className={`${COL_INQUILINO} font-medium text-slate-900`}>
                     <span className="block truncate" title={c.inquilinos?.nombre_completo ?? undefined}>
-                      {c.inquilinos?.nombre_completo ?? 'â€”'}
+                      {c.inquilinos?.nombre_completo ?? '—'}
                     </span>
                   </AdminTableCell>
                   <AdminTableCell className="min-w-0 text-slate-700">
                     <span className="block truncate" title={c.propiedades?.direccion ?? undefined}>
-                      {c.propiedades?.direccion ?? 'â€”'}
+                      {c.propiedades?.direccion ?? '—'}
                     </span>
                   </AdminTableCell>
                   <AdminTableCell className={`${COL_MONTO} tabular-nums`}>{formatMonto(c.monto_alquiler)}</AdminTableCell>
@@ -551,7 +551,7 @@ export default function AdminContratos() {
                     {c.tipo_ajuste ? (
                       <IndiceAjusteChip tipo={c.tipo_ajuste} />
                     ) : (
-                      <span className="text-slate-400">â€”</span>
+                      <span className="text-slate-400">—</span>
                     )}
                   </AdminTableCell>
                   <AdminTableCell className={`${COL_PROX_AUMENTO} whitespace-nowrap !text-center text-slate-600 tabular-nums`}>

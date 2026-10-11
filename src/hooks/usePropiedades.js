@@ -4,11 +4,20 @@ import {
   contarDependenciasPropiedad,
   crearPropiedad,
   eliminarPropiedad,
-  esErrorContratosAsociados,
   listarPropiedades,
 } from '../services/propiedadesService'
 
-const MENSAJE_CONTRATOS_ACTIVOS = 'No se puede eliminar porque tiene contratos activos'
+const MENSAJE_CONTRATOS_ASOCIADOS =
+  'No se puede eliminar la propiedad porque tiene contratos asociados (vigentes, programados o finalizados). Se conserva como historial.'
+const MENSAJE_RECLAMOS_ASOCIADOS =
+  'No se puede eliminar la propiedad porque tiene reclamos asociados. Se conserva como historial.'
+
+function mensajeErrorEliminar(error) {
+  const mensaje = (error?.message ?? '').toLowerCase()
+  if (mensaje.includes('contratos')) return MENSAJE_CONTRATOS_ASOCIADOS
+  if (mensaje.includes('reclamos')) return MENSAJE_RECLAMOS_ASOCIADOS
+  return error?.message ?? 'No se pudo eliminar la propiedad'
+}
 
 export function usePropiedades() {
   const [propiedades, setPropiedades] = useState([])
@@ -101,11 +110,7 @@ export function usePropiedades() {
       const { error: deleteError } = await eliminarPropiedad(id)
 
       if (deleteError) {
-        setActionError(
-          esErrorContratosAsociados(deleteError)
-            ? MENSAJE_CONTRATOS_ACTIVOS
-            : deleteError.message
-        )
+        setActionError(mensajeErrorEliminar(deleteError))
         return false
       }
 
@@ -141,6 +146,7 @@ export function usePropiedades() {
     limpiarSubmitError,
     actionError,
     limpiarActionError,
-    mensajeContratosActivos: MENSAJE_CONTRATOS_ACTIVOS,
+    mensajeContratosAsociados: MENSAJE_CONTRATOS_ASOCIADOS,
+    mensajeReclamosAsociados: MENSAJE_RECLAMOS_ASOCIADOS,
   }
 }

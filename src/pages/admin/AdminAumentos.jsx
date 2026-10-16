@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Card } from '@tremor/react'
 import AdminAlertModal from '../../components/admin/AdminAlertModal'
 import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
 import AdminListLayout from '../../components/admin/AdminListLayout'
 import AdminTablePagination from '../../components/admin/AdminTablePagination'
-import AdminNuevoButton from '../../components/admin/AdminNuevoButton'
 import StatCard from '../../components/admin/StatCard'
 import AumentoDetalleModal from '../../components/admin/AumentoDetalleModal'
 import AumentoHistorialModal from '../../components/admin/AumentoHistorialModal'
 import AumentosHistorialGlobalModal from '../../components/admin/AumentosHistorialGlobalModal'
 import AumentoRowActions from '../../components/admin/AumentoRowActions'
 import IndicesEvolucionModal from '../../components/admin/IndicesEvolucionModal'
+import IndiceChip from '../../components/admin/IndiceChip'
+import Badge from '../../components/ui/Badge'
+import Button from '../../components/ui/Button'
 import {
   AdminTable,
   AdminTableBody,
@@ -23,6 +24,7 @@ import {
   AdminTableRow,
 } from '../../components/admin/AdminDataTable'
 import { useAumentos } from '../../hooks/useAumentos'
+import { useToast } from '../../contexts/ToastContext'
 import { deshacerAumento } from '../../services/aumentosService'
 import { listarInquilinos } from '../../services/inquilinosService'
 import { listarPropiedades } from '../../services/propiedadesService'
@@ -32,13 +34,12 @@ import {
 } from '../../services/documentosService'
 import {
   capitalizar,
-  chipIndicador,
   DIA_CORTE_OPERATIVO,
   DIA_INICIO_BANDEJA,
+  fechaCorteOperativoIso,
   esAumentoRezagado,
   esPeriodoOperativo,
   etiquetaPeriodoAumento,
-  fechaCorteOperativoIso,
   formatFechaAumento,
   formatPeriodoMesAnio,
   hoyIsoLocal,
@@ -46,6 +47,15 @@ import {
   periodoOperativoInfo,
   propuestaDesdeAumentoRegistrado,
 } from '../../utils/aumentosUi'
+import { IconCheck, IconClock, IconInfo, IconRefresh } from '../../components/icons/Icons'
+import {
+  buttonClass,
+  calloutClass,
+  cn,
+  dotTones,
+  segmentedInlineClass,
+  segmentedItemClass,
+} from '../../utils/ui'
 
 const FILAS_POR_PAGINA = 4
 
@@ -62,51 +72,43 @@ const COL_MONTO_AJUSTADO = 'w-[11rem]'
 const COL_INDICE = 'w-[6rem]'
 const COL_CONFIRMADO = 'w-[7rem]'
 
-const inputToolbarClass =
-  'h-10 rounded-lg border border-slate-300 bg-white text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:opacity-50'
+const LEYENDA_ESTADOS = [
+  {
+    titulo: 'Definitivo',
+    tono: 'success',
+    texto: 'Valores oficiales de cierre. Permite confirmar y actualizar el contrato.',
+  },
+  {
+    titulo: 'Índice pendiente',
+    tono: 'warning',
+    texto:
+      'Falta un mes o el cierre (por ejemplo IPC de agosto). Igual ves el monto, con advertencia. Puede variar cuando se publique.',
+  },
+  {
+    titulo: 'Carga manual',
+    tono: 'warning',
+    texto:
+      'Solo si Argly no trae ningún dato (API caída). Cargás los valores oficiales a mano y el sistema calcula igual.',
+  },
+  {
+    titulo: 'Proyectado',
+    tono: 'brand',
+    texto: `Todavía no entró a la bandeja (antes del día ${DIA_INICIO_BANDEJA} de su mes). Solo vista previa.`,
+  },
+  {
+    titulo: 'Sin datos',
+    tono: 'neutral',
+    texto: 'Argly no respondió. Ahí sí se cargan los índices a mano en el detalle.',
+  },
+]
 
 const formatMonto = (monto) => {
   if (monto == null) return '—'
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(monto)
 }
 
-function IconRefresh({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
-      />
-    </svg>
-  )
-}
-
-function IconHistory({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-      />
-    </svg>
-  )
-}
-
-function IconInfo({ className = 'h-5 w-5' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
-      />
-    </svg>
-  )
-}
-
 export default function AdminAumentos() {
+  const toast = useToast()
   const [filtro, setFiltro] = useState('pendientes')
   const [paginaActual, setPaginaActual] = useState(1)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -372,8 +374,24 @@ export default function AdminAumentos() {
   }
 
   const ejecutarConfirm = async () => {
-    const { ok } = await confirmarSeleccionados(confirmTarget)
+    const { ok, contratoIdsConfirmados } = await confirmarSeleccionados(confirmTarget)
     if (ok) {
+      const confirmadas = confirmTarget.filter((p) =>
+        contratoIdsConfirmados.some((id) => String(id) === String(p.contrato_id))
+      )
+      if (confirmadas.length === 1) {
+        const p = confirmadas[0]
+        const fecha = p.fechaAumento ?? p.fecha_hasta ?? p.fecha_proximo_aumento
+        toast.success(
+          'Aumento confirmado',
+          `${p.inquilino_nombre}: el alquiler pasa a ${formatMonto(p.monto_propuesto)} desde el ${formatFechaAumento(fecha)}. Se generó el comprobante y se puede deshacer hasta el ${formatFechaAumento(fechaCorteOperativoIso(fecha))}.`
+        )
+      } else {
+        toast.success(
+          `${confirmadas.length} aumentos confirmados`,
+          'Cada contrato quedó con su nuevo monto y se generaron los comprobantes.'
+        )
+      }
       cerrarConfirm()
       cerrarDetalle()
       setFiltro('confirmados')
@@ -467,6 +485,7 @@ export default function AdminAumentos() {
     }
 
     setDeshacerTarget(null)
+    toast.success('Aumento deshecho', `El contrato volvió a ${formatMonto(deshacerTarget.monto_anterior)} y se borró el comprobante.`)
     setReloadHistorialToken((n) => n + 1)
     await cargarAumentos()
   }
@@ -494,54 +513,48 @@ export default function AdminAumentos() {
   const tituloConfirm =
     confirmTarget.length === 1 ? 'Confirmar Aumento' : 'Confirmar Aumentos'
 
-  const handleActualizar = () => {
+  const handleActualizar = async () => {
     limpiarError()
     setRevisados(new Set())
-    cargarAumentos()
+    const ok = await cargarAumentos()
+    if (ok) toast.info('Índices y montos actualizados', 'Se recalcularon los aumentos con los últimos valores publicados.')
   }
 
   return (
     <>
       <AdminListLayout
-        compact
-        title="Aumentos de Alquiler"
+        title="Aumentos"
         subtitle={`Aumentos de ${capitalizar(periodoOperativo.nombre)}: entran a la bandeja el día ${DIA_INICIO_BANDEJA} y se confirman hasta el día ${DIA_CORTE_OPERATIVO} del mes siguiente.`}
         titleAction={
           <button
             type="button"
             onClick={() => setAyudaOpen(true)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-sky-600"
+            className={cn(buttonClass({ variant: 'ghost', size: 'iconSm' }), 'text-slate-400 hover:text-brand-600')}
             aria-label="Cómo funciona este módulo"
             title="Cómo funciona este módulo"
           >
-            <IconInfo />
+            <IconInfo className="h-5 w-5" />
           </button>
         }
         alerts={
-          <>
-            {error && (
-              <Card className="border border-red-200 bg-red-50">
-                <p className="text-sm text-red-700">{error}</p>
-              </Card>
-            )}
-            {indicesNoDisponibles && !error && (
-              <Card className="border border-amber-200 bg-amber-50">
-                <p className="text-sm font-semibold text-amber-800">Índices no disponibles</p>
-                <p className="mt-0.5 text-xs text-amber-700/90">
-                  No pudimos obtener ICL/IPC de Argly. Abrí el detalle de cada aumento y cargá los
-                  valores oficiales a mano para calcular.
-                </p>
-              </Card>
-            )}
-            {syncWarning && !error && (
-              <Card className="border border-amber-200 bg-amber-50">
-                <p className="text-sm text-amber-800">{syncWarning}</p>
-              </Card>
-            )}
-          </>
+          error || indicesNoDisponibles || syncWarning ? (
+            <div className="space-y-2">
+              {error && <div className={calloutClass('danger')}>{error}</div>}
+              {indicesNoDisponibles && !error && (
+                <div className={calloutClass('warning')}>
+                  <p className="font-medium">Índices no disponibles</p>
+                  <p className="mt-0.5">
+                    No pudimos obtener ICL/IPC de Argly. Abrí el detalle de cada aumento y cargá los valores
+                    oficiales a mano para calcular.
+                  </p>
+                </div>
+              )}
+              {syncWarning && !error && <div className={calloutClass('warning')}>{syncWarning}</div>}
+            </div>
+          ) : null
         }
         summary={
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
             <StatCard
               compact
               label={`Aumentos en ${capitalizar(periodoOperativo.nombre)}`}
@@ -556,7 +569,7 @@ export default function AdminAumentos() {
               value={loading ? '…' : conteos.pendientes}
               hint="Falta revisar y confirmar"
               icon="clipboard"
-              theme="slate"
+              theme={!loading && conteos.pendientes > 0 ? 'amber' : 'slate'}
             />
             <StatCard
               compact
@@ -564,7 +577,7 @@ export default function AdminAumentos() {
               value={loading ? '…' : conteos.confirmados}
               hint="Ya confirmados este período"
               icon="check"
-              theme="slate"
+              theme="emerald"
             />
             <StatCard
               compact
@@ -572,12 +585,13 @@ export default function AdminAumentos() {
               value={loading ? '…' : conteos.rezagados}
               hint="No confirmados de otros períodos"
               icon="alert"
-              theme="slate"
+              theme={!loading && conteos.rezagados > 0 ? 'red' : 'slate'}
             />
             <StatCard
               compact
-              value="Índices"
-              hint="Ver evolución IPC / ICL"
+              label="Índices"
+              value="IPC · ICL"
+              hint="Ver evolución"
               icon="chart"
               theme="slate"
               onClick={() => setIndicesOpen(true)}
@@ -586,21 +600,19 @@ export default function AdminAumentos() {
           </div>
         }
       >
-        <div className="flex flex-nowrap items-center gap-2 overflow-x-auto border-b border-slate-200 bg-slate-50/70 px-4 py-3 lg:px-6">
+        <div className="flex flex-nowrap items-center gap-2 overflow-x-auto border-b border-slate-200/80 px-4 py-3 lg:px-5">
           <div
-            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3"
+            className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-brand-50 px-3 ring-1 ring-inset ring-brand-600/15"
             aria-label={`Período operativo: ${periodoOperativo.etiqueta}`}
           >
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-brand-500">
-              Período operativo
-            </span>
-            <span className="whitespace-nowrap text-sm font-semibold text-brand-900">
+            <span className="text-xs text-brand-700/80">Período</span>
+            <span className="whitespace-nowrap text-sm font-semibold text-brand-800">
               {periodoOperativo.etiqueta}
             </span>
           </div>
 
           <div
-            className="inline-flex h-10 shrink-0 items-center rounded-lg border border-slate-300 bg-white p-1"
+            className={cn(segmentedInlineClass, 'shrink-0')}
             role="group"
             aria-label="Filtrar aumentos"
           >
@@ -613,51 +625,58 @@ export default function AdminAumentos() {
                   type="button"
                   disabled={loading}
                   onClick={() => setFiltro(value)}
-                  className={`inline-flex h-full shrink-0 items-center whitespace-nowrap rounded-md px-2.5 text-xs font-medium transition-colors lg:px-3 ${
-                    activo
-                      ? 'bg-brand-50 text-brand-700 shadow-sm ring-1 ring-brand-100'
-                      : 'text-slate-600 hover:text-slate-900'
-                  } disabled:opacity-50`}
+                  className={cn(
+                    segmentedItemClass(activo, { fill: false }),
+                    'inline-flex items-center gap-1.5 whitespace-nowrap disabled:opacity-50'
+                  )}
                 >
-                  {label} ({count})
+                  {label}
+                  <span
+                    className={cn(
+                      'rounded-full px-1.5 text-[11px] tabular-nums',
+                      value === 'rezagados' && count > 0
+                        ? 'bg-red-50 font-medium text-red-700'
+                        : activo
+                          ? 'bg-slate-100 text-slate-700'
+                          : 'text-slate-400'
+                    )}
+                  >
+                    {count}
+                  </span>
                 </button>
               )
             })}
           </div>
 
-          <div className="sticky right-0 ml-auto flex shrink-0 items-center gap-2 bg-slate-50/70 pl-2">
-            <button
-              type="button"
+          <div className="sticky right-0 ml-auto flex shrink-0 items-center gap-2 bg-white pl-2">
+            <Button
+              variant="secondary"
+              icon={IconClock}
               onClick={abrirHistorialGlobal}
               disabled={loading}
-              className={`${inputToolbarClass} inline-flex items-center gap-2 px-3`}
               title="Ver historial de todos los aumentos"
             >
-              <IconHistory className="h-4 w-4" />
               <span className="hidden sm:inline">Historial</span>
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="secondary"
               onClick={handleActualizar}
               disabled={loading || confirmando}
-              className={`${inputToolbarClass} inline-flex items-center gap-2 px-3`}
               title="Actualizar índices y montos"
             >
-              <IconRefresh className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <IconRefresh className={cn('h-4 w-4', loading && 'animate-spin')} strokeWidth={2} />
               <span className="hidden sm:inline">Actualizar</span>
-            </button>
-
-            <AdminNuevoButton
-              label={
-                listosRevisados.length > 0
-                  ? `CONFIRMAR REVISADOS (${listosRevisados.length})`
-                  : 'CONFIRMAR REVISADOS'
-              }
+            </Button>
+            <Button
+              icon={IconCheck}
               onClick={() => abrirConfirm(listosRevisados)}
-              variant="primary"
-              className="!h-10 whitespace-nowrap"
               disabled={loading || confirmando || listosRevisados.length === 0}
-            />
+            >
+              Confirmar revisados
+              {listosRevisados.length > 0 && (
+                <span className="rounded-full bg-white/20 px-1.5 text-xs tabular-nums">{listosRevisados.length}</span>
+              )}
+            </Button>
           </div>
         </div>
 
@@ -671,7 +690,7 @@ export default function AdminAumentos() {
                 Periodo de aumento
               </AdminTableHeaderCell>
               <AdminTableHeaderCell className={`${COL_MONTO_ACTUAL} align-top`}>
-                <span className="block text-right text-brand-700">Monto actual de alquiler</span>
+                <span className="block text-right">Monto actual</span>
               </AdminTableHeaderCell>
               <AdminTableHeaderCell className={`${COL_MONTO_AJUSTADO} align-top`}>
                 <span className="block text-right">Monto ajustado</span>
@@ -697,8 +716,6 @@ export default function AdminAumentos() {
             ) : (
               listadoPagina.map((p) => {
                 const { ui } = p
-                const indice = chipIndicador(p.tipo_ajuste ?? p.indice_tipo)
-
                 return (
                   <AdminTableRow key={p.aumento_id ? `aumento-${p.aumento_id}` : p.contrato_id}>
                     <AdminTableCell className="min-w-0 align-top">
@@ -725,7 +742,7 @@ export default function AdminAumentos() {
                       </div>
                     </AdminTableCell>
                     <AdminTableCell className={`${COL_MONTO_ACTUAL} !text-right align-top`}>
-                      <span className="block whitespace-nowrap tabular-nums font-medium text-brand-700">
+                      <span className="block whitespace-nowrap tabular-nums text-slate-600">
                         {formatMonto(p.monto_actual)}
                       </span>
                     </AdminTableCell>
@@ -735,7 +752,7 @@ export default function AdminAumentos() {
                           <span className="block whitespace-nowrap tabular-nums text-slate-400">
                             —
                           </span>
-                          <span className="whitespace-nowrap text-[11px] font-medium text-slate-400">
+                          <span className="whitespace-nowrap text-xs text-slate-400">
                             Sin datos de Argly
                           </span>
                         </div>
@@ -755,28 +772,17 @@ export default function AdminAumentos() {
                     </AdminTableCell>
                     <AdminTableCell className={`${COL_INDICE} align-top`}>
                       <div className="flex justify-center">
-                        <span
-                          title={indice.tooltip ?? undefined}
-                          className="inline-flex cursor-help items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
-                        >
-                          <span className="text-sm leading-none">{indice.icon}</span>
-                          {indice.label}
-                        </span>
+                        <IndiceChip tipo={p.tipo_ajuste ?? p.indice_tipo} />
                       </div>
                     </AdminTableCell>
                     <AdminTableCell className={`${COL_CONFIRMADO} align-top`}>
                       <div className="flex justify-center">
                         {esConfirmado(p) ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
-                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                            </svg>
+                          <Badge tone="success" icon={IconCheck}>
                             Sí
-                          </span>
+                          </Badge>
                         ) : (
-                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500 ring-1 ring-slate-200">
-                            No
-                          </span>
+                          <Badge tone="muted">No</Badge>
                         )}
                       </div>
                     </AdminTableCell>
@@ -849,7 +855,7 @@ export default function AdminAumentos() {
         open={ayudaOpen}
         variant="info"
         wide
-        title="Aumentos de Alquiler (por período)"
+        title="Cómo funciona el módulo de aumentos"
         onClose={() => setAyudaOpen(false)}
       >
         <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
@@ -888,41 +894,18 @@ export default function AdminAumentos() {
           </div>
 
           <div>
-            <p className="font-medium text-slate-800">Monto Ajustado — estados</p>
-            <div className="mt-2 grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
-              <div className="rounded-lg border border-emerald-100 bg-emerald-50/80 px-3 py-2">
-                <p className="text-xs font-semibold text-emerald-800">Definitivo</p>
-                <p className="mt-0.5 text-xs leading-snug text-emerald-900/80">
-                  Valores oficiales de cierre. Permite confirmar y actualizar el contrato.
-                </p>
-              </div>
-              <div className="rounded-lg border border-amber-100 bg-amber-50/80 px-3 py-2">
-                <p className="text-xs font-semibold text-amber-800">Índice pendiente</p>
-                <p className="mt-0.5 text-xs leading-snug text-amber-900/80">
-                  Falta un mes o el cierre (por ejemplo IPC de agosto). Igual ves el monto, con
-                  advertencia. Puede variar cuando se publique.
-                </p>
-              </div>
-              <div className="rounded-lg border border-orange-100 bg-orange-50/80 px-3 py-2">
-                <p className="text-xs font-semibold text-orange-800">Carga manual</p>
-                <p className="mt-0.5 text-xs leading-snug text-orange-900/80">
-                  Solo si Argly no trae ningún dato (API caída). Cargás los valores oficiales a mano
-                  y el sistema calcula igual.
-                </p>
-              </div>
-              <div className="rounded-lg border border-brand-100 bg-brand-50/80 px-3 py-2">
-                <p className="text-xs font-semibold text-brand-800">Proyectado</p>
-                <p className="mt-0.5 text-xs leading-snug text-brand-900/80">
-                  Todavía no entró a la bandeja (antes del día {DIA_INICIO_BANDEJA} de su mes). Solo vista previa.
-                </p>
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                <p className="text-xs font-semibold text-slate-700">Sin datos</p>
-                <p className="mt-0.5 text-xs leading-snug text-slate-600">
-                  Argly no respondió. Ahí sí se cargan los índices a mano en el detalle.
-                </p>
-              </div>
-            </div>
+            <p className="font-medium text-slate-900">Estados del monto ajustado</p>
+            <ul className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200">
+              {LEYENDA_ESTADOS.map(({ titulo, texto, tono }) => (
+                <li key={titulo} className="flex gap-3 px-3 py-2.5">
+                  <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dotTones[tono]}`} aria-hidden />
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{titulo}</p>
+                    <p className="mt-0.5 text-xs leading-snug text-slate-500">{texto}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </AdminAlertModal>

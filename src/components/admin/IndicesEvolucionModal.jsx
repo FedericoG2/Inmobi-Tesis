@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Button } from '@tremor/react'
 import IpcBarChart from './IpcBarChart'
 import { obtenerIpcAnualArgly, obtenerSeriesArgly } from '../../services/arglyService'
 import { hoyIsoLocal } from '../../utils/aumentosUi'
+import { IconChart } from '../icons/Icons'
+import Modal, { ModalBody, ModalFooter, ModalHeader } from '../ui/Modal'
+import Button from '../ui/Button'
+import { calloutClass, cn, segmentedInlineClass, segmentedItemClass } from '../../utils/ui'
 
 const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
@@ -20,18 +23,6 @@ function iclMensualDelAnio(serie, anio) {
       mes: MESES_CORTOS[mes - 1] ?? String(mes),
       valor,
     }))
-}
-
-function IconChart({ className = 'h-5 w-5' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"
-      />
-    </svg>
-  )
 }
 
 export default function IndicesEvolucionModal({ open, onClose }) {
@@ -89,75 +80,42 @@ export default function IndicesEvolucionModal({ open, onClose }) {
   const ultimoMes = serie.at(-1)?.mes
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <button
-        type="button"
-        aria-label="Cerrar evolución de índices"
-        className="absolute inset-0 bg-slate-900/50"
-        onClick={onClose}
+    <Modal open={open} onClose={onClose} size="3xl" labelledBy="indices-evolucion-titulo">
+      <ModalHeader
+        titleId="indices-evolucion-titulo"
+        icon={IconChart}
+        title="Evolución de índices"
+        subtitle={`${esIpc ? `Variación mensual IPC ${anio}` : `ICL mensual ${anio}`}${ultimoMes ? ` · hasta ${ultimoMes}` : ''} · Fuente Argly`}
+        onClose={onClose}
       />
 
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="indices-evolucion-titulo"
-        className="relative z-10 flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl"
-      >
-        <div className="border-b border-slate-100 px-6 py-3">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-700">
-              <IconChart />
-            </span>
-            <div className="min-w-0 flex-1">
-              <h2 id="indices-evolucion-titulo" className="truncate text-base font-semibold text-slate-900">
-                Evolución de índices
-              </h2>
-              <p className="truncate text-sm text-slate-600">
-                {esIpc ? `Variación mensual IPC ${anio}` : `ICL mensual ${anio}`}
-                {ultimoMes ? ` · hasta ${ultimoMes}` : ''} · Fuente Argly
-              </p>
-            </div>
-          </div>
+      <ModalBody>
+        <div className={segmentedInlineClass} role="tablist" aria-label="Índice a visualizar">
+          {[
+            { value: 'ipc', label: 'IPC' },
+            { value: 'icl', label: 'ICL' },
+          ].map(({ value, label }) => {
+            const activo = tab === value
+            return (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={activo}
+                onClick={() => setTab(value)}
+                className={cn(segmentedItemClass(activo, { fill: false }), 'min-w-16')}
+              >
+                {label}
+              </button>
+            )
+          })}
         </div>
 
-        <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50/70 px-6 py-3">
-          <div
-            className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white p-1"
-            role="tablist"
-            aria-label="Índice a visualizar"
-          >
-            {[
-              { value: 'ipc', label: 'IPC' },
-              { value: 'icl', label: 'ICL' },
-            ].map(({ value, label }) => {
-              const activo = tab === value
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  role="tab"
-                  aria-selected={activo}
-                  onClick={() => setTab(value)}
-                  className={`inline-flex h-full items-center rounded-md px-3 text-xs font-medium transition-colors ${
-                    activo
-                      ? 'bg-brand-50 text-brand-700 shadow-sm ring-1 ring-brand-100'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="min-h-[18rem] px-4 py-4 sm:px-6">
+        <div className="mt-5 min-h-[18rem]">
           {cargando ? (
             <p className="py-16 text-center text-sm text-slate-500">Cargando índices…</p>
           ) : error && serie.length === 0 ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </div>
+            <div className={calloutClass('danger')}>{error}</div>
           ) : serie.length === 0 ? (
             <p className="py-16 text-center text-sm text-slate-500">
               Sin datos de {esIpc ? 'IPC' : 'ICL'} para {anio}.
@@ -166,13 +124,13 @@ export default function IndicesEvolucionModal({ open, onClose }) {
             <IpcBarChart data={serie} height={280} unidad={esIpc ? '%' : ''} />
           )}
         </div>
+      </ModalBody>
 
-        <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-3">
-          <Button variant="secondary" onClick={onClose}>
-            Cerrar
-          </Button>
-        </div>
-      </div>
-    </div>
+      <ModalFooter>
+        <Button variant="secondary" onClick={onClose}>
+          Cerrar
+        </Button>
+      </ModalFooter>
+    </Modal>
   )
 }

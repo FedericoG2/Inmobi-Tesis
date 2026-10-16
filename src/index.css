@@ -1,6 +1,17 @@
 @import 'tailwindcss';
 
+/*
+ * Sistema de diseño Inmobi
+ * - Tipografía: Geist (UI) con cifras tabulares para montos.
+ * - Color: brand (azul institucional) + slate como neutro.
+ *   Semánticos: emerald (ok), amber (atención), red (error/peligro).
+ * - Radios: controles rounded-lg · tarjetas rounded-xl · modales rounded-2xl · pills rounded-full.
+ * Las clases reutilizables viven en src/utils/ui.js y los componentes en src/components/ui/.
+ */
 @theme {
+  --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
   --color-brand-50: #eef1fa;
   --color-brand-100: #d5dcf4;
   --color-brand-200: #abb9e9;
@@ -12,18 +23,92 @@
   --color-brand-800: #112055;
   --color-brand-900: #0d1842;
   --color-brand-950: #080f2a;
+
+  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+  --shadow-pop: 0 12px 32px -8px rgb(15 23 42 / 0.18), 0 2px 6px -2px rgb(15 23 42 / 0.08);
+  --shadow-modal: 0 24px 64px -16px rgb(15 23 42 / 0.35);
+
+  --animate-overlay-in: overlay-in 160ms ease-out;
+  --animate-modal-in: modal-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  @keyframes overlay-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes modal-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
 }
 
 @source "../node_modules/@tremor/react/dist/**/*.{js,ts,jsx,tsx}";
 
-html,
-body,
-#root {
-  min-height: 100%;
+@layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-slate-50);
+    color: var(--color-slate-900);
+    font-family: var(--font-sans);
+    font-feature-settings: 'ss01', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: var(--color-brand-100);
+    color: var(--color-brand-900);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: var(--color-brand-600);
+  }
+
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: none;
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-slate-300) transparent;
+  }
 }
 
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
 }

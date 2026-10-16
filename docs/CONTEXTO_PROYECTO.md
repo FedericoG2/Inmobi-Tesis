@@ -13,7 +13,7 @@ Documento de referencia para que un asistente (Gemini, Cursor, etc.) entienda **
 | Admin (inmobiliaria) | `admin` | `/admin/*` |
 | Inquilino (cliente) | `inquilino` | `/inquilino/*` |
 
-**Stack:** React 18 + Vite 8 + React Router v6 + Tailwind CSS 4 + Tremor v3 + Supabase (`@supabase/supabase-js`).
+**Stack:** React 18 + Vite 8 + React Router v6 + Tailwind CSS 4 (sistema de diseño propio en `src/components/ui` y `src/utils/ui.js`) + Tremor v3 (tablas) + Supabase (`@supabase/supabase-js`).
 
 **Auth:** Supabase Auth (email/password). El rol no viene del JWT: se lee de `public.perfiles` tras el login (`AuthContext.jsx`).
 
@@ -282,19 +282,28 @@ Las migraciones en `supabase/migrations/` se ejecutan **manualmente** en Supabas
 | `20250606_calcular_aumentos_pendientes_up.sql` | RPC calcular pendientes |
 | `20250606_upsert_indices_icl_batch_up.sql` | batch ICL |
 | `20250607_ipc_aumentos_up.sql` | soporte IPC |
+| `20261008_actividad_sistema.sql` | Tabla `actividad` + triggers (contratos, aumentos, reclamos, cartera, documentos), RLS, Realtime y `actividad_reconstruir()` |
 
-Seeds demo: `supabase/seeds/demo_contrato_icl_aumentos.sql`, `demo_contrato_ipc_aumentos.sql`.
+**Demo para presentar:** `supabase/seeds/demo_00_limpiar.sql` (opcional, destructivo) y `demo_01_presentacion.sql` (fechas relativas, re-ejecutable). Paso a paso en [`docs/GUION_DEMO.md`](GUION_DEMO.md).
+
+Seeds anteriores (dependen de IDs puntuales): `demo_contrato_icl_aumentos.sql`, `demo_contrato_ipc_aumentos.sql`, etc.
 
 ---
 
 ## 12. Patrones de código a respetar
 
 1. **Idioma UI:** español (Argentina) — mensajes, labels, placeholders.
-2. **Estilos:** Tailwind utility classes; Tremor para badges, cards, charts en admin.
-3. **Errores Supabase:** mostrar `error.message` en cards rojas o dentro del modal.
-4. **IDs:** a veces se comparan como `String(id)` por joins de Supabase.
-5. **No sobre-ingenierizar:** seguir el patrón hook + service existente; cambios mínimos.
-6. **Commits:** solo si el usuario lo pide explícitamente.
+2. **Estilos (sistema de diseño):** Tailwind + tokens compartidos. No inventar clases sueltas para superficies, controles o colores:
+   - `src/utils/ui.js`: tokens (tarjetas, tipografía, inputs, botones, badges, avisos). Colores: `brand` + `slate`; semánticos `emerald` (ok), `amber` (atención), `red` (error).
+   - `src/components/ui/`: `Button`, `IconButton`, `Badge`, `Modal` (+ `ModalHeader` / `ModalBody` / `ModalFooter`), `DetailField`.
+   - `src/components/icons/Icons.jsx`: set único de íconos (no definir SVG locales ni usar emojis).
+   - Radios: controles `rounded-lg`, tarjetas `rounded-xl`, modales `rounded-2xl`. Tipografía: Geist. Textos en formato oración.
+   - Tremor solo se usa para la tabla base (`AdminDataTable`); los gráficos usan Recharts.
+3. **Feedback de estado:** toda acción exitosa muestra un aviso con `useToast()` (`contexts/ToastContext.jsx`) que diga **qué pasó y en qué estado quedó** (ej. "Contrato creado · la propiedad pasó a Alquilada"). Los eventos de negocio además quedan en `public.actividad` vía triggers (no hace falta registrarlos desde el front) y se ven en vivo en el dashboard y en la campana de notificaciones (`useActividad`).
+4. **Errores Supabase:** mostrar `error.message` en avisos rojos o dentro del modal.
+5. **IDs:** a veces se comparan como `String(id)` por joins de Supabase.
+6. **No sobre-ingenierizar:** seguir el patrón hook + service existente; cambios mínimos.
+7. **Commits:** solo si el usuario lo pide explícitamente.
 
 ---
 

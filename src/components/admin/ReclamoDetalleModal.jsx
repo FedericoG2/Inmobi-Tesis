@@ -1,133 +1,29 @@
 import { useEffect, useState } from 'react'
-import { Button } from '@tremor/react'
-import AdminFormModalHeader from './AdminFormModalHeader'
 import InquilinoDetalleModal from './InquilinoDetalleModal'
 import PropiedadDetalleModal from './PropiedadDetalleModal'
 import ReclamoTimeline from './ReclamoTimeline'
 import { ReclamoCategoriaChip, ReclamoEstadoChip, ReclamoPrioridadChip } from './ReclamoChips'
 import { listarAdjuntosReclamo, obtenerUrlDescargaDocumento } from '../../services/documentosService'
 import { listarEventosReclamo } from '../../services/reclamosService'
-
-function IconWrench({ className = 'h-5 w-5' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l5.654-4.654m5.292-8.93a3 3 0 0 1 4.243 4.242M5.196 5.196l13.608 13.608"
-      />
-    </svg>
-  )
-}
-
-function IconUser({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
-      />
-    </svg>
-  )
-}
-
-function IconBuilding({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M2.25 21h19.5M3.75 21V7.5a1.5 1.5 0 0 1 1.5-1.5h4.5a1.5 1.5 0 0 1 1.5 1.5V21M13.5 21V4.5a1.5 1.5 0 0 1 1.5-1.5h3.75a1.5 1.5 0 0 1 1.5 1.5V21M6.75 9h.008v.008H6.75V9Zm0 3h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Z"
-      />
-    </svg>
-  )
-}
-
-function IconCalendar({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"
-      />
-    </svg>
-  )
-}
-
-function IconFlag({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5"
-      />
-    </svg>
-  )
-}
-
-function IconSignal({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M3.75 21h16.5M4.5 3v18m4.5-18v18m4.5-12v12m4.5-8v8"
-      />
-    </svg>
-  )
-}
-
-function IconTag({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z"
-      />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6Z" />
-    </svg>
-  )
-}
-
-function IconImage({ className = 'h-5 w-5' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
-      />
-    </svg>
-  )
-}
+import DetalleFila from '../ui/DetailField'
+import {
+  IconArrowRight,
+  IconBuilding,
+  IconCalendar,
+  IconClipboard,
+  IconFlag,
+  IconImage,
+  IconSignal,
+  IconTag,
+  IconUser,
+  IconWrench,
+} from '../icons/Icons'
+import Modal, { ModalBody, ModalFooter, ModalHeader } from '../ui/Modal'
+import Button from '../ui/Button'
+import { calloutClass, eyebrow, surfaceMuted } from '../../utils/ui'
 
 const verDetalleLinkClass =
-  'shrink-0 text-xs font-semibold text-brand-600 transition hover:text-brand-700 hover:underline'
-
-function DetalleFila({ label, value, icon: Icon, action, children, className = '' }) {
-  return (
-    <div
-      className={`flex items-center gap-2.5 rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2 ${className}`}
-    >
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white text-slate-400 ring-1 ring-slate-100">
-        <Icon className="h-3.5 w-3.5" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-        {children ? (
-          <div className="mt-0.5">{children}</div>
-        ) : (
-          <p className="text-sm font-medium leading-tight text-slate-800 break-words">{value}</p>
-        )}
-      </div>
-      {action}
-    </div>
-  )
-}
+  'inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand-600 transition hover:text-brand-800'
 
 function CategoriaChip({ categoria }) {
   return <ReclamoCategoriaChip categoria={categoria} />
@@ -136,7 +32,7 @@ function CategoriaChip({ categoria }) {
 function SeccionTitulo({ children, className = '' }) {
   return (
     <h3
-      className={`text-[11px] font-semibold uppercase tracking-wide text-slate-500 ${className}`}
+      className={`${eyebrow} ${className}`}
     >
       {children}
     </h3>
@@ -251,175 +147,139 @@ export default function ReclamoDetalleModal({
     propiedades.find((p) => String(p.id) === String(reclamo.propiedad_id)) ?? null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <button
-        type="button"
-        aria-label="Cerrar detalle"
-        className="fixed inset-0 bg-slate-900/50"
-        onClick={onClose}
-      />
-
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="reclamo-detalle-titulo"
-        className="relative z-10 flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl"
-      >
-        <AdminFormModalHeader
-          title="Detalle del Reclamo"
+    <>
+      <Modal open={open} onClose={onClose} size="5xl" labelledBy="reclamo-detalle-titulo">
+        <ModalHeader
           titleId="reclamo-detalle-titulo"
-          icon={<IconWrench className="h-5 w-5" />}
+          icon={IconWrench}
+          title={reclamo.titulo ?? 'Detalle del reclamo'}
+          subtitle={`Creado el ${formatearFecha(reclamo.fecha_creacion)}`}
+          onClose={onClose}
         />
 
-        <div className="border-b border-slate-100 px-6 py-3">
-          <SeccionTitulo className="mb-2">Partes</SeccionTitulo>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <DetalleFila
-              label="Inquilino"
-              value={reclamo.inquilinos?.nombre_completo ?? '—'}
-              icon={IconUser}
-              action={
-                inquilinoFull ? (
-                  <button
-                    type="button"
-                    onClick={() => setDetalleInquilinoOpen(true)}
-                    className={verDetalleLinkClass}
-                  >
-                    Ver detalle
-                  </button>
-                ) : null
-              }
-            />
-            <DetalleFila
-              label="Propiedad"
-              value={reclamo.propiedades?.direccion ?? '—'}
-              icon={IconBuilding}
-              action={
-                propiedadFull ? (
-                  <button
-                    type="button"
-                    onClick={() => setDetallePropiedadOpen(true)}
-                    className={verDetalleLinkClass}
-                  >
-                    Ver detalle
-                  </button>
-                ) : null
-              }
-            />
-          </div>
-        </div>
+        <ModalBody className="space-y-5">
+          <section>
+            <SeccionTitulo className="mb-2.5">Partes</SeccionTitulo>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <DetalleFila
+                label="Inquilino"
+                value={reclamo.inquilinos?.nombre_completo ?? '—'}
+                icon={IconUser}
+                action={
+                  inquilinoFull ? (
+                    <button type="button" onClick={() => setDetalleInquilinoOpen(true)} className={verDetalleLinkClass}>
+                      Ver ficha
+                      <IconArrowRight className="h-3 w-3" />
+                    </button>
+                  ) : null
+                }
+              />
+              <DetalleFila
+                label="Propiedad"
+                value={reclamo.propiedades?.direccion ?? '—'}
+                icon={IconBuilding}
+                action={
+                  propiedadFull ? (
+                    <button type="button" onClick={() => setDetallePropiedadOpen(true)} className={verDetalleLinkClass}>
+                      Ver ficha
+                      <IconArrowRight className="h-3 w-3" />
+                    </button>
+                  ) : null
+                }
+              />
+            </div>
+          </section>
 
-        <div className="px-6 py-3">
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-            <div className="space-y-3">
-              <div className="rounded-lg border border-brand-100 bg-brand-50/60 px-3 py-2">
-                <p className="text-[11px] font-medium text-brand-700">Reclamo</p>
-                <p className="mt-0.5 text-base font-semibold leading-snug text-brand-950">
-                  {reclamo.titulo ?? '—'}
-                </p>
-              </div>
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+            <div className="space-y-5">
+              <section>
+                <SeccionTitulo className="mb-2.5">Datos del reclamo</SeccionTitulo>
+                <div className="grid grid-cols-2 gap-3">
+                  <DetalleFila label="Fecha de creación" value={formatearFecha(reclamo.fecha_creacion)} icon={IconCalendar} />
+                  <DetalleFila label="Categoría" icon={IconTag}>
+                    <CategoriaChip categoria={reclamo.categoria} />
+                  </DetalleFila>
+                  <DetalleFila label="Estado" icon={IconFlag}>
+                    <ReclamoEstadoChip estado={reclamo.estado} />
+                  </DetalleFila>
+                  <DetalleFila label="Prioridad" icon={IconSignal}>
+                    <ReclamoPrioridadChip prioridad={reclamo.prioridad} />
+                  </DetalleFila>
+                </div>
+              </section>
 
-              <div className="grid grid-cols-2 gap-2">
-                <DetalleFila
-                  label="Fecha de creación"
-                  value={formatearFecha(reclamo.fecha_creacion)}
-                  icon={IconCalendar}
-                />
-                <DetalleFila label="Categoría" icon={IconTag}>
-                  <CategoriaChip categoria={reclamo.categoria} />
-                </DetalleFila>
-                <DetalleFila label="Estado" icon={IconFlag}>
-                  <ReclamoEstadoChip estado={reclamo.estado} />
-                </DetalleFila>
-                <DetalleFila label="Prioridad" icon={IconSignal}>
-                  <ReclamoPrioridadChip prioridad={reclamo.prioridad} />
-                </DetalleFila>
-              </div>
-
-              <div className="rounded-lg border border-slate-200 px-3 py-2">
-                <SeccionTitulo className="mb-1">Descripción</SeccionTitulo>
-                <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700">
+              <section>
+                <SeccionTitulo className="mb-2.5">Descripción</SeccionTitulo>
+                <p className={`${surfaceMuted} whitespace-pre-line px-3.5 py-3 text-sm leading-relaxed text-slate-700`}>
                   {reclamo.descripcion?.trim() || 'Sin descripción.'}
                 </p>
-              </div>
+              </section>
 
-              <div className="rounded-lg border border-slate-200 px-3 py-2">
-                <SeccionTitulo className="mb-1">
+              <section>
+                <SeccionTitulo className="mb-2.5">
                   Imágenes{adjuntos.length > 0 ? ` (${adjuntos.length})` : ''}
                 </SeccionTitulo>
 
-                {errorAdjuntos && (
-                  <p className="mt-1 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700">
-                    {errorAdjuntos}
-                  </p>
-                )}
+                {errorAdjuntos && <p className={calloutClass('danger', 'mb-2')}>{errorAdjuntos}</p>}
 
                 {cargandoAdjuntos ? (
-                  <p className="mt-1 text-xs text-slate-400">Cargando imágenes…</p>
+                  <p className="text-sm text-slate-500">Cargando imágenes…</p>
                 ) : adjuntos.length === 0 ? (
-                  <div className="mt-1 flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-200 py-4 text-slate-400">
-                    <IconImage />
-                    <p className="text-xs">Sin imágenes adjuntas</p>
+                  <div className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 py-6 text-slate-400">
+                    <IconImage className="h-6 w-6" />
+                    <p className="text-sm">Sin imágenes adjuntas</p>
                   </div>
                 ) : (
-                  <div className="mt-1 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                     {adjuntos.map((doc) => (
                       <div
                         key={doc.id}
                         className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
                       >
                         {urls[doc.id] ? (
-                          <a
-                            href={urls[doc.id]}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={doc.nombre}
-                          >
+                          <a href={urls[doc.id]} target="_blank" rel="noopener noreferrer" title={doc.nombre}>
                             <img
                               src={urls[doc.id]}
                               alt={doc.nombre}
-                              className="h-full w-full object-cover transition group-hover:opacity-90"
+                              className="h-full w-full object-cover transition group-hover:scale-[1.03]"
                               loading="lazy"
                             />
                           </a>
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-slate-300">
-                            <IconImage />
+                            <IconImage className="h-6 w-6" />
                           </div>
                         )}
                       </div>
                     ))}
                   </div>
                 )}
-              </div>
+              </section>
             </div>
 
-            <div className="lg:self-start">
-              <SeccionTitulo className="mb-2">Historial</SeccionTitulo>
+            <section className="lg:self-start">
+              <SeccionTitulo className="mb-2.5">Historial</SeccionTitulo>
               <ReclamoTimeline
                 eventos={eventos}
                 loading={cargandoEventos}
                 error={errorEventos}
                 perfilInquilinoId={reclamo?.inquilinos?.perfil_id ?? null}
               />
-            </div>
+            </section>
           </div>
-        </div>
+        </ModalBody>
 
-        <div className="flex justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
+        <ModalFooter>
           <Button variant="secondary" onClick={onClose}>
             Cerrar
           </Button>
           {onManage && (
-            <Button
-              onClick={() => onManage(reclamo)}
-              className="!border-brand-600 !bg-brand-600 !text-white hover:!border-brand-700 hover:!bg-brand-700"
-            >
+            <Button icon={IconClipboard} onClick={() => onManage(reclamo)}>
               Gestionar
             </Button>
           )}
-        </div>
-      </div>
+        </ModalFooter>
+      </Modal>
 
       <InquilinoDetalleModal
         open={detalleInquilinoOpen}
@@ -434,6 +294,6 @@ export default function ReclamoDetalleModal({
         onClose={() => setDetallePropiedadOpen(false)}
         apilado
       />
-    </div>
+    </>
   )
 }

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Card } from '@tremor/react'
 import AdminAlertModal from '../../components/admin/AdminAlertModal'
 import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
 import AdminListLayout from '../../components/admin/AdminListLayout'
@@ -11,21 +10,25 @@ import {
   AdminTableHead,
   AdminTableHeaderCell,
   AdminTableRow,
+  AdminTableToolbar,
 } from '../../components/admin/AdminDataTable'
 import InquilinoFormModal from '../../components/admin/forms/InquilinoFormModal'
 import InquilinoDetalleModal from '../../components/admin/InquilinoDetalleModal'
 import InquilinoRowActions from '../../components/admin/InquilinoRowActions'
 import AdminTablePagination from '../../components/admin/AdminTablePagination'
 import AdminNuevoButton from '../../components/admin/AdminNuevoButton'
+import FilterSelect from '../../components/admin/FilterSelect'
 import { useInquilinos } from '../../hooks/useInquilinos'
+import { useToast } from '../../contexts/ToastContext'
 import { formatearDniCuit, formatearTelefono } from '../../utils/normalizarContacto'
 import {
   BADGE_PERSONA_TIPO,
   celdaNombre,
   celdaNumero,
   inputToolbarClass,
-  selectToolbarClass,
 } from '../../utils/adminModuleUi'
+import { IconSearch } from '../../components/icons/Icons'
+import { calloutClass } from '../../utils/ui'
 
 const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
 const dependenciasIniciales = {
@@ -36,64 +39,6 @@ const dependenciasIniciales = {
 }
 const FILAS_POR_PAGINA = 4
 
-function IconSearch({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-      />
-    </svg>
-  )
-}
-
-function IconUser({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
-      />
-    </svg>
-  )
-}
-
-function IconIdCard({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm3-9.75a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 3a2.25 2.25 0 0 0-2.25 2.25v.75a2.25 2.25 0 0 0 2.25 2.25h3a2.25 2.25 0 0 0 2.25-2.25v-.75A2.25 2.25 0 0 0 10.5 12.75h-3Z"
-      />
-    </svg>
-  )
-}
-
-function IconPhone({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.72 1.062a12.042 12.042 0 0 1-7.21-7.21l1.062-.72c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z"
-      />
-    </svg>
-  )
-}
-
-function HeaderLabel({ icon: Icon, children, align = 'center' }) {
-  const justify = align === 'left' ? 'justify-start' : 'justify-center'
-  return (
-    <span className={`inline-flex w-full items-center gap-2 text-slate-600 ${justify}`}>
-      {Icon && <Icon className="h-4 w-4 shrink-0 text-slate-400" />}
-      {children}
-    </span>
-  )
-}
-
 const MENSAJE_RECLAMOS_ASOCIADOS =
   'No se puede eliminar el inquilino porque tiene reclamos asociados. Se conserva como historial.'
 
@@ -102,6 +47,7 @@ function buildMensajeConfirmacionDelete(inquilino) {
 }
 
 export default function AdminInquilinos() {
+  const toast = useToast()
   const [modalOpen, setModalOpen] = useState(false)
   const [inquilinoEditando, setInquilinoEditando] = useState(null)
   const [dependenciasEditando, setDependenciasEditando] = useState(dependenciasIniciales)
@@ -110,7 +56,6 @@ export default function AdminInquilinos() {
   const [alerta, setAlerta] = useState(alertaInicial)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [inquilinoAEliminar, setInquilinoAEliminar] = useState(null)
-  const [dependenciasEliminar, setDependenciasEliminar] = useState(dependenciasIniciales)
   const [eliminando, setEliminando] = useState(false)
   const [paginaActual, setPaginaActual] = useState(1)
   const [filtroTexto, setFiltroTexto] = useState('')
@@ -225,10 +170,15 @@ export default function AdminInquilinos() {
   }
 
   const handleSubmit = async (form) => {
+    const nombre = form.nombre_completo?.trim()
     if (inquilinoEditando) {
-      return actualizar(inquilinoEditando.id, form)
+      const ok = await actualizar(inquilinoEditando.id, form)
+      if (ok) toast.success('Inquilino actualizado', `Se guardaron los cambios de ${nombre}.`)
+      return ok
     }
-    return crear(form)
+    const ok = await crear(form)
+    if (ok) toast.success('Inquilino creado', `${nombre} quedó registrado. Ya podés asignarle un contrato.`)
+    return ok
   }
 
   const cerrarAlerta = () => {
@@ -259,7 +209,6 @@ export default function AdminInquilinos() {
     }
 
     setInquilinoAEliminar(inquilino)
-    setDependenciasEliminar(dependencias)
     setConfirmOpen(true)
   }
 
@@ -267,7 +216,6 @@ export default function AdminInquilinos() {
     if (eliminando) return
     setConfirmOpen(false)
     setInquilinoAEliminar(null)
-    setDependenciasEliminar(dependenciasIniciales)
   }
 
   const confirmarEliminar = async () => {
@@ -278,6 +226,7 @@ export default function AdminInquilinos() {
     setEliminando(false)
 
     if (ok) {
+      toast.success('Inquilino eliminado', `${inquilinoAEliminar.nombre_completo} se quitó del sistema.`)
       cancelarEliminar()
     }
   }
@@ -290,15 +239,15 @@ export default function AdminInquilinos() {
     <>
       <AdminListLayout
         title="Inquilinos"
+        subtitle="Personas y empresas que alquilan, con su acceso al portal."
+        actions={<AdminNuevoButton label="Nuevo inquilino" onClick={abrirModalCrear} />}
         alerts={
           error ? (
-            <Card className="border border-red-200 bg-red-50">
-              <p className="text-sm text-red-700">Error al cargar inquilinos: {error}</p>
-            </Card>
+            <div className={calloutClass('danger')}>Error al cargar inquilinos: {error}</div>
           ) : null
         }
       >
-        <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-3 sm:flex-row sm:items-center sm:gap-3 lg:px-6">
+        <AdminTableToolbar>
           <div className="relative min-w-0 flex-1">
             <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -306,50 +255,38 @@ export default function AdminInquilinos() {
               type="search"
               value={filtroTexto}
               onChange={(e) => setFiltroTexto(e.target.value)}
-              placeholder="Buscar por nombre, DNI/CUIT o email..."
+              placeholder="Buscar por nombre, DNI/CUIT o email…"
               className={`${inputToolbarClass} pl-9`}
             />
           </div>
 
-          <select
+          <FilterSelect
             id="filtro-tipo-inquilino"
             value={filtroTipo}
             onChange={(e) => setFiltroTipo(e.target.value)}
-            className={selectToolbarClass}
-            aria-label="Filtrar por tipo de inquilino"
+            onClear={() => setFiltroTipo('')}
+            ariaLabel="Filtrar por tipo de inquilino"
           >
             <option value="">Tipo: Todos</option>
             <option value="Física">Persona física</option>
             <option value="Jurídica">Persona jurídica</option>
-          </select>
-
-          <div className="shrink-0 sm:ml-auto">
-            <AdminNuevoButton
-              label="NUEVO INQUILINO"
-              onClick={abrirModalCrear}
-              className="w-full sm:w-auto"
-            />
-          </div>
-        </div>
+          </FilterSelect>
+        </AdminTableToolbar>
 
         <AdminTable className="w-full">
-          <AdminTableHead className="!bg-slate-100/90">
+          <AdminTableHead>
             <AdminTableRow className="hover:bg-transparent">
               <AdminTableHeaderCell className="w-[11%] !text-center">
-                <HeaderLabel icon={IconUser}>Tipo</HeaderLabel>
+                Tipo
               </AdminTableHeaderCell>
               <AdminTableHeaderCell className="w-[24%] !text-left">
                 Nombre / Razón social
               </AdminTableHeaderCell>
               <AdminTableHeaderCell className="w-[13%] !text-left">
-                <HeaderLabel icon={IconIdCard} align="left">
-                  DNI/CUIT
-                </HeaderLabel>
+                DNI/CUIT
               </AdminTableHeaderCell>
               <AdminTableHeaderCell className="w-[12%] !text-left">
-                <HeaderLabel icon={IconPhone} align="left">
-                  Teléfono
-                </HeaderLabel>
+                Teléfono
               </AdminTableHeaderCell>
               <AdminTableHeaderCell className="w-[14%] !text-center">Acciones</AdminTableHeaderCell>
             </AdminTableRow>
@@ -357,7 +294,7 @@ export default function AdminInquilinos() {
           <AdminTableBody>
             {loading && (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={5}>Cargando inquilinos...</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={5}>Cargando inquilinos…</AdminTableEmptyCell>
               </AdminTableRow>
             )}
 
@@ -377,25 +314,20 @@ export default function AdminInquilinos() {
 
             {!loading &&
               inquilinosFiltrados.length > 0 &&
-              inquilinosPagina.map((i, index) => {
+              inquilinosPagina.map((i) => {
                 const badgeTipo = BADGE_PERSONA_TIPO[i.tipo_persona] ?? BADGE_PERSONA_TIPO['Física']
-                const zebra = index % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'
 
                 return (
-                  <AdminTableRow key={i.id ?? i.dni_cuit} className={`${zebra} hover:bg-brand-50/40`}>
+                  <AdminTableRow key={i.id ?? i.dni_cuit}>
                     <AdminTableCell className="!text-center">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${badgeTipo.className}`}
-                      >
-                        {badgeTipo.label}
-                      </span>
+                      <span className={badgeTipo.className}>{badgeTipo.label}</span>
                     </AdminTableCell>
 
                     <AdminTableCell className="!text-left">
                       <div className="flex flex-col">
                         <span className={`block truncate ${celdaNombre}`}>{i.nombre_completo}</span>
                         {i.ocupacion && (
-                          <span className="max-w-[200px] truncate text-xs text-slate-400">
+                          <span className="max-w-[200px] truncate text-xs text-slate-500">
                             {i.ocupacion}
                           </span>
                         )}

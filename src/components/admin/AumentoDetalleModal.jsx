@@ -1,11 +1,25 @@
 import { useEffect, useState } from 'react'
-import { Button } from '@tremor/react'
-import AdminFormModalHeader from './AdminFormModalHeader'
 import InquilinoDetalleModal from './InquilinoDetalleModal'
 import PropiedadDetalleModal from './PropiedadDetalleModal'
 import { supabase } from '../../supabaseClient'
 import { detalleCalculoAumento, formatPeriodoIpc, hoyIsoLocal, observacionOperativaDetalle } from '../../utils/aumentosUi'
 import { mesesIpcPeriodo } from '../../utils/calcularAumento'
+import DetalleFila from '../ui/DetailField'
+import {
+  IconAlert,
+  IconArrowRight,
+  IconBuilding,
+  IconCheck,
+  IconChevronLeft,
+  IconChevronRight,
+  IconClock,
+  IconDocument,
+  IconTrendingUp,
+  IconUser,
+} from '../icons/Icons'
+import Modal, { ModalBody, ModalFooter, ModalHeader } from '../ui/Modal'
+import Button from '../ui/Button'
+import { calloutClass, cn, eyebrow, inputClass, labelClass, surfaceMuted, textareaClass } from '../../utils/ui'
 
 const formatMonto = (monto) => {
   if (monto == null) return '—'
@@ -28,7 +42,7 @@ function DatoInline({ label, value }) {
   return (
     <span className="inline-flex min-w-0 items-baseline gap-1.5 whitespace-nowrap text-xs">
       <span className="shrink-0 text-slate-500">{label}:</span>
-      <span className="truncate font-medium text-slate-800">{value ?? '—'}</span>
+      <span className="truncate font-medium text-slate-900">{value ?? '—'}</span>
     </span>
   )
 }
@@ -51,26 +65,20 @@ function ResumenCalculoFinal({ detalle, montoFinal }) {
       : null
 
   return (
-    <div className="mt-2">
-      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-        Cálculo final
-      </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="rounded-md border border-brand-200 bg-brand-50 px-3 py-2 font-mono text-xs font-semibold tabular-nums text-brand-900">
-          {formatMonto(montoBase)}
-        </div>
-        <span className="text-sm font-medium text-slate-400">×</span>
+    <div className="mt-4 border-t border-slate-100 pt-3">
+      <p className={`${eyebrow} mb-2`}>Cálculo final</p>
+      <div className="flex flex-wrap items-center gap-2 font-mono text-xs tabular-nums">
+        <span className="rounded-md bg-slate-100 px-2.5 py-1.5 text-slate-700">{formatMonto(montoBase)}</span>
+        <span className="text-slate-400">×</span>
         {factorLabel != null && (
           <>
-            <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-xs font-bold tabular-nums text-slate-800">
-              {factorLabel}
-            </div>
-            <span className="text-sm font-medium text-slate-400">=</span>
+            <span className="rounded-md bg-slate-100 px-2.5 py-1.5 text-slate-700">{factorLabel}</span>
+            <span className="text-slate-400">=</span>
           </>
         )}
-        <div className="rounded-md border border-emerald-300 bg-emerald-100 px-3 py-2 font-mono text-sm font-bold tabular-nums text-emerald-900">
+        <span className="rounded-md bg-brand-600 px-2.5 py-1.5 text-sm font-semibold text-white">
           {formatMonto(montoResultado)}
-        </div>
+        </span>
       </div>
     </div>
   )
@@ -78,85 +86,12 @@ function ResumenCalculoFinal({ detalle, montoFinal }) {
 
 function SeccionTitulo({ children, className = '' }) {
   return (
-    <h3
-      className={`text-[11px] font-semibold uppercase tracking-wide text-slate-500 ${className}`}
-    >
-      {children}
-    </h3>
-  )
-}
-
-function IconTrendUp({ className = 'h-5 w-5' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941"
-      />
-    </svg>
-  )
-}
-
-function IconUser({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
-      />
-    </svg>
-  )
-}
-
-function IconBuilding({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008H17.25v-.008Z"
-      />
-    </svg>
+    <h3 className={`${eyebrow} ${className}`}>{children}</h3>
   )
 }
 
 const verDetalleLinkClass =
-  'shrink-0 text-xs font-semibold text-brand-600 transition hover:text-brand-700 hover:underline'
-
-function DetalleFila({ label, value, icon: Icon, action, children, className = '' }) {
-  return (
-    <div
-      className={`flex items-center gap-2.5 rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2 ${className}`}
-    >
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white text-slate-400 ring-1 ring-slate-100">
-        <Icon className="h-3.5 w-3.5" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-        {children ? (
-          <div className="mt-0.5">{children}</div>
-        ) : (
-          <p className="break-words text-sm font-medium leading-tight text-slate-800">{value}</p>
-        )}
-      </div>
-      {action}
-    </div>
-  )
-}
-
-function IconAlerta({ className = 'h-5 w-5' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
-      />
-    </svg>
-  )
-}
+  'inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand-600 transition hover:text-brand-800'
 
 function CargaManualIndices({ propuesta, onAplicar, disabled }) {
   const tipo = (propuesta.tipo_ajuste ?? propuesta.indice_tipo ?? '').toLowerCase()
@@ -185,8 +120,7 @@ function CargaManualIndices({ propuesta, onAplicar, disabled }) {
     setIpcMeses(inicial)
   }, [propuesta.contrato_id, propuesta.fecha_desde, propuesta.fecha_hasta])
 
-  const inputClass =
-    'w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 font-mono text-xs text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:opacity-50'
+  const inputIndiceClass = cn(inputClass, 'h-9 font-mono text-xs')
 
   const handleAplicar = () => {
     if (tipo === 'icl') {
@@ -216,17 +150,15 @@ function CargaManualIndices({ propuesta, onAplicar, disabled }) {
   })
 
   return (
-    <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2.5">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800">
-        Cargar índices a mano
-      </p>
-      <p className="mt-0.5 text-xs text-amber-900/80">
+    <div className={calloutClass('warning')}>
+      <p className="font-medium">Cargar índices a mano</p>
+      <p className="mt-0.5 text-amber-800">
         Usá los valores oficiales (BCRA para ICL, INDEC para IPC). El sistema calcula con la misma fórmula.
       </p>
 
       {tipo === 'icl' ? (
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <label className="text-[11px] font-medium text-slate-600">
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <label className="text-xs font-medium text-slate-700">
             ICL inicio
             <input
               type="number"
@@ -235,10 +167,10 @@ function CargaManualIndices({ propuesta, onAplicar, disabled }) {
               value={iclInicio}
               onChange={(e) => setIclInicio(e.target.value)}
               disabled={disabled}
-              className={`mt-1 ${inputClass}`}
+              className={`mt-1 ${inputIndiceClass}`}
             />
           </label>
-          <label className="text-[11px] font-medium text-slate-600">
+          <label className="text-xs font-medium text-slate-700">
             ICL cierre
             <input
               type="number"
@@ -247,16 +179,16 @@ function CargaManualIndices({ propuesta, onAplicar, disabled }) {
               value={iclFin}
               onChange={(e) => setIclFin(e.target.value)}
               disabled={disabled}
-              className={`mt-1 ${inputClass}`}
+              className={`mt-1 ${inputIndiceClass}`}
             />
           </label>
         </div>
       ) : (
-        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
           {meses.map((mes) => {
             const clave = `${mes.anio}-${String(mes.mes).padStart(2, '0')}`
             return (
-              <label key={clave} className="text-[11px] font-medium text-slate-600">
+              <label key={clave} className="text-xs font-medium text-slate-700">
                 IPC {formatPeriodoIpc(mes.anio, mes.mes)}
                 <input
                   type="number"
@@ -266,7 +198,7 @@ function CargaManualIndices({ propuesta, onAplicar, disabled }) {
                   onChange={(e) => setIpcMeses((prev) => ({ ...prev, [clave]: e.target.value }))}
                   disabled={disabled}
                   placeholder="%"
-                  className={`mt-1 ${inputClass}`}
+                  className={`mt-1 ${inputIndiceClass}`}
                 />
               </label>
             )
@@ -274,14 +206,15 @@ function CargaManualIndices({ propuesta, onAplicar, disabled }) {
         </div>
       )}
 
-      <button
-        type="button"
+      <Button
+        variant="secondary"
+        size="sm"
         onClick={handleAplicar}
         disabled={disabled || (tipo === 'icl' ? !iclListo : !ipcListo)}
-        className="mt-2 rounded-md border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-100 disabled:opacity-50"
+        className="mt-3"
       >
         Calcular con estos valores
-      </button>
+      </Button>
     </div>
   )
 }
@@ -289,15 +222,13 @@ function CargaManualIndices({ propuesta, onAplicar, disabled }) {
 function AdvertenciaAproximado({ advertencia }) {
   if (!advertencia) return null
   return (
-    <div className="mb-3 flex gap-2.5 rounded-lg bg-slate-800 px-3 py-2 text-slate-100">
-      <IconAlerta className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
-      <div className="text-xs leading-relaxed">
-        <span className="font-semibold text-amber-300">ATENCIÓN: </span>
+    <div className={cn(calloutClass('warning'), 'flex gap-2.5')}>
+      <IconAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+      <div>
         {advertencia.texto}
         {advertencia.proximaPublicacionLabel && (
-          <span className="ml-1 text-slate-300">
-            Próxima publicación estimada:{' '}
-            <span className="font-semibold text-white">{advertencia.proximaPublicacionLabel}</span>
+          <span className="ml-1 text-amber-800">
+            Próxima publicación estimada: <span className="font-medium">{advertencia.proximaPublicacionLabel}</span>
           </span>
         )}
       </div>
@@ -310,7 +241,7 @@ function PasoIcl({ detalle }) {
   if (!iclValores) return null
 
   return (
-    <ol className="space-y-1.5 text-xs">
+    <ol className="space-y-2 text-sm">
       <li className="flex justify-between gap-3">
         <span className="text-slate-600">
           1. ICL al inicio del período ({periodo.desdeLabel})
@@ -344,19 +275,19 @@ function PasoIpc({ detalle }) {
 
   return (
     <div>
-      <div className="max-h-44 overflow-y-auto overflow-x-hidden rounded-lg border border-slate-200">
-        <table className="w-full text-xs">
-          <thead className="sticky top-0 z-[1] bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
+      <div className="max-h-48 overflow-y-auto overflow-x-hidden rounded-lg border border-slate-200">
+        <table className="w-full text-sm">
+          <thead className="sticky top-0 z-[1] bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
             <tr>
-              <th className="px-2.5 py-1 text-left font-medium">Mes</th>
-              <th className="px-2.5 py-1 text-right font-medium">Variación IPC</th>
+              <th className="px-3 py-2 text-left font-medium">Mes</th>
+              <th className="px-3 py-2 text-right font-medium">Variación IPC</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {ipcDetalle.map((m) => (
               <tr key={`${m.anio}-${m.mes}`} className={m.publicado ? '' : 'bg-amber-50/60'}>
-                <td className="px-2.5 py-1 text-slate-700">{formatPeriodoIpc(m.anio, m.mes)}</td>
-                <td className="px-2.5 py-1 text-right font-mono text-slate-900">
+                <td className="px-3 py-1.5 text-slate-600">{formatPeriodoIpc(m.anio, m.mes)}</td>
+                <td className="px-3 py-1.5 text-right font-mono text-xs tabular-nums text-slate-900">
                   {m.publicado ? (
                     formatPct(m.variacion_pct)
                   ) : (
@@ -369,9 +300,9 @@ function PasoIpc({ detalle }) {
         </table>
       </div>
       {ipcFactor != null && (
-        <div className="mt-2 flex items-center justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2">
-          <span className="text-xs font-semibold text-emerald-800">Factor acumulado del período</span>
-          <span className="font-mono text-sm font-bold tabular-nums text-emerald-900">
+        <div className="mt-2 flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
+          <span className="text-sm text-slate-600">Factor acumulado del período</span>
+          <span className="font-mono text-sm font-semibold tabular-nums text-slate-900">
             × {ipcFactor.toFixed(6)}
           </span>
         </div>
@@ -512,100 +443,87 @@ export default function AumentoDetalleModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <button
-        type="button"
-        aria-label="Cerrar detalle"
-        className="absolute inset-0 bg-slate-900/50"
-        onClick={onClose}
-      />
-
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="aumento-detalle-titulo"
-        className="relative z-10 flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl"
-      >
-        <AdminFormModalHeader
-          title="Detalle del Cálculo de Aumento de Alquiler"
+    <>
+      <Modal open={open} onClose={confirmando ? undefined : onClose} size="5xl" labelledBy="aumento-detalle-titulo">
+        <ModalHeader
           titleId="aumento-detalle-titulo"
-          icon={<IconTrendUp className="h-5 w-5" />}
+          icon={IconTrendingUp}
+          title="Detalle del cálculo de aumento"
+          subtitle={`${propuesta.inquilino_nombre ?? '—'} · ${periodo.desdeLabel} a ${periodo.hastaLabel}`}
+          onClose={confirmando ? undefined : onClose}
         />
 
-        <div className="border-b border-slate-100 px-6 py-3">
-          <SeccionTitulo className="mb-2">Partes</SeccionTitulo>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <DetalleFila
-              label="Inquilino"
-              value={propuesta.inquilino_nombre ?? '—'}
-              icon={IconUser}
-              action={
-                inquilinoFull ? (
-                  <button
-                    type="button"
-                    onClick={() => setDetalleInquilinoOpen(true)}
-                    className={verDetalleLinkClass}
-                  >
-                    Ver detalle
-                  </button>
-                ) : null
-              }
-            />
-            <DetalleFila
-              label="Propiedad"
-              value={propuesta.propiedad_direccion ?? '—'}
-              icon={IconBuilding}
-              action={
-                propiedadFull ? (
-                  <button
-                    type="button"
-                    onClick={() => setDetallePropiedadOpen(true)}
-                    className={verDetalleLinkClass}
-                  >
-                    Ver detalle
-                  </button>
-                ) : null
-              }
-            />
-          </div>
-        </div>
+        <ModalBody className="space-y-5">
+          <section>
+            <SeccionTitulo className="mb-2.5">Partes</SeccionTitulo>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <DetalleFila
+                label="Inquilino"
+                value={propuesta.inquilino_nombre ?? '—'}
+                icon={IconUser}
+                action={
+                  inquilinoFull ? (
+                    <button type="button" onClick={() => setDetalleInquilinoOpen(true)} className={verDetalleLinkClass}>
+                      Ver ficha
+                      <IconArrowRight className="h-3 w-3" />
+                    </button>
+                  ) : null
+                }
+              />
+              <DetalleFila
+                label="Propiedad"
+                value={propuesta.propiedad_direccion ?? '—'}
+                icon={IconBuilding}
+                action={
+                  propiedadFull ? (
+                    <button type="button" onClick={() => setDetallePropiedadOpen(true)} className={verDetalleLinkClass}>
+                      Ver ficha
+                      <IconArrowRight className="h-3 w-3" />
+                    </button>
+                  ) : null
+                }
+              />
+            </div>
+          </section>
 
-        <div className="px-6 py-3">
-          <AdvertenciaAproximado advertencia={advertencia} />
-
-          {onAplicarIndicesManuales && ui.etiqueta === 'sin_indices' && (
-            <CargaManualIndices
-              propuesta={propuesta}
-              onAplicar={(valores) => onAplicarIndicesManuales(propuesta.contrato_id, valores)}
-              disabled={confirmando}
-            />
+          {(advertencia || (onAplicarIndicesManuales && ui.etiqueta === 'sin_indices')) && (
+            <div className="space-y-3">
+              <AdvertenciaAproximado advertencia={advertencia} />
+              {onAplicarIndicesManuales && ui.etiqueta === 'sin_indices' && (
+                <CargaManualIndices
+                  propuesta={propuesta}
+                  onAplicar={(valores) => onAplicarIndicesManuales(propuesta.contrato_id, valores)}
+                  disabled={confirmando}
+                />
+              )}
+            </div>
           )}
 
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-lg border border-brand-100 bg-brand-50/60 px-3 py-2">
-                  <p className="text-[11px] font-medium text-brand-700">Monto actual</p>
-                  <p className="mt-0.5 text-lg font-semibold tabular-nums text-brand-900">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className={`${surfaceMuted} px-4 py-3`}>
+                  <p className="text-xs text-slate-500">Monto actual</p>
+                  <p className="mt-1 text-xl font-semibold tabular-nums tracking-tight text-slate-700">
                     {formatMonto(detalle.montoActual)}
                   </p>
                 </div>
-                <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 px-3 py-2">
+                <div className="rounded-xl border border-brand-200 bg-brand-50/50 px-4 py-3">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-[11px] font-medium text-emerald-700">Monto ajustado</p>
+                    <p className="text-xs text-brand-700">Monto ajustado</p>
                     {ui.puedeConfirmar && (
                       <button
                         type="button"
                         onClick={() => setMostrarRedondeo((v) => !v)}
                         disabled={confirmando || ui.montoMostrar == null}
-                        className="shrink-0 rounded border border-emerald-300 bg-white px-2 py-0.5 text-[10px] font-medium text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-50"
+                        className="shrink-0 text-xs font-medium text-brand-600 transition hover:text-brand-800 disabled:opacity-50"
                       >
                         Redondear
                       </button>
                     )}
                   </div>
-                  <div className="mt-0.5 flex items-baseline gap-2">
-                    <p className="text-lg font-semibold tabular-nums text-emerald-900">
+                  <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
+                    <p className="text-xl font-semibold tabular-nums tracking-tight text-slate-900">
                       {ui.montoMostrar == null ? (
                         '—'
                       ) : (
@@ -616,94 +534,65 @@ export default function AumentoDetalleModal({
                       )}
                     </p>
                     {variacionEditada != null && (
-                      <span className="text-xs font-medium tabular-nums text-emerald-700">
-                        (+{variacionEditada}%)
-                      </span>
+                      <span className="text-xs font-medium tabular-nums text-emerald-600">+{variacionEditada}%</span>
                     )}
                   </div>
                   {ui.puedeConfirmar && esManual && (
-                    <p className="mt-1 text-[10px] font-medium text-amber-700">Monto redondeado</p>
+                    <p className="mt-1 text-xs font-medium text-amber-700">Monto redondeado</p>
                   )}
                   {ui.puedeConfirmar && mostrarRedondeo && (
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-emerald-100 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => redondear(1000)}
-                        disabled={confirmando}
-                        className="rounded border border-emerald-200 bg-white px-2 py-0.5 text-[10px] font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
-                      >
+                    <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-brand-200/60 pt-2.5">
+                      <Button variant="secondary" size="sm" onClick={() => redondear(1000)} disabled={confirmando}>
                         Al mil
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => redondear(100)}
-                        disabled={confirmando}
-                        className="rounded border border-emerald-200 bg-white px-2 py-0.5 text-[10px] font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
-                      >
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => redondear(100)} disabled={confirmando}>
                         A la centena
-                      </button>
+                      </Button>
                       {esManual && (
-                        <button
-                          type="button"
-                          onClick={restaurarSugerido}
-                          disabled={confirmando}
-                          className="px-1 py-0.5 text-[10px] font-medium text-slate-500 hover:underline disabled:opacity-50"
-                        >
+                        <Button variant="ghost" size="sm" onClick={restaurarSugerido} disabled={confirmando}>
                           Restaurar sugerido
-                        </button>
+                        </Button>
                       )}
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="rounded-lg border border-slate-200 px-3 py-2">
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <DatoInline
-                    label="Tipo de ajuste"
-                    value={TIPO_AJUSTE_LABEL[detalle.tipo] ?? detalle.tipo?.toUpperCase()}
-                  />
-                  <span className="hidden text-slate-300 sm:inline">·</span>
-                  <DatoInline
-                    label="Período"
-                    value={`${periodo.desdeLabel} a ${periodo.hastaLabel}`}
-                  />
-                </div>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-slate-200 px-3.5 py-2.5">
+                <DatoInline label="Tipo de ajuste" value={TIPO_AJUSTE_LABEL[detalle.tipo] ?? detalle.tipo?.toUpperCase()} />
+                <span className="hidden text-slate-300 sm:inline">·</span>
+                <DatoInline label="Período" value={`${periodo.desdeLabel} a ${periodo.hastaLabel}`} />
               </div>
 
               {ui.puedeConfirmar && (
-                <div className="rounded-lg border border-slate-200 px-3 py-2">
-                  <label htmlFor="aumento-notas" className="mb-1 block">
-                    <SeccionTitulo>Notas (opcional)</SeccionTitulo>
+                <div>
+                  <label htmlFor="aumento-notas" className={labelClass}>
+                    Notas <span className="font-normal text-slate-400">(opcional)</span>
                   </label>
                   <textarea
                     id="aumento-notas"
-                    rows={1}
+                    rows={2}
                     value={notas}
                     onChange={(e) => setNotas(e.target.value)}
                     disabled={confirmando}
                     placeholder="Aclaraciones del aumento…"
-                    className="w-full resize-none rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:opacity-50"
+                    className={cn(textareaClass, 'min-h-0 resize-none')}
                   />
                 </div>
               )}
 
-              <div className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2">
-                <SeccionTitulo className="mb-1">Observación</SeccionTitulo>
-                <p className="text-xs leading-relaxed text-slate-600">
-                  {observacionOperativaDetalle(detalle)}
-                </p>
+              <div className={calloutClass('neutral')}>
+                <p className="font-medium text-slate-900">Observación</p>
+                <p className="mt-0.5 text-slate-600">{observacionOperativaDetalle(detalle)}</p>
               </div>
             </div>
 
-            <div className="rounded-lg border border-slate-200 px-3 py-2">
-              <div className="mb-2 flex items-center justify-between gap-2">
+            <section className="rounded-xl border border-slate-200 p-4">
+              <div className="mb-3 flex items-center justify-between gap-2">
                 <SeccionTitulo>Cómo se calculó</SeccionTitulo>
-                <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
-                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${badge.className}`}>
-                    {badge.label}
-                  </span>
-                  <span className="whitespace-nowrap">
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <span className={badge.className}>{badge.label}</span>
+                  <span className="whitespace-nowrap tabular-nums">
                     {periodo.desdeLabel} → {periodo.hastaLabel}
                   </span>
                 </div>
@@ -711,87 +600,90 @@ export default function AumentoDetalleModal({
 
               {detalle.tipo === 'icl' ? <PasoIcl detalle={detalle} /> : <PasoIpc detalle={detalle} />}
 
-              <ResumenCalculoFinal
-                detalle={detalle}
-                montoFinal={montoValido ? montoNum : ui.montoMostrar}
-              />
-            </div>
+              <ResumenCalculoFinal detalle={detalle} montoFinal={montoValido ? montoNum : ui.montoMostrar} />
+            </section>
           </div>
-        </div>
+        </ModalBody>
 
-        <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-4">
+        <ModalFooter className="justify-between">
+          <div className="flex flex-wrap items-center gap-1">
             {onVerHistorial && (
-              <button
-                type="button"
-                onClick={() => onVerHistorial(propuesta)}
-                disabled={confirmando}
-                className="text-sm font-medium text-brand-600 underline-offset-2 transition hover:text-brand-800 hover:underline disabled:opacity-50"
-              >
+              <Button variant="ghost" size="sm" icon={IconClock} onClick={() => onVerHistorial(propuesta)} disabled={confirmando}>
                 Ver historial
-              </button>
+              </Button>
             )}
             {estaConfirmado && onVerComprobante && (
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={IconDocument}
                 onClick={() => onVerComprobante(propuesta)}
                 disabled={confirmando}
-                className="text-sm font-medium text-brand-600 underline-offset-2 transition hover:text-brand-800 hover:underline disabled:opacity-50"
               >
                 Ver comprobante
-              </button>
+              </Button>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             {ui.puedeConfirmar && onConfirmar && onToggleRevisado && (
-              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm">
+              <label
+                className={cn(
+                  'flex h-9 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm font-medium transition',
+                  revisado
+                    ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                    : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                )}
+              >
                 <input
                   type="checkbox"
                   checked={revisado}
                   onChange={onToggleRevisado}
                   disabled={confirmando}
-                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                  className="h-4 w-4 rounded border-slate-300"
                 />
                 Cálculo revisado
               </label>
             )}
-            <Button variant="secondary" onClick={onClose} disabled={confirmando}>
-              Cerrar
-            </Button>
             {onAnterior && (
               <Button
                 variant="secondary"
+                size="icon"
                 onClick={onAnterior}
                 disabled={confirmando || !hayAnterior}
-                className="!border-brand-200 !text-brand-700 hover:!bg-brand-50 disabled:!border-slate-200 disabled:!text-slate-400"
+                aria-label="Anterior a revisar"
+                title="Anterior a revisar"
               >
-                Anterior a revisar
+                <IconChevronLeft className="h-4 w-4" strokeWidth={2} />
               </Button>
             )}
             {onSiguiente && (
               <Button
                 variant="secondary"
+                iconRight={IconChevronRight}
                 onClick={onSiguiente}
                 disabled={confirmando || !haySiguiente}
-                className="!border-brand-200 !text-brand-700 hover:!bg-brand-50 disabled:!border-slate-200 disabled:!text-slate-400"
               >
                 Siguiente a revisar
               </Button>
             )}
-            {ui.puedeConfirmar && onConfirmar && (
+            {ui.puedeConfirmar && onConfirmar ? (
               <Button
+                icon={IconCheck}
                 loading={confirmando}
-                disabled={confirmando || !revisado || !montoValido}
+                disabled={!revisado || !montoValido}
                 onClick={handleConfirmar}
-                className="!border-brand-600 !bg-brand-600 !text-white hover:!border-brand-700 hover:!bg-brand-700 disabled:!border-slate-300 disabled:!bg-slate-200 disabled:!text-slate-500"
               >
                 Confirmar aumento
               </Button>
+            ) : (
+              <Button variant="secondary" onClick={onClose} disabled={confirmando}>
+                Cerrar
+              </Button>
             )}
           </div>
-        </div>
-      </div>
+        </ModalFooter>
+      </Modal>
 
       <InquilinoDetalleModal
         open={detalleInquilinoOpen}
@@ -806,6 +698,6 @@ export default function AumentoDetalleModal({
         onClose={() => setDetallePropiedadOpen(false)}
         apilado
       />
-    </div>
+    </>
   )
 }

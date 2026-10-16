@@ -8,8 +8,11 @@ import {
 } from '../../services/documentosService'
 import { listarEventosReclamo } from '../../services/reclamosService'
 import { MAX_IMAGENES_RECLAMO } from '../../services/portalInquilinoService'
-import { infoEstado, RECLAMO_CHIP_CLASS } from '../../utils/reclamosUi'
-import { portalBtnGhost, portalBtnSecondary, portalCardClass, portalSectionTitle } from '../../utils/portalInquilinoUi'
+import { ReclamoCategoriaChip, ReclamoEstadoChip, ReclamoPrioridadChip } from '../admin/ReclamoChips'
+import Modal, { ModalBody, ModalFooter, ModalHeader } from '../ui/Modal'
+import Button from '../ui/Button'
+import { IconImage, IconUpload, IconWrench, IconX } from '../icons/Icons'
+import { buttonClass, calloutClass, cn, eyebrow, surfaceMuted } from '../../utils/ui'
 
 export default function ReclamoPortalDetalleModal({ open, reclamo, perfilInquilinoId, onClose }) {
   const [eventos, setEventos] = useState([])
@@ -73,7 +76,6 @@ export default function ReclamoPortalDetalleModal({ open, reclamo, perfilInquili
 
   if (!open || !reclamo) return null
 
-  const estadoInfo = infoEstado(reclamo.estado)
   const cupoRestante = MAX_IMAGENES_RECLAMO - adjuntos.length
 
   const handleSubir = async (e) => {
@@ -108,52 +110,43 @@ export default function ReclamoPortalDetalleModal({ open, reclamo, perfilInquili
   }
 
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 px-4 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] lg:items-center lg:px-6 lg:pb-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="reclamo-portal-detalle-titulo"
-    >
-      <button type="button" aria-label="Cerrar detalle" className="absolute inset-0" onClick={onClose} />
-      <div
-        className={`relative z-10 max-h-[min(85vh,44rem)] w-full max-w-lg overflow-y-auto ${portalCardClass} p-5 shadow-2xl lg:max-h-[90vh] lg:max-w-2xl lg:p-6`}
+    <Modal open={open} onClose={onClose} size="2xl" layer="stacked" labelledBy="reclamo-portal-detalle-titulo">
+      <ModalHeader
+        titleId="reclamo-portal-detalle-titulo"
+        icon={IconWrench}
+        title={reclamo.titulo}
+        subtitle={reclamo.propiedades?.direccion}
+        onClose={onClose}
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 id="reclamo-portal-detalle-titulo" className={portalSectionTitle}>
-              {reclamo.titulo}
-            </h3>
-            {reclamo.propiedades?.direccion && (
-              <p className="mt-0.5 text-xs text-slate-400">{reclamo.propiedades.direccion}</p>
-            )}
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {estadoInfo && (
-              <span className={RECLAMO_CHIP_CLASS}>
-                <span className="text-sm leading-none">{estadoInfo.icon}</span>
-                <span>{estadoInfo.label}</span>
-              </span>
-            )}
-            <button type="button" onClick={onClose} className={portalBtnGhost} aria-label="Cerrar">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <ReclamoEstadoChip estado={reclamo.estado} />
+          <ReclamoCategoriaChip categoria={reclamo.categoria} />
+          <ReclamoPrioridadChip prioridad={reclamo.prioridad} />
         </div>
+      </ModalHeader>
 
+      <ModalBody className="space-y-6">
         {reclamo.descripcion && (
-          <p className="mt-3 whitespace-pre-line text-sm text-slate-600">{reclamo.descripcion}</p>
+          <p className={`${surfaceMuted} whitespace-pre-line px-3.5 py-3 text-sm leading-relaxed text-slate-700`}>
+            {reclamo.descripcion}
+          </p>
         )}
 
-        <section className="mt-5">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <section>
+          <div className="mb-2.5 flex items-center justify-between gap-2">
+            <h4 className={eyebrow}>
               Imágenes ({adjuntos.length}/{MAX_IMAGENES_RECLAMO})
             </h4>
             {esPendiente && cupoRestante > 0 && (
-              <label className={`${portalBtnSecondary} cursor-pointer ${subiendo ? 'pointer-events-none opacity-50' : ''}`}>
-                {subiendo ? 'Subiendo...' : 'Agregar imágenes'}
+              <label
+                className={cn(
+                  buttonClass({ variant: 'secondary', size: 'sm' }),
+                  'cursor-pointer',
+                  subiendo && 'pointer-events-none opacity-50'
+                )}
+              >
+                <IconUpload className="h-3.5 w-3.5" strokeWidth={2} />
+                {subiendo ? 'Subiendo…' : 'Agregar imágenes'}
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp,image/gif"
@@ -165,31 +158,45 @@ export default function ReclamoPortalDetalleModal({ open, reclamo, perfilInquili
               </label>
             )}
           </div>
-          {errorAdjuntos && <p className="mb-2 text-xs font-medium text-red-600">{errorAdjuntos}</p>}
+          {errorAdjuntos && <p className={calloutClass('danger', 'mb-2')}>{errorAdjuntos}</p>}
           {cargandoAdjuntos && adjuntos.length === 0 ? (
-            <p className="text-xs text-slate-500">Cargando imágenes...</p>
+            <p className="text-sm text-slate-500">Cargando imágenes…</p>
           ) : adjuntos.length === 0 ? (
-            <p className="text-xs text-slate-400">
-              {esPendiente ? 'Podés sumar hasta 5 fotos del problema.' : 'Este reclamo no tiene imágenes.'}
-            </p>
+            <div className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 py-6 text-slate-400">
+              <IconImage className="h-6 w-6" />
+              <p className="text-sm">
+                {esPendiente ? `Podés sumar hasta ${MAX_IMAGENES_RECLAMO} fotos del problema.` : 'Este reclamo no tiene imágenes.'}
+              </p>
+            </div>
           ) : (
             <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5">
               {adjuntos.map((doc) => (
-                <li key={doc.id} className="group relative aspect-square overflow-hidden rounded-lg bg-slate-100 ring-1 ring-slate-200">
+                <li
+                  key={doc.id}
+                  className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
+                >
                   {urls[doc.id] ? (
-                    <a href={urls[doc.id]} target="_blank" rel="noreferrer">
-                      <img src={urls[doc.id]} alt={doc.nombre} className="h-full w-full object-cover" />
+                    <a href={urls[doc.id]} target="_blank" rel="noreferrer" title={doc.nombre}>
+                      <img
+                        src={urls[doc.id]}
+                        alt={doc.nombre}
+                        className="h-full w-full object-cover transition group-hover:scale-[1.03]"
+                      />
                     </a>
-                  ) : null}
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-slate-300">
+                      <IconImage className="h-6 w-6" />
+                    </div>
+                  )}
                   {esPendiente && (
                     <button
                       type="button"
                       onClick={() => handleQuitar(doc)}
                       disabled={subiendo}
-                      className="absolute right-1 top-1 rounded-full bg-white/90 px-1.5 text-xs font-bold text-red-600 shadow ring-1 ring-red-200 disabled:opacity-40"
+                      className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-md bg-white/90 text-slate-600 shadow-card ring-1 ring-slate-200 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
                       aria-label={`Quitar ${doc.nombre}`}
                     >
-                      ×
+                      <IconX className="h-3.5 w-3.5" strokeWidth={2} />
                     </button>
                   )}
                 </li>
@@ -198,8 +205,8 @@ export default function ReclamoPortalDetalleModal({ open, reclamo, perfilInquili
           )}
         </section>
 
-        <section className="mt-5">
-          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Historial</h4>
+        <section>
+          <h4 className={`${eyebrow} mb-2.5`}>Historial</h4>
           <ReclamoTimeline
             eventos={eventos}
             loading={cargandoEventos}
@@ -207,7 +214,13 @@ export default function ReclamoPortalDetalleModal({ open, reclamo, perfilInquili
             perfilInquilinoId={perfilInquilinoId}
           />
         </section>
-      </div>
-    </div>
+      </ModalBody>
+
+      <ModalFooter>
+        <Button variant="secondary" onClick={onClose}>
+          Cerrar
+        </Button>
+      </ModalFooter>
+    </Modal>
   )
 }

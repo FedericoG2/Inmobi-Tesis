@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { listarContratosYReclamos } from '../../services/fichaRelacionadosService'
 import { ReclamoEstadoChip } from './ReclamoChips'
+import { badgeClass, calloutClass, eyebrow } from '../../utils/ui'
 
 const ESTADO_CONTRATO = {
-  activo: { label: 'Activo', className: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
-  programado: { label: 'Programado', className: 'bg-sky-50 text-sky-700 ring-sky-200' },
-  inactivo: { label: 'Finalizado', className: 'bg-slate-100 text-slate-600 ring-slate-200' },
+  activo: { label: 'Activo', className: badgeClass('success') },
+  programado: { label: 'Programado', className: badgeClass('warning') },
+  inactivo: { label: 'Finalizado', className: badgeClass('neutral') },
 }
 
 function formatFecha(iso) {
@@ -22,7 +23,7 @@ const formatMonto = (monto) =>
       )
 
 function Titulo({ children }) {
-  return <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{children}</h3>
+  return <h3 className={`${eyebrow} mb-2.5`}>{children}</h3>
 }
 
 /**
@@ -49,35 +50,31 @@ export default function FichaContratosReclamos({ inquilinoId = null, propiedadId
     }
   }, [inquilinoId, propiedadId])
 
-  if (error) return <p className="text-xs font-medium text-red-600">{error}</p>
-  if (!datos) return <p className="text-xs text-slate-500">Cargando contratos y reclamos...</p>
+  if (error) return <p className={calloutClass('danger')}>{error}</p>
+  if (!datos) return <p className="text-sm text-slate-500">Cargando contratos y reclamos…</p>
 
   const contraparte = (fila) =>
     porInquilino ? fila.propiedades?.direccion ?? '—' : fila.inquilinos?.nombre_completo ?? '—'
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <section>
         <Titulo>Contratos ({datos.contratos.length})</Titulo>
         {datos.contratos.length === 0 ? (
-          <p className="text-xs text-slate-400">Sin contratos asociados.</p>
+          <p className="text-sm text-slate-500">Sin contratos asociados.</p>
         ) : (
-          <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200">
+          <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
             {datos.contratos.map((c) => {
               const estado = ESTADO_CONTRATO[c.estado] ?? ESTADO_CONTRATO.inactivo
               return (
-                <li key={c.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                <li key={c.id} className="flex items-center justify-between gap-3 px-3.5 py-2.5 text-sm">
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-slate-800">{contraparte(c)}</p>
+                    <p className="truncate font-medium text-slate-900">{contraparte(c)}</p>
                     <p className="text-xs tabular-nums text-slate-500">
                       {formatFecha(c.fecha_inicio)} → {formatFecha(c.fecha_fin)} · {formatMonto(c.monto_alquiler)}
                     </p>
                   </div>
-                  <span
-                    className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${estado.className}`}
-                  >
-                    {estado.label}
-                  </span>
+                  <span className={estado.className}>{estado.label}</span>
                 </li>
               )
             })}
@@ -88,18 +85,18 @@ export default function FichaContratosReclamos({ inquilinoId = null, propiedadId
       <section>
         <Titulo>Reclamos ({datos.reclamos.length})</Titulo>
         {datos.reclamos.length === 0 ? (
-          <p className="text-xs text-slate-400">Sin reclamos asociados.</p>
+          <p className="text-sm text-slate-500">Sin reclamos asociados.</p>
         ) : (
-          <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200">
+          <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
             {datos.reclamos.map((r) => (
-              <li key={r.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+              <li key={r.id} className="flex items-center justify-between gap-3 px-3.5 py-2.5 text-sm">
                 <div className="min-w-0">
-                  <p className="truncate font-medium text-slate-800">{r.titulo}</p>
+                  <p className="truncate font-medium text-slate-900">{r.titulo}</p>
                   <p className="truncate text-xs text-slate-500">
                     {formatFecha(r.fecha_creacion)} · {contraparte(r)}
                   </p>
                 </div>
-                <ReclamoEstadoChip estado={r.estado} compact />
+                <ReclamoEstadoChip estado={r.estado} />
               </li>
             ))}
           </ul>

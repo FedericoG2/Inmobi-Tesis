@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button } from '@tremor/react'
 import {
   eliminarDocumentoContrato,
   etiquetaTipoArchivo,
@@ -9,6 +8,10 @@ import {
   validarArchivoContratoLegal,
   actualizarVisibilidadDocumento,
 } from '../../services/documentosService'
+import { IconDocument, IconDownload, IconTrash, IconUpload } from '../icons/Icons'
+import Button from '../ui/Button'
+import { useToast } from '../../contexts/ToastContext'
+import { calloutClass, eyebrow, iconTileClass, surfaceMuted } from '../../utils/ui'
 
 function formatFecha(fecha) {
   if (!fecha) return '—'
@@ -17,23 +20,12 @@ function formatFecha(fecha) {
   return `${day}/${month}/${year}`
 }
 
-function IconDocument({ className = 'h-5 w-5' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
-      />
-    </svg>
-  )
-}
-
 export default function ContratoDocumentosPanel({
   contratoId,
   propiedadId,
   activo = true,
 }) {
+  const toast = useToast()
   const inputRef = useRef(null)
   const [documentos, setDocumentos] = useState([])
   const [cargando, setCargando] = useState(false)
@@ -95,6 +87,7 @@ export default function ContratoDocumentosPanel({
 
     setDocumentos((prev) => [data, ...prev])
     setMensaje('Contrato legal adjuntado correctamente.')
+    toast.success('Documento adjuntado', visibleParaInquilino ? 'El inquilino ya lo puede descargar desde su portal.' : 'Queda visible solo para la administración.')
   }
 
   const descargar = async (documento) => {
@@ -121,6 +114,7 @@ export default function ContratoDocumentosPanel({
     }
     setDocumentos((prev) => prev.filter((d) => d.id !== documento.id))
     setMensaje('Documento eliminado.')
+    toast.success('Documento eliminado', documento.nombre)
   }
 
   const toggleVisibilidad = async (documento) => {
@@ -132,18 +126,17 @@ export default function ContratoDocumentosPanel({
       return
     }
     setDocumentos((prev) => prev.map((d) => (d.id === documento.id ? data : d)))
+    toast.info(nuevoValor ? 'Documento compartido con el inquilino' : 'Documento oculto al inquilino', documento.nombre)
   }
 
   return (
     <section>
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Contrato legal firmado
-        </h3>
-        <span className="text-xs text-slate-400">PDF o Word · máx. 15 MB</span>
+      <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+        <h3 className={eyebrow}>Contrato legal firmado</h3>
+        <span className="text-xs text-slate-500">PDF o Word · máx. 15 MB</span>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+      <div className={`${surfaceMuted} p-4`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="text-sm text-slate-700">
@@ -155,7 +148,7 @@ export default function ContratoDocumentosPanel({
                 checked={visibleParaInquilino}
                 onChange={(e) => setVisibleParaInquilino(e.target.checked)}
                 disabled={subiendo}
-                className="rounded border-slate-300 text-brand-600 focus:ring-brand-200"
+                className="h-4 w-4 rounded border-slate-300"
               />
               Visible para el inquilino en su portal
             </label>
@@ -170,12 +163,11 @@ export default function ContratoDocumentosPanel({
               onChange={handleSeleccionArchivo}
             />
             <Button
-              type="button"
-              size="xs"
+              variant="secondary"
+              icon={IconUpload}
               loading={subiendo}
               disabled={!activo || subiendo || !contratoId || !propiedadId}
               onClick={() => inputRef.current?.click()}
-              className="!px-4"
             >
               Adjuntar archivo
             </Button>
@@ -183,17 +175,17 @@ export default function ContratoDocumentosPanel({
         </div>
 
         {error && (
-          <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+          <p className={calloutClass('danger', 'mt-3')}>{error}</p>
         )}
         {mensaje && (
-          <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{mensaje}</p>
+          <p className={calloutClass('success', 'mt-3')}>{mensaje}</p>
         )}
 
         <div className="mt-4">
           {cargando ? (
-            <p className="text-sm text-slate-500">Cargando documentos...</p>
+            <p className="text-sm text-slate-500">Cargando documentos…</p>
           ) : documentos.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-slate-200 bg-white px-3 py-3 text-sm text-slate-500">
+            <p className="rounded-lg border border-dashed border-slate-300 bg-white px-3 py-3 text-center text-sm text-slate-500">
               Sin contrato legal adjunto por ahora.
             </p>
           ) : (
@@ -204,8 +196,8 @@ export default function ContratoDocumentosPanel({
                   className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 sm:flex-row sm:items-center"
                 >
                   <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-                      <IconDocument />
+                    <span className={iconTileClass('brand')}>
+                      <IconDocument className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-slate-900">{documento.nombre}</p>
@@ -222,24 +214,22 @@ export default function ContratoDocumentosPanel({
                         type="checkbox"
                         checked={Boolean(documento.visible_para_inquilino)}
                         onChange={() => toggleVisibilidad(documento)}
-                        className="rounded border-slate-300 text-brand-600 focus:ring-brand-200"
+                        className="h-3.5 w-3.5 rounded border-slate-300"
                       />
                       Portal inquilino
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => descargar(documento)}
-                      className="text-xs font-medium text-brand-600 hover:text-brand-800 hover:underline"
-                    >
+                    <Button variant="ghost" size="sm" icon={IconDownload} onClick={() => descargar(documento)}>
                       Descargar
-                    </button>
-                    <button
-                      type="button"
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={IconTrash}
                       onClick={() => quitar(documento)}
-                      className="text-xs font-medium text-red-600 hover:text-red-800 hover:underline"
+                      className="text-red-600 hover:bg-red-50 hover:text-red-700"
                     >
                       Eliminar
-                    </button>
+                    </Button>
                   </div>
                 </li>
               ))}

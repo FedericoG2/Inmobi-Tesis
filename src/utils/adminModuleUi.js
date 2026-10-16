@@ -1,65 +1,72 @@
-const BADGE_INDIGO =
-  'bg-brand-50 text-brand-800 ring-1 ring-inset ring-brand-200'
-const BADGE_SLATE =
-  'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200'
-const BADGE_SLATE_MUTED =
-  'bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-200'
-const BADGE_EMERALD =
-  'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200'
-const BADGE_ORANGE =
-  'bg-orange-50 text-orange-800 ring-1 ring-inset ring-orange-200'
+import { badgeClass, iconTileClass, inputClass, selectClass } from './ui'
 
-export const inputToolbarClass =
-  'h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100'
+/**
+ * Los `className` de los BADGE_* son clases completas (forma + color):
+ * se aplican directamente en un <span className={badge.className}>.
+ */
 
-export const selectToolbarClass =
-  'h-10 w-full cursor-pointer rounded-lg border border-slate-300 bg-white pl-3 pr-9 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 shrink-0 sm:w-44'
+export const inputToolbarClass = inputClass
 
-export const celdaTexto = 'text-sm text-slate-700'
+export const selectToolbarClass = `${selectClass} shrink-0 sm:w-44`
+
+export const celdaTexto = 'text-sm text-slate-600'
 export const celdaNombre = 'text-sm font-medium text-slate-900'
-export const celdaNumero = 'text-sm tabular-nums text-slate-700 whitespace-nowrap'
+export const celdaNumero = 'text-sm tabular-nums text-slate-600 whitespace-nowrap'
 
 export const BADGE_PROPIETARIO_TIPO = {
   Física: {
     label: 'Persona física',
-    className: BADGE_INDIGO,
-    avatarClass: 'rounded-full bg-brand-100 text-brand-700',
+    tone: 'brand',
+    className: badgeClass('brand'),
+    avatarClass: 'rounded-full bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-600/10',
   },
   Jurídica: {
     label: 'Persona jurídica',
-    className: BADGE_SLATE,
-    avatarClass: 'rounded-lg bg-slate-100 text-slate-700',
+    tone: 'neutral',
+    className: badgeClass('neutral'),
+    avatarClass: 'rounded-lg bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-500/10',
   },
 }
 
 export const BADGE_PERSONA_TIPO = BADGE_PROPIETARIO_TIPO
 
 export const BADGE_INQUILINO_PORTAL = {
-  activo: { label: 'Portal activo', className: BADGE_EMERALD },
-  inactivo: { label: 'Sin acceso', className: BADGE_SLATE_MUTED },
+  activo: { label: 'Portal activo', tone: 'success', className: badgeClass('success') },
+  inactivo: { label: 'Sin acceso', tone: 'muted', className: badgeClass('muted') },
 }
 
 export const BADGE_PROPIEDAD_TIPO = {
   Departamento: {
     label: 'Departamento',
-    className: BADGE_INDIGO,
-    iconClass: 'rounded-lg bg-brand-100 text-brand-700',
+    tone: 'neutral',
+    className: badgeClass('neutral'),
+    iconClass: iconTileClass('brand'),
   },
   Casa: {
     label: 'Casa',
-    className: BADGE_SLATE,
-    iconClass: 'rounded-lg bg-slate-100 text-slate-700',
+    tone: 'neutral',
+    className: badgeClass('neutral'),
+    iconClass: iconTileClass('brand'),
   },
   'Local comercial': {
     label: 'Local comercial',
-    className: BADGE_SLATE_MUTED,
-    iconClass: 'rounded-lg bg-slate-50 text-slate-600 ring-1 ring-slate-200',
+    tone: 'neutral',
+    className: badgeClass('neutral'),
+    iconClass: iconTileClass('brand'),
   },
 }
 
-export const BADGE_PROPIEDAD_ESTADO = {
-  Disponible: { label: 'Disponible', className: BADGE_EMERALD },
-  Reservada: { label: 'Reservada', className: BADGE_INDIGO },
-  Alquilada: { label: 'Alquilada', className: BADGE_ORANGE },
-  Mantenimiento: { label: 'Mantenimiento', className: BADGE_SLATE_MUTED },
+export const BADGE_PROPIEDAD_TIPO_DEFAULT = {
+  tone: 'neutral',
+  className: badgeClass('neutral'),
+  iconClass: iconTileClass('neutral'),
 }
+
+export const BADGE_PROPIEDAD_ESTADO = {
+  Disponible: { label: 'Disponible', tone: 'success', className: badgeClass('success') },
+  Reservada: { label: 'Reservada', tone: 'warning', className: badgeClass('warning') },
+  Alquilada: { label: 'Alquilada', tone: 'brand', className: badgeClass('brand') },
+  Mantenimiento: { label: 'Mantenimiento', tone: 'neutral', className: badgeClass('neutral') },
+}
+
+export const BADGE_PROPIEDAD_ESTADO_DEFAULT = { tone: 'neutral', className: badgeClass('neutral') }

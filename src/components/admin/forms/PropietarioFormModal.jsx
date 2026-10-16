@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Button } from '@tremor/react'
+import Button from '../../ui/Button'
+import Modal from '../../ui/Modal'
 import AdminFormModalHeader from '../AdminFormModalHeader'
 import {
   validarNombreCompleto,
@@ -8,6 +9,17 @@ import {
   validarEmail,
   validarDireccion,
 } from '../../../utils/validaciones'
+import {
+  calloutClass,
+  fieldErrorClass,
+  inputClass,
+  inputErrorClass,
+  labelClass,
+  modalFooterClass,
+  modalFormClass,
+  segmentedClass,
+  segmentedItemClass,
+} from '../../../utils/ui'
 
 const formInicial = {
   tipo_persona: 'Física',
@@ -17,12 +29,6 @@ const formInicial = {
   email: '',
   domicilio: '',
 }
-
-const inputClass =
-  'w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200'
-
-const inputErrorClass =
-  'w-full rounded-lg border border-red-400 px-4 py-2.5 text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200'
 
 function formDesdePropietario(propietario) {
   return {
@@ -103,22 +109,14 @@ export default function PropietarioFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <button
-        type="button"
-        aria-label="Cerrar modal"
-        className="absolute inset-0 bg-slate-900/50"
-        onClick={onClose}
-      />
+    <Modal open={open} onClose={submitting ? undefined : onClose} size="lg">
+      <AdminFormModalHeader title={esEdicion ? 'Editar propietario' : 'Nuevo propietario'} onClose={submitting ? undefined : onClose} />
 
-      <div className="relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
-        <AdminFormModalHeader title={esEdicion ? 'Editar Propietario' : 'Nuevo Propietario'} />
-
-        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex-1 space-y-4 overflow-y-auto p-6">
+      <form onSubmit={handleSubmit} className={modalFormClass}>
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
           <div>
-            <span className="mb-2 block text-sm font-medium text-slate-700">Tipo de persona</span>
-            <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1">
+            <span className={labelClass}>Tipo de persona</span>
+            <div className={segmentedClass}>
               {['Física', 'Jurídica'].map((tipo) => {
                 const activo = form.tipo_persona === tipo
                 return (
@@ -126,11 +124,7 @@ export default function PropietarioFormModal({
                     key={tipo}
                     type="button"
                     onClick={() => handleTipoPersona(tipo)}
-                    className={`flex-1 rounded-lg py-2 text-center text-sm font-medium transition-all ${
-                      activo
-                        ? 'bg-white text-slate-900 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-900'
-                    }`}
+                    className={segmentedItemClass(activo)}
                   >
                     {tipo === 'Física' ? 'Persona física' : 'Persona jurídica'}
                   </button>
@@ -140,7 +134,7 @@ export default function PropietarioFormModal({
           </div>
 
           <div>
-            <label htmlFor="nombre_completo" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="nombre_completo" className={labelClass}>
               {esJuridica ? 'Razón social' : 'Nombre completo'}
             </label>
             <input
@@ -154,13 +148,13 @@ export default function PropietarioFormModal({
               placeholder={esJuridica ? 'Inversiones del Sur S.A.' : 'María Elena Rodríguez'}
             />
             {erroresCampo.nombre_completo && (
-              <p className="mt-1 text-xs text-red-600">{erroresCampo.nombre_completo}</p>
+              <p className={fieldErrorClass}>{erroresCampo.nombre_completo}</p>
             )}
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="dni_cuit" className="mb-1 block text-sm font-medium text-slate-700">
+              <label htmlFor="dni_cuit" className={labelClass}>
                 {esJuridica ? 'CUIT' : 'DNI / CUIT'}
               </label>
               <input
@@ -174,12 +168,12 @@ export default function PropietarioFormModal({
                 placeholder={esJuridica ? '30-70894561-2' : '27-30123456-8'}
               />
               {erroresCampo.dni_cuit && (
-                <p className="mt-1 text-xs text-red-600">{erroresCampo.dni_cuit}</p>
+                <p className={fieldErrorClass}>{erroresCampo.dni_cuit}</p>
               )}
             </div>
 
             <div>
-              <label htmlFor="telefono" className="mb-1 block text-sm font-medium text-slate-700">
+              <label htmlFor="telefono" className={labelClass}>
                 Teléfono
               </label>
               <input
@@ -193,13 +187,13 @@ export default function PropietarioFormModal({
                 placeholder="351 456 7890"
               />
               {erroresCampo.telefono && (
-                <p className="mt-1 text-xs text-red-600">{erroresCampo.telefono}</p>
+                <p className={fieldErrorClass}>{erroresCampo.telefono}</p>
               )}
             </div>
           </div>
 
           <div>
-            <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="email" className={labelClass}>
               Email
             </label>
             <input
@@ -213,12 +207,12 @@ export default function PropietarioFormModal({
               placeholder="nombre@email.com"
             />
             {erroresCampo.email && (
-              <p className="mt-1 text-xs text-red-600">{erroresCampo.email}</p>
+              <p className={fieldErrorClass}>{erroresCampo.email}</p>
             )}
           </div>
 
           <div>
-            <label htmlFor="domicilio" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="domicilio" className={labelClass}>
               Domicilio
             </label>
             <input
@@ -232,25 +226,24 @@ export default function PropietarioFormModal({
               placeholder="Av. Colón 1820, Córdoba"
             />
             {erroresCampo.domicilio && (
-              <p className="mt-1 text-xs text-red-600">{erroresCampo.domicilio}</p>
+              <p className={fieldErrorClass}>{erroresCampo.domicilio}</p>
             )}
           </div>
 
           {submitError && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{submitError}</p>
+            <p className={calloutClass('danger')}>{submitError}</p>
           )}
-          </div>
+        </div>
 
-          <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
-            <Button type="button" variant="secondary" onClick={onClose} disabled={submitting}>
-              Cancelar
-            </Button>
-            <Button type="submit" loading={submitting} disabled={submitting}>
-              {esEdicion ? 'Guardar cambios' : 'Guardar'}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className={modalFooterClass}>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={submitting}>
+            Cancelar
+          </Button>
+          <Button type="submit" loading={submitting} disabled={submitting}>
+            {esEdicion ? 'Guardar cambios' : 'Guardar'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   )
 }

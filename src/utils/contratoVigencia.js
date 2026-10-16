@@ -1,3 +1,5 @@
+import { badgeClass } from './ui'
+
 /** Duración del plazo contractual en años (fecha fin = inicio + N años − 1 día). */
 export const DURACION_CONTRATO_OPCIONES = [
   { key: '1', label: '1 año', anios: 1 },
@@ -74,8 +76,8 @@ export function etiquetaEstadoContrato(contrato) {
   if (esContratoPlazoVencido(contrato)) return 'Vencido'
   if (contrato?.estado === 'programado') return 'Programado'
   if (contrato?.estado === 'activo' || contrato?.activo) return 'Activo'
-  if (contrato?.estado === 'inactivo') return 'Inactivo'
-  return contrato?.activo ? 'Activo' : 'Inactivo'
+  if (contrato?.estado === 'inactivo') return 'Finalizado'
+  return contrato?.activo ? 'Activo' : 'Finalizado'
 }
 
 export function colorEstadoContrato(contrato) {
@@ -86,10 +88,10 @@ export function colorEstadoContrato(contrato) {
 }
 
 const ESTADO_PILL_TONOS = {
-  emerald: 'bg-emerald-100 text-emerald-800 ring-1 ring-inset ring-emerald-200',
-  amber: 'bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-200',
-  red: 'bg-red-100 text-red-800 ring-1 ring-inset ring-red-200',
-  gray: 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200',
+  emerald: badgeClass('success'),
+  amber: badgeClass('warning'),
+  red: badgeClass('danger'),
+  gray: badgeClass('neutral'),
 }
 
 export function badgeEstadoContratoUi(contrato) {

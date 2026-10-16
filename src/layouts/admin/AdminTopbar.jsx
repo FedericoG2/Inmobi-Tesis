@@ -29,7 +29,7 @@ function UserAvatar({ inicial }) {
 }
 
 export default function AdminTopbar() {
-  const { user } = useAuth()
+  const { user, isAdminSistema } = useAuth()
   const { sidebarCollapsed, toggleSidebar } = useAdminLayout()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
@@ -71,8 +71,12 @@ export default function AdminTopbar() {
       </button>
 
       <div className="flex items-center gap-2">
-        <NotificacionesBell rutaDe={rutaAdminActividad} subtitulo="Actividad del sistema en tiempo real" />
-        <div className="h-6 w-px bg-slate-200" aria-hidden />
+        {!isAdminSistema && (
+          <>
+            <NotificacionesBell rutaDe={rutaAdminActividad} subtitulo="Actividad del sistema en tiempo real" />
+            <div className="h-6 w-px bg-slate-200" aria-hidden />
+          </>
+        )}
         <div className="relative" ref={menuRef}>
           <button
             type="button"

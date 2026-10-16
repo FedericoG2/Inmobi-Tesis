@@ -9,9 +9,11 @@
 --     propietarios, inquilinos y documentos: registran el evento solos, sin
 --     depender del frontend (también quedan registrados los cambios hechos por
 --     tareas automáticas, como la activación de contratos programados).
---   - RLS: el admin ve todo; el inquilino ve solo los eventos de sus contratos
---     marcados como visibles (alimentan las notificaciones del portal).
---   - Realtime: el dashboard y la campana del inquilino se actualizan en vivo.
+--   - RLS: el Encargado de Alquileres ve todo; el inquilino solo los eventos
+--     de sus contratos marcados como visibles.
+--   - Realtime: el dashboard, la campana del encargado y el portal se actualizan en vivo.
+--
+-- Requiere las migraciones de roles (20261005_*): usa public.es_encargado().
 --   - actividad_reconstruir(): regenera el historial a partir de los datos
 --     existentes (se usa al instalar y en el seed de demo).
 --
@@ -46,9 +48,10 @@ CREATE INDEX IF NOT EXISTS idx_actividad_inquilino ON public.actividad (inquilin
 ALTER TABLE public.actividad ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Admin ve toda la actividad" ON public.actividad;
-CREATE POLICY "Admin ve toda la actividad"
+DROP POLICY IF EXISTS "Encargado ve toda la actividad" ON public.actividad;
+CREATE POLICY "Encargado ve toda la actividad"
   ON public.actividad FOR SELECT TO authenticated
-  USING (public.es_admin());
+  USING (public.es_encargado());
 
 DROP POLICY IF EXISTS "Inquilino ve la actividad de sus contratos" ON public.actividad;
 CREATE POLICY "Inquilino ve la actividad de sus contratos"
@@ -206,8 +209,11 @@ BEGIN
   IF TG_OP = 'DELETE' THEN
     SELECT inquilino_id INTO v_inquilino_id FROM public.contratos WHERE id = OLD.contrato_id;
     PERFORM public.actividad_registrar(
-      'aumento_deshecho', 'aumento', OLD.id, 'Aumento acordado cancelado',
-      public.actividad_detalle_aumento(OLD) || ' El alquiler sigue con el monto vigente.',
+      'aumento_deshecho', 'aumento', OLD.id, 'Aumento deshecho',
+      concat_ws(' · ',
+        (SELECT nombre_completo FROM public.inquilinos WHERE id = v_inquilino_id),
+        'el contrato volvió a ' || public.actividad_monto(OLD.monto_anterior))
+        || '. Se borró el comprobante.',
       v_inquilino_id, OLD.contrato_id, true);
     RETURN OLD;
   END IF;
@@ -253,7 +259,7 @@ BEGIN
   IF TG_OP = 'INSERT' THEN
     PERFORM public.actividad_registrar(
       'reclamo_creado', 'reclamo', NEW.id,
-      CASE WHEN public.es_admin() THEN 'Reclamo creado' ELSE 'Nuevo reclamo del inquilino' END,
+      CASE WHEN public.es_encargado() THEN 'Reclamo creado' ELSE 'Nuevo reclamo del inquilino' END,
       concat_ws(' · ', '"' || NEW.titulo || '"', public.actividad_partes(NEW.inquilino_id, NEW.propiedad_id),
         'prioridad ' || NEW.prioridad::text) || '.',
       NEW.inquilino_id, NEW.contrato_id, true);
@@ -421,8 +427,8 @@ DECLARE
   r record;
   v_total integer;
 BEGIN
-  IF auth.uid() IS NOT NULL AND NOT public.es_admin() THEN
-    RAISE EXCEPTION 'Solo un administrador puede reconstruir la actividad.';
+  IF auth.uid() IS NOT NULL AND NOT public.es_encargado() THEN
+    RAISE EXCEPTION 'Solo el Encargado de Alquileres puede reconstruir la actividad.';
   END IF;
 
   DELETE FROM public.actividad;
@@ -515,7 +521,7 @@ REVOKE ALL ON FUNCTION public.trg_actividad_propiedades() FROM PUBLIC, anon, aut
 REVOKE ALL ON FUNCTION public.trg_actividad_personas() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trg_actividad_documentos() FROM PUBLIC, anon, authenticated;
 
--- Reconstruir: solo admin (la función además lo valida adentro).
+-- Reconstruir: solo el encargado (la función además lo valida adentro).
 REVOKE ALL ON FUNCTION public.actividad_reconstruir() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.actividad_reconstruir() TO authenticated;
 

@@ -14,7 +14,25 @@ BEGIN;
 -- Los borrados disparan triggers de validación: respetamos el orden de dependencias.
 DELETE FROM public.documentos;
 DELETE FROM public.reclamo_eventos;
+
+-- Un reclamo resuelto no se puede borrar (trazabilidad): se desactiva ese bloqueo
+-- solo dentro de esta transacción para poder limpiar.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_reclamos_bloquear_delete_resuelto') THEN
+    ALTER TABLE public.reclamos DISABLE TRIGGER trg_reclamos_bloquear_delete_resuelto;
+  END IF;
+END $$;
+
 DELETE FROM public.reclamos;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_reclamos_bloquear_delete_resuelto') THEN
+    ALTER TABLE public.reclamos ENABLE TRIGGER trg_reclamos_bloquear_delete_resuelto;
+  END IF;
+END $$;
+
 DELETE FROM public.aumentos;
 
 -- Los contratos activos/programados bloquean el borrado de propiedades e inquilinos.

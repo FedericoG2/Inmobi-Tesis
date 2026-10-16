@@ -1,57 +1,55 @@
 import { useState } from 'react'
-import { Button } from '@tremor/react'
 import AdminFormModalHeader from '../admin/AdminFormModalHeader'
+import Modal, { ModalBody, ModalFooter } from '../ui/Modal'
+import Button from '../ui/Button'
+import { IconChevronDown, IconUser } from '../icons/Icons'
 import { ROL_LABEL } from '../../services/cuentasService'
+import {
+  calloutClass,
+  fieldHintClass,
+  inputClass,
+  labelClass,
+  modalFormClass,
+  segmentedClass,
+  segmentedItemClass,
+  selectClass,
+} from '../../utils/ui'
 
 const MIN_PASSWORD = 8
 
-const inputClass =
-  'w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200'
-
 function ModalBase({ title, onClose, onSubmit, submitting, submitLabel, error, children }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <button
-        type="button"
-        aria-label="Cerrar modal"
-        className="absolute inset-0 bg-slate-900/50"
-        onClick={onClose}
+    <Modal open onClose={submitting ? undefined : onClose} size="lg">
+      <AdminFormModalHeader
+        title={title}
+        icon={<IconUser className="h-5 w-5" />}
+        onClose={submitting ? undefined : onClose}
       />
-      <div className="relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
-        <AdminFormModalHeader title={title} />
-        <form onSubmit={onSubmit} className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex-1 space-y-4 overflow-y-auto p-6">
-            {children}
-            {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
-          </div>
-          <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
-            <Button type="button" variant="secondary" onClick={onClose} disabled={submitting}>
-              Cancelar
-            </Button>
-            <Button type="submit" loading={submitting} disabled={submitting}>
-              {submitLabel}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+      <form onSubmit={onSubmit} className={modalFormClass}>
+        <ModalBody className="space-y-4">
+          {children}
+          {error && <p className={calloutClass('danger')}>{error}</p>}
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="secondary" onClick={onClose} disabled={submitting}>
+            Cancelar
+          </Button>
+          <Button type="submit" loading={submitting}>
+            {submitLabel}
+          </Button>
+        </ModalFooter>
+      </form>
+    </Modal>
   )
 }
 
 function SelectorRol({ value, onChange }) {
   return (
     <div>
-      <span className="mb-2 block text-sm font-medium text-slate-700">Rol</span>
-      <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1">
+      <span className={labelClass}>Rol</span>
+      <div className={segmentedClass}>
         {['encargado', 'inquilino'].map((rol) => (
-          <button
-            key={rol}
-            type="button"
-            onClick={() => onChange(rol)}
-            className={`flex-1 rounded-lg py-2 text-center text-sm font-medium transition-all ${
-              value === rol ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
-            }`}
-          >
+          <button key={rol} type="button" onClick={() => onChange(rol)} className={segmentedItemClass(value === rol)}>
             {ROL_LABEL[rol]}
           </button>
         ))}
@@ -63,25 +61,31 @@ function SelectorRol({ value, onChange }) {
 function SelectorInquilino({ value, onChange, inquilinos }) {
   return (
     <div>
-      <label htmlFor="cuenta-inquilino" className="mb-1 block text-sm font-medium text-slate-700">
+      <label htmlFor="cuenta-inquilino" className={labelClass}>
         Ficha del inquilino
       </label>
-      <select
-        id="cuenta-inquilino"
-        required
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={inputClass}
-      >
-        <option value="">Elegí un inquilino sin cuenta</option>
-        {inquilinos.map((i) => (
-          <option key={i.id} value={i.id}>
-            {i.nombre_completo} · {i.dni_cuit}
-          </option>
-        ))}
-      </select>
+      <div className="relative">
+        <select
+          id="cuenta-inquilino"
+          required
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={selectClass}
+        >
+          <option value="">Elegí un inquilino sin cuenta</option>
+          {inquilinos.map((i) => (
+            <option key={i.id} value={i.id}>
+              {i.nombre_completo} · {i.dni_cuit}
+            </option>
+          ))}
+        </select>
+        <IconChevronDown
+          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+          strokeWidth={2}
+        />
+      </div>
       {inquilinos.length === 0 && (
-        <p className="mt-1 text-xs text-slate-500">
+        <p className={fieldHintClass}>
           Todos los inquilinos cargados ya tienen cuenta. El Encargado de Alquileres debe cargar la ficha primero.
         </p>
       )}
@@ -92,7 +96,7 @@ function SelectorInquilino({ value, onChange, inquilinos }) {
 function CampoPassword({ id, label, value, onChange }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-sm font-medium text-slate-700">
+      <label htmlFor={id} className={labelClass}>
         {label}
       </label>
       <input
@@ -106,7 +110,7 @@ function CampoPassword({ id, label, value, onChange }) {
         className={inputClass}
         placeholder={`Mínimo ${MIN_PASSWORD} caracteres`}
       />
-      <p className="mt-1 text-xs text-slate-500">Comunicásela al usuario por un canal seguro.</p>
+      <p className={fieldHintClass}>Comunicásela al usuario por un canal seguro.</p>
     </div>
   )
 }
@@ -160,7 +164,7 @@ export function CrearCuentaModal({ inquilinosSinCuenta, onClose, onGuardar }) {
         <SelectorInquilino value={form.inquilinoId} onChange={handleInquilino} inquilinos={inquilinosSinCuenta} />
       )}
       <div>
-        <label htmlFor="cuenta-email" className="mb-1 block text-sm font-medium text-slate-700">
+        <label htmlFor="cuenta-email" className={labelClass}>
           Email de acceso
         </label>
         <input
@@ -219,7 +223,7 @@ export function CambiarRolModal({ cuenta, inquilinosSinCuenta, onClose, onGuarda
         <SelectorInquilino value={inquilinoId} onChange={setInquilinoId} inquilinos={opcionesInquilino} />
       )}
       {cuenta.rol === 'inquilino' && rol === 'encargado' && (
-        <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <p className={calloutClass('warning')}>
           La cuenta deja de estar vinculada a la ficha del inquilino y pierde el acceso al portal.
         </p>
       )}

@@ -8,19 +8,21 @@
 --   Propiedades  11  (alquiladas, una reservada, dos disponibles, una en mantenimiento)
 --   Inquilinos    9
 --   Contratos     9
---     · 3 con aumento PENDIENTE en el período operativo (IPC e ICL)
---     · 1 REZAGADO (aumento del mes pasado sin confirmar)
---     · 1 al día (aumento del mes pasado ya aplicado)
+--     · 3 con aumento PENDIENTE en la bandeja del mes trabajado (IPC e ICL)
+--     · 1 REZAGADO (aumento del mes anterior sin confirmar)
+--     · 1 CONFIRMADO en el mes trabajado (todavía se puede deshacer)
+--     · 1 al día (aumento del mes anterior ya fijo)
 --     · 1 POR VENCER en ~45 días
 --     · 1 PROGRAMADO (arranca el mes que viene → propiedad Reservada)
---     · 1 con aumento ACORDADO a futuro
 --     · 1 FINALIZADO (histórico; la propiedad volvió a Disponible)
---   Aumentos      historial aplicado + uno acordado
+--   Aumentos      historial confirmado (fijos y uno deshacible)
 --   Reclamos      7 en todos los estados (Pendiente, En Proceso, Revisión, Resuelto)
 --                 con su historial de gestión
 --   Actividad     se reconstruye al final con fechas reales
 --
--- Requisitos: migraciones al día (incluida 20261008_actividad_sistema.sql).
+-- Requisitos: migraciones al día (roles 20261005_*, 20261008_actividad_sistema.sql y 20261010_*).
+-- Respeta las reglas de la base: los reclamos nacen Pendiente y cambian de estado
+-- "desde la gestión" (inmobi.gestion_reclamo), y solo sobre contratos activos.
 -- Opcional: ejecutar antes demo_00_limpiar.sql para que solo quede la demo.
 -- Se puede volver a ejecutar: primero borra los datos de demo de una corrida anterior.
 --
@@ -40,10 +42,11 @@ DECLARE
   c_email_portal text := 'inquilino.demo@inmobi.com';
 
   d_hoy date := current_date;
-  -- Período operativo: hasta el día 10 es el mes en curso; después, el mes siguiente.
-  d_p date := (CASE WHEN extract(day FROM current_date) <= 10
+  -- Mes de aumentos que se trabaja hoy (bandeja): desde el día 11 es el mes en curso;
+  -- del 1 al 10, el mes anterior (su bandeja sigue abierta hasta el día 10).
+  d_p date := (CASE WHEN extract(day FROM current_date) >= 11
                     THEN date_trunc('month', current_date)
-                    ELSE date_trunc('month', current_date) + interval '1 month' END)::date;
+                    ELSE date_trunc('month', current_date) - interval '1 month' END)::date;
 
   -- ids
   pr_molina bigint; pr_alberdi bigint; pr_paz bigint; pr_sur bigint; pr_quiroga bigint;
@@ -56,6 +59,9 @@ DECLARE
   v_inicio date; v_fin date;
   v_user uuid;
 BEGIN
+  -- Los cambios de estado de reclamos solo se permiten "desde la gestión" (trigger de la base).
+  PERFORM set_config('inmobi.gestion_reclamo', 'on', true);
+
   -- ---------------------------------------------------------------------------
   -- 0) Borrar la demo de una corrida anterior (solo las personas de la demo)
   -- ---------------------------------------------------------------------------
@@ -63,9 +69,19 @@ BEGIN
   USING public.contratos c, public.inquilinos i
   WHERE d.contrato_id = c.id AND c.inquilino_id = i.id AND i.dni_cuit = ANY (c_inquilinos);
 
+  -- Un reclamo resuelto no se puede borrar (trazabilidad): para rehacer la demo se
+  -- desactiva ese bloqueo solo dentro de esta transacción.
+  IF EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_reclamos_bloquear_delete_resuelto') THEN
+    ALTER TABLE public.reclamos DISABLE TRIGGER trg_reclamos_bloquear_delete_resuelto;
+  END IF;
+
   DELETE FROM public.reclamos r0
   USING public.inquilinos i
   WHERE r0.inquilino_id = i.id AND i.dni_cuit = ANY (c_inquilinos);
+
+  IF EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_reclamos_bloquear_delete_resuelto') THEN
+    ALTER TABLE public.reclamos ENABLE TRIGGER trg_reclamos_bloquear_delete_resuelto;
+  END IF;
 
   DELETE FROM public.aumentos a
   USING public.contratos c, public.inquilinos i
@@ -81,14 +97,12 @@ BEGIN
   USING public.inquilinos i
   WHERE c.inquilino_id = i.id AND i.dni_cuit = ANY (c_inquilinos);
 
-  -- Propiedades de los propietarios de la demo (sin contratos ajenos activos).
+  -- Propiedades de los propietarios de la demo (las que tengan historial ajeno se conservan).
   DELETE FROM public.propiedades p
   USING public.propietarios o
   WHERE p.propietario_id = o.id AND o.dni_cuit = ANY (c_propietarios)
-    AND NOT EXISTS (
-      SELECT 1 FROM public.contratos c
-      WHERE c.propiedad_id = p.id AND c.estado <> 'inactivo'::public.contrato_estado
-    );
+    AND NOT EXISTS (SELECT 1 FROM public.contratos c WHERE c.propiedad_id = p.id)
+    AND NOT EXISTS (SELECT 1 FROM public.reclamos r1 WHERE r1.propiedad_id = p.id);
 
   UPDATE public.inquilinos SET perfil_id = NULL WHERE dni_cuit = ANY (c_inquilinos);
   DELETE FROM public.inquilinos WHERE dni_cuit = ANY (c_inquilinos);
@@ -303,12 +317,12 @@ BEGIN
   RETURNING id INTO c8;
   UPDATE public.contratos SET estado = 'inactivo', activo = false WHERE id = c8;
 
-  -- C9 · Agustín Torres · IPC trimestral · próximo aumento ya ACORDADO por adelantado
-  v_inicio := (d_p - interval '2 months')::date;
+  -- C9 · Agustín Torres · IPC trimestral · aumento del mes trabajado ya CONFIRMADO (se puede deshacer)
+  v_inicio := (d_p - interval '3 months')::date;
   INSERT INTO public.contratos (propiedad_id, inquilino_id, fecha_inicio, fecha_fin, monto_alquiler, monto_inicial,
-    periodicidad_meses, tipo_ajuste, fecha_proximo_aumento, dia_vencimiento, observaciones)
-  VALUES (p9, i_agustin, v_inicio, (v_inicio + interval '2 years' - interval '1 day')::date, 345000, 345000,
-    3, 'ipc', (d_p + interval '1 month')::date, 10, 'Demo · Aumento acordado por adelantado')
+    periodicidad_meses, tipo_ajuste, fecha_ultimo_aumento, fecha_proximo_aumento, dia_vencimiento, observaciones)
+  VALUES (p9, i_agustin, v_inicio, (v_inicio + interval '2 years' - interval '1 day')::date, 372600, 345000,
+    3, 'ipc', d_p, (d_p + interval '3 months')::date, 10, 'Demo · Aumento del mes ya confirmado')
   RETURNING id INTO c9;
 
   -- ---------------------------------------------------------------------------
@@ -318,15 +332,15 @@ BEGIN
     indice_tipo, modo, aplicado, fecha_creacion)
   VALUES
     (c1, (d_p - interval '3 months')::date, 300000, 327600, 9.2, 'ipc', 'calculado', true,
-      (d_p - interval '3 months' + interval '2 days 11 hours')),
+      (d_p - interval '3 months' + interval '12 days 11 hours')),
     (c3, (d_p - interval '6 months')::date, 650000, 719550, 10.7, 'icl', 'calculado', true,
-      (d_p - interval '6 months' + interval '3 days 10 hours')),
+      (d_p - interval '6 months' + interval '13 days 10 hours')),
     (c5, (d_p - interval '1 month')::date, 280000, 301000, 7.5, 'ipc', 'calculado', true,
-      least(now() - interval '6 days', d_p - interval '1 month' + interval '4 days 12 hours')),
+      (d_p - interval '1 month' + interval '14 days 12 hours')),
     (c6, (date_trunc('day', (d_hoy + 45) - interval '1 year') + interval '1 day')::date, 250000, 298500, 19.4, 'icl', 'calculado', true,
       ((d_hoy + 45) - interval '1 year' + interval '3 days 11 hours')),
-    (c9, (d_p + interval '1 month')::date, 345000, 372600, 8.0, 'ipc', 'calculado', false,
-      now() - interval '1 day 2 hours');
+    (c9, d_p, 345000, 372600, 8.0, 'ipc', 'calculado', true,
+      least(now() - interval '10 minutes', greatest(now() - interval '1 day 2 hours', d_p + interval '10 days 10 hours')));
 
   -- ---------------------------------------------------------------------------
   -- 6) Reclamos con su historial de gestión
@@ -435,7 +449,7 @@ BEGIN
     RAISE NOTICE 'Falta la migración 20261008_actividad_sistema.sql: no se generó el historial de actividad.';
   END IF;
 
-  RAISE NOTICE 'Demo cargada. Período operativo: %', to_char(d_p, 'MM/YYYY');
+  RAISE NOTICE 'Demo cargada. Mes de aumentos trabajado: %', to_char(d_p, 'MM/YYYY');
 END $$;
 
 COMMIT;

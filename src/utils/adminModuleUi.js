@@ -15,13 +15,13 @@ export const celdaNumero = 'text-sm tabular-nums text-slate-600 whitespace-nowra
 
 export const BADGE_PROPIETARIO_TIPO = {
   Física: {
-    label: 'Particular',
+    label: 'Persona física',
     tone: 'brand',
     className: badgeClass('brand'),
     avatarClass: 'rounded-full bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-600/10',
   },
   Jurídica: {
-    label: 'Empresa',
+    label: 'Persona jurídica',
     tone: 'neutral',
     className: badgeClass('neutral'),
     avatarClass: 'rounded-lg bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-500/10',

@@ -68,21 +68,7 @@ function CeldaDireccion({ propiedad }) {
   )
 }
 
-function buildMensajeConfirmacionDelete(propiedad, deps) {
-  const partes = []
-  if (deps.contratos_historicos > 0) {
-    const n = deps.contratos_historicos
-    partes.push(`${n} contrato${n > 1 ? 's' : ''} histórico${n > 1 ? 's' : ''}`)
-  }
-  if (deps.reclamos > 0) {
-    const n = deps.reclamos
-    partes.push(`${n} reclamo${n > 1 ? 's' : ''}`)
-  }
-
-  if (partes.length > 0) {
-    return `¡Atención! La propiedad "${propiedad.direccion}" tiene ${partes.join(' y ')} asociados. Si la eliminás, se borrará todo ese historial. ¿Querés continuar?`
-  }
-
+function buildMensajeConfirmacionDelete(propiedad) {
   return `¿Eliminar la propiedad "${propiedad.direccion}"? Esta acción no se puede deshacer.`
 }
 
@@ -94,7 +80,6 @@ export default function AdminPropiedades() {
   const [alerta, setAlerta] = useState(alertaInicial)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [propiedadAEliminar, setPropiedadAEliminar] = useState(null)
-  const [dependenciasEliminar, setDependenciasEliminar] = useState(dependenciasIniciales)
   const [eliminando, setEliminando] = useState(false)
   const [confirmCambioPropietario, setConfirmCambioPropietario] = useState(false)
   const [pendingForm, setPendingForm] = useState(null)
@@ -118,7 +103,8 @@ export default function AdminPropiedades() {
     limpiarSubmitError,
     actionError,
     limpiarActionError,
-    mensajeContratosActivos,
+    mensajeContratosAsociados,
+    mensajeReclamosAsociados,
   } = usePropiedades()
   const { propietarios, loading: propietariosLoading } = usePropietarios()
 
@@ -272,13 +258,17 @@ export default function AdminPropiedades() {
       return
     }
 
-    if (dependencias.contratos_activos > 0) {
-      mostrarAlerta('No se puede eliminar', mensajeContratosActivos)
+    const totalContratos =
+      (dependencias.contratos_activos ?? 0) + (dependencias.contratos_historicos ?? 0)
+    if (totalContratos > 0 || (dependencias.reclamos ?? 0) > 0) {
+      mostrarAlerta(
+        'No se puede eliminar',
+        totalContratos > 0 ? mensajeContratosAsociados : mensajeReclamosAsociados
+      )
       return
     }
 
     setPropiedadAEliminar(propiedad)
-    setDependenciasEliminar(dependencias)
     setConfirmOpen(true)
   }
 
@@ -286,7 +276,6 @@ export default function AdminPropiedades() {
     if (eliminando) return
     setConfirmOpen(false)
     setPropiedadAEliminar(null)
-    setDependenciasEliminar(dependenciasIniciales)
   }
 
   const confirmarEliminar = async () => {
@@ -302,15 +291,10 @@ export default function AdminPropiedades() {
     }
   }
 
-  const tieneHistorial =
-    dependenciasEliminar.contratos_historicos > 0 || dependenciasEliminar.reclamos > 0
-
-  const tituloConfirmDelete = tieneHistorial
-    ? 'Eliminar propiedad con historial'
-    : 'Eliminar propiedad'
+  const tituloConfirmDelete = 'Eliminar propiedad'
 
   const mensajeConfirmacion = propiedadAEliminar
-    ? buildMensajeConfirmacionDelete(propiedadAEliminar, dependenciasEliminar)
+    ? buildMensajeConfirmacionDelete(propiedadAEliminar)
     : ''
 
   return (

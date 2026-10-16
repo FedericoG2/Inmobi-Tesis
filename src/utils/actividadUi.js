@@ -65,20 +65,6 @@ export function rutaAdminActividad(evento) {
   }
 }
 
-/** Ruta del portal del inquilino para el evento. */
-export function rutaPortalActividad(evento) {
-  switch (evento?.entidad) {
-    case 'reclamo':
-      return '/inquilino/reclamos'
-    case 'contrato':
-    case 'aumento':
-    case 'documento':
-      return '/inquilino/contrato'
-    default:
-      return null
-  }
-}
-
 const rtf = new Intl.RelativeTimeFormat('es-AR', { numeric: 'auto' })
 
 /** "hace 5 minutos", "ayer", "hace 3 días"; más de una semana → fecha corta. */

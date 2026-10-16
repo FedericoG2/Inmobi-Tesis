@@ -268,8 +268,8 @@ export default function AdminInquilinos() {
             ariaLabel="Filtrar por tipo de inquilino"
           >
             <option value="">Tipo: Todos</option>
-            <option value="Física">Particular</option>
-            <option value="Jurídica">Empresa</option>
+            <option value="Física">Persona física</option>
+            <option value="Jurídica">Persona jurídica</option>
           </FilterSelect>
         </AdminTableToolbar>
 

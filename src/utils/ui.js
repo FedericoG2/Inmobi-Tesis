@@ -63,7 +63,7 @@ export const fieldErrorClass = 'mt-1.5 text-xs text-red-600'
 
 export const fieldHintClass = 'mt-1.5 text-xs text-slate-500'
 
-/** Control segmentado (p. ej. Particular / Empresa). */
+/** Control segmentado (p. ej. Persona física / jurídica). */
 export const segmentedClass = 'flex rounded-lg bg-slate-100 p-1 ring-1 ring-inset ring-slate-200/70'
 
 export const segmentedInlineClass = 'inline-flex rounded-lg bg-slate-100 p-1 ring-1 ring-inset ring-slate-200/70'

@@ -395,13 +395,13 @@ export const CHIP_INDICADOR = {
     label: 'IPC',
     icon: IconChart,
     tooltip:
-      'IPC — Índice de Precios al Consumidor (INDEC). Variación mensual de inflación del nivel general. Inmobi sincroniza este índice desde Argly (fuente INDEC) y lo guarda en Supabase para calcular el aumento del período.',
+      'IPC — Índice de Precios al Consumidor (INDEC). Variación mensual de inflación del nivel general. Inmobi lo consulta en vivo desde Argly (fuente INDEC) para calcular el aumento del período. Al confirmar, guarda en el aumento una copia de los valores usados.',
   },
   icl: {
     label: 'ICL',
     icon: IconHome,
     tooltip:
-      'ICL — Índice para Contratos de Locación (BCRA). Índice oficial para actualizar alquileres. Inmobi sincroniza ICL desde Argly (fuente BCRA) y lo guarda en Supabase para calcular el aumento del período.',
+      'ICL — Índice para Contratos de Locación (BCRA). Índice oficial para actualizar alquileres. Inmobi lo consulta en vivo desde Argly (fuente BCRA) para calcular el aumento del período. Al confirmar, guarda en el aumento una copia de los valores usados.',
   },
 }
 

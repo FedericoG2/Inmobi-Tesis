@@ -1,7 +1,5 @@
 import { supabase } from '../../supabaseClient'
 import InmobiLogoMark from '../brand/InmobiLogoMark'
-import NotificacionesBell from '../ui/NotificacionesBell'
-import { rutaPortalActividad } from '../../utils/actividadUi'
 import InquilinoContratoSelector from './InquilinoContratoSelector'
 import { IconLogout } from '../icons/Icons'
 import { brandLogoSmClass } from '../../utils/brandUi'
@@ -14,11 +12,6 @@ export default function InquilinoHeader() {
 
   const acciones = (
     <div className="flex shrink-0 items-center gap-1">
-      <NotificacionesBell
-        rutaDe={rutaPortalActividad}
-        subtitulo="Novedades de tu alquiler"
-        vacio="Acá vas a ver los cambios en tus reclamos, aumentos y documentos del contrato."
-      />
       <button
         type="button"
         onClick={handleSignOut}

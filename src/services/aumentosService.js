@@ -10,16 +10,10 @@ import {
   ultimoIpcDeSerie,
 } from '../utils/calcularAumento'
 
-/** Aplica los aumentos acordados cuya fecha ya llegó (fallback del cron diario). */
-async function aplicarAumentosProgramados() {
-  if (!supabase) return
-  await supabase.rpc('aplicar_aumentos_programados')
-}
-
-/** Activa contratos programados y aplica aumentos vencidos (idempotente). */
+/** Activa los contratos programados cuya fecha de inicio ya llegó (idempotente). */
 export async function ejecutarMantenimientoContratos() {
   if (!supabase) return
-  await Promise.all([activarContratosProgramados(), aplicarAumentosProgramados()])
+  await activarContratosProgramados()
 }
 
 function hoyIsoLocal() {

@@ -22,11 +22,9 @@ import {
   IconArrowRight,
   IconBuilding,
   IconDocument,
-  IconPhone,
   IconUser,
   IconWrench,
 } from '../../components/icons/Icons'
-import Badge from '../../components/ui/Badge'
 import { cn, iconTileClass } from '../../utils/ui'
 
 const formatMonto = formatMontoInquilino
@@ -55,13 +53,6 @@ const quickActions = [
     title: 'Mis datos',
     subtitle: 'Nombre, teléfono y email',
     icon: IconUser,
-  },
-  {
-    title: 'Contactar inmobiliaria',
-    subtitle: 'Teléfono, WhatsApp y email',
-    icon: IconPhone,
-    badge: 'Próximamente',
-    disabled: true,
   },
 ]
 
@@ -178,20 +169,16 @@ export default function InquilinoDashboard() {
       <section className={portalSection}>
         <h2 className={portalSectionTitle}>Acciones rápidas</h2>
 
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:gap-4">
           {quickActions.map((action) => {
             const Icon = action.icon
             const content = (
               <>
                 <div className="flex items-start justify-between gap-2">
-                  <span className={iconTileClass(action.disabled ? 'neutral' : 'brand')}>
+                  <span className={iconTileClass('brand')}>
                     <Icon className="h-5 w-5" />
                   </span>
-                  {action.badge ? (
-                    <Badge tone="muted">{action.badge}</Badge>
-                  ) : (
-                    <IconArrowRight className="h-4 w-4 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-brand-600" />
-                  )}
+                  <IconArrowRight className="h-4 w-4 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-brand-600" />
                 </div>
                 <div>
                   <p className="text-sm font-medium leading-snug text-slate-900">{action.title}</p>
@@ -199,18 +186,6 @@ export default function InquilinoDashboard() {
                 </div>
               </>
             )
-
-            if (action.disabled) {
-              return (
-                <div
-                  key={action.title}
-                  className={cn(portalCardClass, 'flex flex-col gap-3 p-4 opacity-70')}
-                  aria-disabled="true"
-                >
-                  {content}
-                </div>
-              )
-            }
 
             return (
               <Link

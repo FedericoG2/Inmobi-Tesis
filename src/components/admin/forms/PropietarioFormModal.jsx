@@ -126,7 +126,7 @@ export default function PropietarioFormModal({
                     onClick={() => handleTipoPersona(tipo)}
                     className={segmentedItemClass(activo)}
                   >
-                    {tipo === 'Física' ? 'Particular' : 'Empresa'}
+                    {tipo === 'Física' ? 'Persona física' : 'Persona jurídica'}
                   </button>
                 )
               })}

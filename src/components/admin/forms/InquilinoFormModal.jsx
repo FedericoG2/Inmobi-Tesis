@@ -181,7 +181,7 @@ export default function InquilinoFormModal({
                     onClick={() => handleTipoPersona(tipo)}
                     className={cn(segmentedItemClass(activo), 'disabled:cursor-not-allowed')}
                   >
-                    {tipo === 'Física' ? 'Particular' : 'Empresa'}
+                    {tipo === 'Física' ? 'Persona física' : 'Persona jurídica'}
                   </button>
                 )
               })}

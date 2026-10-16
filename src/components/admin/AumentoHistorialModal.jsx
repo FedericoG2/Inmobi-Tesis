@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listarHistorialAumentos } from '../../services/aumentosService'
-import { badgeIndicador, formatFechaAumento } from '../../utils/aumentosUi'
+import { badgeIndicador, formatFechaAumento, puedeDeshacerAumento } from '../../utils/aumentosUi'
 import { IconArrowRight, IconCheckCircle, IconClock, IconDocument, IconUndo } from '../icons/Icons'
 import Modal, { ModalBody, ModalFooter, ModalHeader } from '../ui/Modal'
 import Button from '../ui/Button'
@@ -40,11 +40,11 @@ function EstadoTag({ aplicado }) {
   if (aplicado) {
     return (
       <Badge tone="success" icon={IconCheckCircle}>
-        Aplicado
+        Confirmado
       </Badge>
     )
   }
-  return <Badge tone="brand">Acordado · pendiente de aplicar</Badge>
+  return <Badge tone="brand">Pendiente de aplicar</Badge>
 }
 
 function VariacionAprox({ item }) {
@@ -120,7 +120,7 @@ function FilaHistorial({ item, posicion, onVerComprobante, onDeshacer, disabled 
                 Ver comprobante
               </Button>
             )}
-            {onDeshacer && !item.aplicado && (
+            {onDeshacer && puedeDeshacerAumento(item) && (
               <Button
                 variant="dangerOutline"
                 size="sm"
@@ -208,7 +208,7 @@ export default function AumentoHistorialModal({
                 item={item}
                 posicion={items.length - idx}
                 onVerComprobante={onVerComprobante}
-                onDeshacer={onDeshacer}
+                onDeshacer={idx === 0 ? onDeshacer : undefined}
                 disabled={accionDeshabilitada}
               />
             ))}

@@ -6,7 +6,7 @@ export default function ContratoRowActions({ onView, onFinalize, onAnular, final
     <div className="flex items-center justify-center gap-0.5">
       {onView && <IconButton label="Ver ficha" icon={IconEye} onClick={onView} />}
       {onFinalize && <IconButton label={finalizeLabel} icon={IconCheckCircle} tone="brand" onClick={onFinalize} />}
-      {onAnular && <IconButton label="Anular" icon={IconTrash} tone="danger" onClick={onAnular} />}
+      {onAnular && <IconButton label="Eliminar" icon={IconTrash} tone="danger" onClick={onAnular} />}
     </div>
   )
 }

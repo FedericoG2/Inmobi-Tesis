@@ -103,30 +103,53 @@ export function mesProximoInfo(hoy = hoyIsoLocal()) {
   return infoMes(anio, mes)
 }
 
-/** Día fijo de corte operativo: hasta este día del mes se confirman los aumentos de ese mes. */
+/**
+ * Bandeja de aumentos: un aumento del mes M entra el día 11 de M y permanece
+ * hasta el día 10 de M+1. Después queda rezagado y ya no se puede deshacer.
+ */
+export const DIA_INICIO_BANDEJA = 11
 export const DIA_CORTE_OPERATIVO = 10
 
 /**
- * Mes en el que el administrador debe operar según el día 10:
- * - Del 1 al 10: mes en curso (cerrar confirmaciones del mes).
- * - Del 11 en adelante: mes siguiente (anticipar el próximo lote).
+ * Mes de aumentos que se está trabajando hoy:
+ * - Del 11 en adelante: el mes en curso.
+ * - Del 1 al 10: el mes anterior (su bandeja sigue abierta hasta hoy).
  */
 export function periodoOperativoInfo(hoy = hoyIsoLocal()) {
   const [y, m, d] = hoy.split('-').map(Number)
-  if (d <= DIA_CORTE_OPERATIVO) return infoMes(y, m)
-  return mesProximoInfo(hoy)
+  if (d >= DIA_INICIO_BANDEJA) return infoMes(y, m)
+  return m <= 1 ? infoMes(y - 1, 12) : infoMes(y, m - 1)
 }
 
-/** ISO del día de corte (10) del mes de una fecha de aumento. */
+/** ISO del día 11 del mes del aumento: desde ahí entra a la bandeja y se puede confirmar. */
+export function fechaInicioBandejaIso(fechaAumento) {
+  if (!fechaAumento) return null
+  const [y, m] = fechaAumento.split('-').map(Number)
+  return `${y}-${String(m).padStart(2, '0')}-${DIA_INICIO_BANDEJA}`
+}
+
+/** True si el aumento ya entró a la bandeja (hoy es el día 11 del mes del aumento o posterior). */
+export function aumentoEnBandeja(fechaAumento, hoy = hoyIsoLocal()) {
+  const inicio = fechaInicioBandejaIso(fechaAumento)
+  return Boolean(inicio) && hoy >= inicio
+}
+
+/** ISO del día 10 del mes siguiente al aumento: cierre de la bandeja y límite para deshacer. */
 export function fechaCorteOperativoIso(fechaAumento) {
   if (!fechaAumento) return null
   const [y, m] = fechaAumento.split('-').map(Number)
-  const mm = String(m).padStart(2, '0')
-  const dd = String(DIA_CORTE_OPERATIVO).padStart(2, '0')
-  return `${y}-${mm}-${dd}`
+  const anio = m >= 12 ? y + 1 : y
+  const mes = m >= 12 ? 1 : m + 1
+  return `${anio}-${String(mes).padStart(2, '0')}-${String(DIA_CORTE_OPERATIVO).padStart(2, '0')}`
 }
 
-/** True si ya pasó el día 10 del mes del aumento (ventana de confirmación cerrada). */
+/** Un aumento confirmado se puede deshacer hasta el día 10 del mes siguiente al mes de aumento. */
+export function puedeDeshacerAumento(aumento, hoy = hoyIsoLocal()) {
+  const limite = fechaCorteOperativoIso(aumento?.fecha_aplicacion)
+  return Boolean(limite) && hoy <= limite
+}
+
+/** True si ya pasó el día 10 del mes siguiente al aumento (bandeja cerrada). */
 export function ventanaOperativaCerrada(fechaAumento, hoy = hoyIsoLocal()) {
   const corte = fechaCorteOperativoIso(fechaAumento)
   if (!corte) return false
@@ -278,28 +301,22 @@ export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal(), opci
         ? ` (${propuesta.ipc_meses}/${propuesta.ipc_meses_esperados} meses IPC publicados)`
         : ''
 
-    const esFuturo = dias != null && dias > 0
+    const corte = formatFechaAumento(fechaCorteOperativoIso(fechaAumento))
     let observacion
     if (rezagado && !portal) {
-      observacion = `Rezagado: pasó el día ${DIA_CORTE_OPERATIVO} del mes sin confirmar. Confirmá para poner el alquiler al día.`
+      observacion = `Rezagado: pasó el día ${DIA_CORTE_OPERATIVO} del mes siguiente sin confirmar. Confirmá para poner el alquiler al día.`
     } else if (propuesta.fuente === 'manual' && !portal) {
-      observacion = esFuturo
-        ? `Cálculo con índices cargados a mano. Podés acordarlo ahora: se aplica automáticamente el ${formatFechaAumento(fechaAumento)}.`
-        : 'Cálculo con índices cargados a mano. Podés confirmar y actualizar el contrato.'
+      observacion = `Cálculo con índices cargados a mano. Podés confirmar hasta el ${corte}.`
     } else if (aproximado) {
       observacion = portal
         ? `Estimación del aumento del alquiler${detalleIpc}. El valor puede variar cuando se publique el índice que falta.`
-        : esFuturo
-          ? `Falta un índice del período${detalleIpc}. El monto se muestra igual; puede variar al publicarse. Podés acordarlo ahora: se aplica el ${formatFechaAumento(fechaAumento)}.`
-          : `Falta un índice del período${detalleIpc}. El monto se muestra igual; puede variar al publicarse.`
+        : `Falta un índice del período${detalleIpc}. El monto se muestra igual; puede variar al publicarse.`
     } else {
       observacion = portal
         ? 'Cálculo con índices oficiales de cierre. La inmobiliaria confirmará el nuevo monto.'
         : dias != null && dias < 0
-          ? `Pendiente de confirmar desde el ${formatFechaAumento(fechaAumento)}.`
-          : esFuturo
-            ? `Cálculo con valores oficiales. Podés acordarlo ahora: se aplica automáticamente el ${formatFechaAumento(fechaAumento)}.`
-            : 'Cálculo con valores oficiales de cierre. Podés confirmar y actualizar el contrato.'
+          ? `Pendiente de confirmar desde el ${formatFechaAumento(fechaAumento)}. Plazo: hasta el ${corte}.`
+          : `Cálculo con valores oficiales. Podés confirmar hasta el ${corte}.`
     }
 
     return {
@@ -346,7 +363,7 @@ export function mensajeConfirmarDeshabilitado(ui) {
   if (ui.puedeConfirmar) return 'Confirmar aumento'
   if (ui.etiqueta === 'sin_indices') return 'Cargá los índices a mano para calcular'
   if (ui.etiqueta === 'acordado') return 'Ya acordado: se aplica en la fecha'
-  if (ui.etiqueta === 'proyectado') return 'Se podrá confirmar desde la fecha del aumento'
+  if (ui.etiqueta === 'proyectado') return `Se podrá confirmar desde el día ${DIA_INICIO_BANDEJA} del mes del aumento`
   return 'No disponible para confirmar'
 }
 
@@ -491,7 +508,7 @@ export function observacionOperativaDetalle(detalle) {
   }
 
   if (ui.etiqueta === 'rezagado') {
-    return `Rezagado: pasó el día ${DIA_CORTE_OPERATIVO} del mes sin confirmar. Verificá el cálculo y confirmá para actualizar el contrato.`
+    return `Rezagado: pasó el día ${DIA_CORTE_OPERATIVO} del mes siguiente sin confirmar. Verificá el cálculo y confirmá para actualizar el contrato.`
   }
 
   const indicador =

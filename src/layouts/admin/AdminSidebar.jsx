@@ -16,8 +16,16 @@ import {
   IconWrench,
 } from '../../components/icons/Icons'
 import { useAdminLayout } from '../../contexts/AdminLayoutContext'
+import { useAuth } from '../../contexts/AuthContext'
 
-const secciones = [
+const seccionesCuentas = [
+  {
+    titulo: null,
+    items: [{ to: '/cuentas', label: 'Cuentas', icon: IconUsers }],
+  },
+]
+
+const seccionesEncargado = [
   {
     titulo: null,
     items: [{ to: '/admin/dashboard', label: 'Dashboard', icon: IconHome }],
@@ -42,6 +50,9 @@ const secciones = [
 
 export default function AdminSidebar() {
   const { sidebarCollapsed } = useAdminLayout()
+  const { isAdminSistema } = useAuth()
+  const secciones = isAdminSistema ? seccionesCuentas : seccionesEncargado
+  const subtitulo = isAdminSistema ? 'Administración de cuentas' : 'Panel del encargado'
 
   return (
     <aside
@@ -60,7 +71,7 @@ export default function AdminSidebar() {
         {!sidebarCollapsed && (
           <div className="min-w-0 leading-tight">
             <p className="truncate text-sm font-semibold tracking-tight text-slate-900">Inmobi</p>
-            <p className="truncate text-xs text-slate-500">Panel administrador</p>
+            <p className="truncate text-xs text-slate-500">{subtitulo}</p>
           </div>
         )}
       </div>

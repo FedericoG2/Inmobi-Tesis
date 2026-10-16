@@ -76,8 +76,8 @@ export function etiquetaEstadoContrato(contrato) {
   if (esContratoPlazoVencido(contrato)) return 'Vencido'
   if (contrato?.estado === 'programado') return 'Programado'
   if (contrato?.estado === 'activo' || contrato?.activo) return 'Activo'
-  if (contrato?.estado === 'inactivo') return 'Inactivo'
-  return contrato?.activo ? 'Activo' : 'Inactivo'
+  if (contrato?.estado === 'inactivo') return 'Finalizado'
+  return contrato?.activo ? 'Activo' : 'Finalizado'
 }
 
 export function colorEstadoContrato(contrato) {

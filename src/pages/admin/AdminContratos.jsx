@@ -236,7 +236,7 @@ export default function AdminContratos() {
       actionError === mensajeMovimientos || actionError === mensajeSoloInactivo
     setAlerta({
       open: true,
-      titulo: esErrorAnular ? 'No se puede anular' : 'No se pudo finalizar',
+      titulo: esErrorAnular ? 'No se puede eliminar' : 'No se pudo finalizar',
       mensaje: actionError,
     })
     limpiarActionError()
@@ -303,14 +303,14 @@ export default function AdminContratos() {
     if (!contratoAnulando) return
 
     const ok = await anular(contratoAnulando)
+    setConfirmAnularOpen(false)
+    setContratoAnulando(null)
     if (ok) {
       toast.success(
-        'Contrato anulado',
+        'Contrato eliminado',
         `Se eliminó el contrato de ${contratoAnulando.inquilinos?.nombre_completo ?? 'el inquilino'} y sus documentos.`
       )
       await refetchPropiedades()
-      setConfirmAnularOpen(false)
-      setContratoAnulando(null)
     }
   }
 
@@ -367,7 +367,7 @@ export default function AdminContratos() {
   const mensajeConfirmacionFinalizar = mensajeConfirmacionFinalizarContrato(contratoFinalizando)
 
   const mensajeConfirmacionAnular = contratoAnulando
-    ? `¿Anular el contrato inactivo de ${contratoAnulando.inquilinos?.nombre_completo ?? 'este inquilino'} en ${contratoAnulando.propiedades?.direccion ?? 'esta propiedad'}? Solo está permitido si no tiene aumentos confirmados ni reclamos para ese inquilino y propiedad. Los documentos adjuntos se eliminarán junto con el contrato. Esta acción no se puede deshacer.`
+    ? `¿Eliminar el contrato ${contratoAnulando.estado === 'programado' ? 'programado' : 'finalizado'} de ${contratoAnulando.inquilinos?.nombre_completo ?? 'este inquilino'} en ${contratoAnulando.propiedades?.direccion ?? 'esta propiedad'}? Solo está permitido si no tiene aumentos confirmados ni reclamos para ese inquilino y propiedad. Los documentos adjuntos se eliminarán junto con el contrato. Esta acción no se puede deshacer.`
     : ''
 
   return (
@@ -559,7 +559,9 @@ export default function AdminContratos() {
                       }
                       finalizeLabel={c.estado === 'programado' ? 'Cancelar' : 'Finalizar'}
                       onAnular={
-                        c.estado === 'inactivo' ? () => abrirConfirmAnular(c) : undefined
+                        c.estado === 'inactivo' || c.estado === 'programado'
+                          ? () => abrirConfirmAnular(c)
+                          : undefined
                       }
                     />
                   </AdminTableActionsCell>
@@ -634,9 +636,9 @@ export default function AdminContratos() {
 
       <AdminConfirmModal
         open={confirmAnularOpen}
-        title="Anular contrato"
+        title="Eliminar contrato"
         message={mensajeConfirmacionAnular}
-        confirmLabel="Anular"
+        confirmLabel="Eliminar"
         onConfirm={confirmarAnular}
         onCancel={cancelarAnular}
         loading={anulando}

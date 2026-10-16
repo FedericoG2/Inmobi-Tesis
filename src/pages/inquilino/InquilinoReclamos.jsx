@@ -1,4 +1,7 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import ReclamoPortalDetalleModal from '../../components/inquilino/ReclamoPortalDetalleModal'
+import { validarImagenReclamo } from '../../services/documentosService'
+import { MAX_IMAGENES_RECLAMO } from '../../services/portalInquilinoService'
 import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
 import PortalPageHeader from '../../components/inquilino/PortalPageHeader'
 import { usePortalInquilino } from '../../contexts/PortalInquilinoContext'
@@ -17,8 +20,9 @@ import {
 import { ReclamoCategoriaChip, ReclamoEstadoChip, ReclamoPrioridadChip } from '../../components/admin/ReclamoChips'
 import Modal, { ModalBody, ModalFooter, ModalHeader } from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
-import { IconPencil, IconPlus, IconTrash, IconWrench, IconX } from '../../components/icons/Icons'
+import { IconEye, IconImage, IconPencil, IconPlus, IconTrash, IconWrench, IconX } from '../../components/icons/Icons'
 import {
+  buttonClass,
   calloutClass,
   cn,
   iconTileClass,
@@ -42,7 +46,8 @@ const formatFecha = (fechaStr) => {
 export default function InquilinoReclamos() {
   const toast = useToast()
   const {
-    contratoActivo,
+    inquilino,
+    contratos,
     reclamos,
     reclamosLoading,
     crearReclamo,
@@ -60,6 +65,15 @@ export default function InquilinoReclamos() {
   const [reclamoAEliminar, setReclamoAEliminar] = useState(null)
   const [eliminando, setEliminando] = useState(false)
   const [errorAccion, setErrorAccion] = useState(null)
+  const [imagenes, setImagenes] = useState([])
+  const [errorImagenes, setErrorImagenes] = useState(null)
+  const [reclamoDetalle, setReclamoDetalle] = useState(null)
+
+  // Los reclamos se registran sobre un contrato vigente, aunque el selector muestre uno finalizado.
+  const contratoVigente = useMemo(
+    () => (contratos ?? []).find((c) => c.estado === 'activo') ?? null,
+    [contratos]
+  )
 
   const abrirFormCrear = () => {
     limpiarSubmitError()
@@ -85,7 +99,27 @@ export default function InquilinoReclamos() {
     setShowForm(false)
     setReclamoEditando(null)
     setForm(formInicial)
+    setImagenes([])
+    setErrorImagenes(null)
     limpiarSubmitError()
+  }
+
+  const handleImagenes = (e) => {
+    const nuevas = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    setErrorImagenes(null)
+    const invalida = nuevas.find((file) => validarImagenReclamo(file).error)
+    if (invalida) {
+      setErrorImagenes(validarImagenReclamo(invalida).error.message)
+      return
+    }
+    setImagenes((prev) => {
+      const combinadas = [...prev, ...nuevas]
+      if (combinadas.length > MAX_IMAGENES_RECLAMO) {
+        setErrorImagenes(`Podés adjuntar hasta ${MAX_IMAGENES_RECLAMO} imágenes.`)
+      }
+      return combinadas.slice(0, MAX_IMAGENES_RECLAMO)
+    })
   }
 
   const handleChange = (field) => (e) => {
@@ -98,24 +132,28 @@ export default function InquilinoReclamos() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    let ok
     if (reclamoEditando) {
-      ok = await actualizarReclamo(reclamoEditando.id, form)
-    } else {
-      ok = await crearReclamo({
-        ...form,
-        propiedad_id: contratoActivo?.propiedad_id ?? null,
-        contrato_id: contratoActivo?.id ?? null,
-      })
+      const ok = await actualizarReclamo(reclamoEditando.id, form)
+      if (ok) {
+        toast.success('Reclamo actualizado', 'Los cambios ya los ve la inmobiliaria.')
+        cerrarForm()
+      }
+      return
     }
-    if (ok) {
-      toast.success(
-        reclamoEditando ? 'Reclamo actualizado' : 'Reclamo enviado',
-        reclamoEditando
-          ? 'Los cambios ya los ve la inmobiliaria.'
-          : 'La inmobiliaria ya lo recibió. Vas a ver acá cada cambio de estado.'
+    const resultado = await crearReclamo({
+      ...form,
+      propiedad_id: contratoVigente?.propiedad_id ?? null,
+      contrato_id: contratoVigente?.id ?? null,
+      imagenes,
+    })
+    if (!resultado) return
+    cerrarForm()
+    if (resultado.imagenesFallidas?.length) {
+      setErrorAccion(
+        `El reclamo se registró, pero no se pudieron subir: ${resultado.imagenesFallidas.join(', ')}. Podés agregarlas desde el detalle.`
       )
-      cerrarForm()
+    } else {
+      toast.success('Reclamo enviado', 'La inmobiliaria ya lo recibió. Vas a ver acá cada cambio de estado.')
     }
   }
 
@@ -145,7 +183,7 @@ export default function InquilinoReclamos() {
   }
 
   const nuevoReclamoBtn = (
-    <Button icon={IconPlus} onClick={abrirFormCrear} disabled={!contratoActivo} className="w-full sm:w-auto">
+    <Button icon={IconPlus} onClick={abrirFormCrear} disabled={!contratoVigente} className="w-full sm:w-auto">
       Nuevo reclamo
     </Button>
   )
@@ -181,7 +219,7 @@ export default function InquilinoReclamos() {
           </span>
           <p className="text-sm font-medium text-slate-700">No tenés reclamos registrados</p>
           <p className="mt-1 text-sm text-slate-500">
-            {contratoActivo
+            {contratoVigente
               ? 'Usá el botón Nuevo reclamo para reportar un problema.'
               : 'Necesitás tener un contrato activo para registrar reclamos.'}
           </p>
@@ -213,18 +251,24 @@ export default function InquilinoReclamos() {
                 <p className="mt-2 truncate text-xs text-slate-500">{r.propiedades.direccion}</p>
               )}
 
-              {esPendiente && (
-                <div className="mt-4 flex gap-2 border-t border-slate-100 pt-3">
-                  <button type="button" onClick={() => abrirFormEditar(r)} className={portalBtnSecondary}>
-                    <IconPencil className="h-4 w-4" />
-                    Editar
-                  </button>
-                  <button type="button" onClick={() => handleEliminar(r)} className={portalBtnDanger}>
-                    <IconTrash className="h-4 w-4" />
-                    Eliminar
-                  </button>
-                </div>
-              )}
+              <div className="mt-auto flex flex-wrap gap-2 border-t border-slate-100 pt-3 [&:not(:first-child)]:mt-4">
+                <button type="button" onClick={() => setReclamoDetalle(r)} className={portalBtnSecondary}>
+                  <IconEye className="h-4 w-4" />
+                  Ver detalle
+                </button>
+                {esPendiente && (
+                  <>
+                    <button type="button" onClick={() => abrirFormEditar(r)} className={portalBtnSecondary}>
+                      <IconPencil className="h-4 w-4" />
+                      Editar
+                    </button>
+                    <button type="button" onClick={() => handleEliminar(r)} className={portalBtnDanger}>
+                      <IconTrash className="h-4 w-4" />
+                      Eliminar
+                    </button>
+                  </>
+                )}
+              </div>
             </li>
           )
         })}
@@ -235,7 +279,7 @@ export default function InquilinoReclamos() {
           titleId="reclamo-form-title"
           icon={reclamoEditando ? IconPencil : IconWrench}
           title={reclamoEditando ? 'Editar reclamo' : 'Nuevo reclamo'}
-          subtitle={!reclamoEditando ? contratoActivo?.propiedades?.direccion : undefined}
+          subtitle={!reclamoEditando ? contratoVigente?.propiedades?.direccion : undefined}
           onClose={submitting ? undefined : cerrarForm}
         />
 
@@ -324,6 +368,55 @@ export default function InquilinoReclamos() {
               />
             </div>
 
+            {!reclamoEditando && (
+              <div>
+                <p className={portalLabelClass}>
+                  Imágenes <span className="font-normal text-slate-400">(opcional, hasta {MAX_IMAGENES_RECLAMO})</span>
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {imagenes.map((img, idx) => (
+                    <span
+                      key={`${img.name}-${idx}`}
+                      className="inline-flex max-w-[12rem] items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 py-1 pl-2 pr-1 text-xs text-slate-700"
+                    >
+                      <IconImage className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                      <span className="truncate">{img.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setImagenes((prev) => prev.filter((_, i) => i !== idx))}
+                        disabled={submitting}
+                        className="rounded p-0.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                        aria-label={`Quitar ${img.name}`}
+                      >
+                        <IconX className="h-3.5 w-3.5" strokeWidth={2} />
+                      </button>
+                    </span>
+                  ))}
+                  {imagenes.length < MAX_IMAGENES_RECLAMO && (
+                    <label
+                      className={cn(
+                        buttonClass({ variant: 'secondary', size: 'sm' }),
+                        'cursor-pointer',
+                        submitting && 'pointer-events-none opacity-50'
+                      )}
+                    >
+                      <IconPlus className="h-3.5 w-3.5" strokeWidth={2} />
+                      Agregar fotos
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        multiple
+                        className="sr-only"
+                        onChange={handleImagenes}
+                        disabled={submitting}
+                      />
+                    </label>
+                  )}
+                </div>
+                {errorImagenes && <p className="mt-1.5 text-xs text-red-600">{errorImagenes}</p>}
+              </div>
+            )}
+
             {submitError && <p className={calloutClass('danger')}>{submitError}</p>}
           </ModalBody>
 
@@ -341,11 +434,18 @@ export default function InquilinoReclamos() {
       <AdminConfirmModal
         open={confirmOpen}
         title="Eliminar reclamo"
-        message={`¿Eliminar el reclamo "${reclamoAEliminar?.titulo}"? Esta acción no se puede deshacer.`}
+        message={`¿Eliminar el reclamo "${reclamoAEliminar?.titulo}"? Se borran también sus imágenes. Esta acción no se puede deshacer.`}
         confirmLabel="Eliminar"
         onConfirm={confirmarEliminar}
         onCancel={cancelarEliminar}
         loading={eliminando}
+      />
+
+      <ReclamoPortalDetalleModal
+        open={reclamoDetalle != null}
+        reclamo={reclamoDetalle}
+        perfilInquilinoId={inquilino?.perfil_id ?? null}
+        onClose={() => setReclamoDetalle(null)}
       />
     </div>
   )

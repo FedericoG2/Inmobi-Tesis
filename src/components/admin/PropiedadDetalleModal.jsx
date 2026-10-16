@@ -8,6 +8,7 @@ import {
   BADGE_PROPIEDAD_TIPO_DEFAULT,
 } from '../../utils/adminModuleUi'
 import DetalleFila from '../ui/DetailField'
+import FichaContratosReclamos from './FichaContratosReclamos'
 import Modal, { ModalBody, ModalFooter, ModalHeader } from '../ui/Modal'
 import Button from '../ui/Button'
 import {
@@ -143,6 +144,10 @@ export default function PropiedadDetalleModal({ open, propiedad, onClose, onEdit
           <DetalleFila label="Propietario" value={etiquetaPropietario(propiedad)} icon={IconUser} />
           <DetalleFila label="Contratos" value={textoContratos} icon={IconClipboard} className="sm:col-span-2" />
           <DetalleFila label="Reclamos" value={textoReclamos} icon={IconWrench} className="sm:col-span-2" />
+        </div>
+
+        <div className="mt-6">
+          <FichaContratosReclamos propiedadId={propiedad.id} />
         </div>
       </ModalBody>
 

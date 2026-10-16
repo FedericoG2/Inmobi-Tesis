@@ -190,7 +190,12 @@ export default function ReclamoGestionModal({ open, reclamo, onClose, onGestiona
 
         <section>
           <SeccionTitulo>Historial</SeccionTitulo>
-          <ReclamoTimeline eventos={eventos} loading={cargandoEventos} error={errorEventos} />
+          <ReclamoTimeline
+            eventos={eventos}
+            loading={cargandoEventos}
+            error={errorEventos}
+            perfilInquilinoId={reclamo?.inquilinos?.perfil_id ?? null}
+          />
         </section>
       </ModalBody>
 

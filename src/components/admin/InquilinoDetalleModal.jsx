@@ -6,6 +6,7 @@ import {
   BADGE_PERSONA_TIPO,
 } from '../../utils/adminModuleUi'
 import DetalleFila from '../ui/DetailField'
+import FichaContratosReclamos from './FichaContratosReclamos'
 import Modal, { ModalBody, ModalFooter, ModalHeader } from '../ui/Modal'
 import Button from '../ui/Button'
 import {
@@ -175,6 +176,10 @@ export default function InquilinoDetalleModal({ open, inquilino, onClose, onEdit
 
           <DetalleFila label="Contratos" value={textoContratos} icon={IconClipboard} />
           <DetalleFila label="Reclamos" value={textoReclamos} icon={IconWrench} />
+        </div>
+
+        <div className="mt-6">
+          <FichaContratosReclamos inquilinoId={inquilino.id} />
         </div>
       </ModalBody>
 

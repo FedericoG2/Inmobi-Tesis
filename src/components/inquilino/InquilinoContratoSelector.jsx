@@ -2,11 +2,17 @@ import { usePortalInquilino } from '../../contexts/PortalInquilinoContext'
 import { IconChevronDown } from '../icons/Icons'
 import { cn, selectClass } from '../../utils/ui'
 
+function etiquetaContrato(c) {
+  const direccion = c.propiedades?.direccion ?? `Contrato #${c.id}`
+  const tipo = c.propiedades?.tipo ? ` · ${c.propiedades.tipo}` : ''
+  const finalizado = c.estado === 'activo' ? '' : ' (finalizado)'
+  return `${direccion}${tipo}${finalizado}`
+}
+
 function OpcionesContrato({ contratos }) {
   return contratos.map((c) => (
     <option key={c.id} value={c.id}>
-      {c.propiedades?.direccion ?? `Contrato #${c.id}`}
-      {c.propiedades?.tipo ? ` · ${c.propiedades.tipo}` : ''}
+      {etiquetaContrato(c)}
     </option>
   ))
 }

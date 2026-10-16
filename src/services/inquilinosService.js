@@ -102,10 +102,9 @@ export async function actualizarInquilino(id, datos) {
   const deps = await contarDependenciasInquilino(id)
   if (deps.error) return { data: null, error: deps.error }
 
-  const conContratoActivo = (deps.contratos_activos ?? 0) > 0
   let datosEdit = { ...datos }
 
-  if (conContratoActivo) {
+  if (identidadInquilinoBloqueada(deps)) {
     const { data: actual, error: errActual } = await supabase
       .from('inquilinos')
       .select('tipo_persona, dni_cuit')
@@ -147,6 +146,11 @@ export async function actualizarInquilino(id, datos) {
   }
 
   return { data, error: null }
+}
+
+/** Tipo de persona y DNI/CUIT quedan fijos si el inquilino tiene o tuvo un contrato activo. */
+export function identidadInquilinoBloqueada(deps) {
+  return (deps?.contratos_activos ?? 0) + (deps?.contratos_historicos ?? 0) > 0
 }
 
 export async function contarContratosPorInquilino(inquilinoId) {

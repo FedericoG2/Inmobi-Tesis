@@ -39,21 +39,10 @@ const dependenciasIniciales = {
 }
 const FILAS_POR_PAGINA = 4
 
-function buildMensajeConfirmacionDelete(inquilino, deps) {
-  const partes = []
-  if (deps.contratos_historicos > 0) {
-    const n = deps.contratos_historicos
-    partes.push(`${n} contrato${n > 1 ? 's' : ''} histórico${n > 1 ? 's' : ''}`)
-  }
-  if (deps.reclamos > 0) {
-    const n = deps.reclamos
-    partes.push(`${n} reclamo${n > 1 ? 's' : ''}`)
-  }
+const MENSAJE_RECLAMOS_ASOCIADOS =
+  'No se puede eliminar el inquilino porque tiene reclamos asociados. Se conserva como historial.'
 
-  if (partes.length > 0) {
-    return `¡Atención! El inquilino "${inquilino.nombre_completo}" tiene ${partes.join(' y ')} asociados. Si lo eliminás, se borrará todo ese historial. ¿Querés continuar?`
-  }
-
+function buildMensajeConfirmacionDelete(inquilino) {
   return `¿Eliminar al inquilino "${inquilino.nombre_completo}"? Esta acción no se puede deshacer.`
 }
 
@@ -67,7 +56,6 @@ export default function AdminInquilinos() {
   const [alerta, setAlerta] = useState(alertaInicial)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [inquilinoAEliminar, setInquilinoAEliminar] = useState(null)
-  const [dependenciasEliminar, setDependenciasEliminar] = useState(dependenciasIniciales)
   const [eliminando, setEliminando] = useState(false)
   const [paginaActual, setPaginaActual] = useState(1)
   const [filtroTexto, setFiltroTexto] = useState('')
@@ -207,17 +195,20 @@ export default function AdminInquilinos() {
       return
     }
 
-    if (dependencias.contratos_activos > 0 || dependencias.contratos_programados > 0) {
+    const totalContratos =
+      (dependencias.contratos_activos ?? 0) +
+      (dependencias.contratos_programados ?? 0) +
+      (dependencias.contratos_historicos ?? 0)
+    if (totalContratos > 0 || (dependencias.reclamos ?? 0) > 0) {
       setAlerta({
         open: true,
         titulo: 'No se puede eliminar',
-        mensaje: mensajeContratosAsociados,
+        mensaje: totalContratos > 0 ? mensajeContratosAsociados : MENSAJE_RECLAMOS_ASOCIADOS,
       })
       return
     }
 
     setInquilinoAEliminar(inquilino)
-    setDependenciasEliminar(dependencias)
     setConfirmOpen(true)
   }
 
@@ -225,7 +216,6 @@ export default function AdminInquilinos() {
     if (eliminando) return
     setConfirmOpen(false)
     setInquilinoAEliminar(null)
-    setDependenciasEliminar(dependenciasIniciales)
   }
 
   const confirmarEliminar = async () => {
@@ -241,14 +231,9 @@ export default function AdminInquilinos() {
     }
   }
 
-  const tituloConfirmDelete =
-    dependenciasEliminar.contratos_historicos > 0 || dependenciasEliminar.reclamos > 0
-      ? 'Eliminar inquilino con historial'
-      : 'Eliminar inquilino'
+  const tituloConfirmDelete = 'Eliminar inquilino'
 
-  const mensajeConfirmacion = inquilinoAEliminar
-    ? buildMensajeConfirmacionDelete(inquilinoAEliminar, dependenciasEliminar)
-    : ''
+  const mensajeConfirmacion = inquilinoAEliminar ? buildMensajeConfirmacionDelete(inquilinoAEliminar) : ''
 
   return (
     <>

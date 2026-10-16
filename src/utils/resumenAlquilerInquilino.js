@@ -71,7 +71,7 @@ export function armarResumenAlquilerInquilino(contrato, hoy = hoyIsoLocal()) {
   let hayAumentoEnPeriodo = false
   let aumentoLabel = null
   let aumentoMesNombre = null
-  if (contrato.fecha_proximo_aumento) {
+  if (contrato.fecha_proximo_aumento && contrato.estado !== 'inactivo') {
     const [y, m] = contrato.fecha_proximo_aumento.split('-').map(Number)
     if (y === periodo.year && m === periodo.month) {
       hayAumentoEnPeriodo = true

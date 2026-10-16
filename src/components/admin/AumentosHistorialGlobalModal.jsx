@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { listarHistorialGlobalAumentos } from '../../services/aumentosService'
 import {
   capitalizar,
+  puedeDeshacerAumento,
   claveMes,
   formatPeriodoMesAnio,
   MESES_LARGOS,
@@ -36,13 +37,13 @@ function etiquetaPeriodo(clave) {
   return `${capitalizar(MESES_LARGOS[mes - 1] ?? String(mes))} ${anio}`
 }
 
-function EstadoTag({ aplicado }) {
-  return aplicado ? (
-    <Badge tone="success" icon={IconCheckCircle}>
-      Aplicado
-    </Badge>
+function EstadoTag({ deshacible }) {
+  return deshacible ? (
+    <Badge tone="brand">Se puede deshacer</Badge>
   ) : (
-    <Badge tone="brand">Acordado</Badge>
+    <Badge tone="success" icon={IconCheckCircle}>
+      Fijo
+    </Badge>
   )
 }
 
@@ -89,15 +90,27 @@ export default function AumentosHistorialGlobalModal({
     return Array.from(claves).sort((a, b) => b.localeCompare(a))
   }, [items])
 
+  // Solo el aumento más reciente de cada contrato se puede deshacer.
+  const deshaciblesIds = useMemo(() => {
+    const ultimoPorContrato = new Map()
+    for (const i of items) {
+      const actual = ultimoPorContrato.get(i.contrato_id)
+      if (!actual || i.fecha_aplicacion > actual.fecha_aplicacion) ultimoPorContrato.set(i.contrato_id, i)
+    }
+    return new Set(
+      [...ultimoPorContrato.values()].filter((i) => puedeDeshacerAumento(i)).map((i) => i.id)
+    )
+  }, [items])
+
   const itemsFiltrados = useMemo(() => {
     return items.filter((i) => {
       if (periodo !== 'todos' && claveMes(i.fecha_aplicacion) !== periodo) return false
       if (indice !== 'todos' && (i.indice_tipo ?? '').toLowerCase() !== indice) return false
-      if (estado === 'aplicado' && !i.aplicado) return false
-      if (estado === 'acordado' && i.aplicado) return false
+      if (estado === 'deshacible' && !deshaciblesIds.has(i.id)) return false
+      if (estado === 'fijo' && deshaciblesIds.has(i.id)) return false
       return true
     })
-  }, [items, periodo, indice, estado])
+  }, [items, periodo, indice, estado, deshaciblesIds])
 
   if (!open) return null
 
@@ -150,8 +163,8 @@ export default function AumentosHistorialGlobalModal({
           className="sm:w-40"
         >
           <option value="todos">Estado: Todos</option>
-          <option value="aplicado">Aplicado</option>
-          <option value="acordado">Acordado</option>
+          <option value="deshacible">Se puede deshacer</option>
+          <option value="fijo">Fijo</option>
         </FilterSelect>
         <span className="ml-auto text-sm tabular-nums text-slate-500">
           {cargando ? 'Cargando…' : `${itemsFiltrados.length} aumento${itemsFiltrados.length === 1 ? '' : 's'}`}
@@ -208,7 +221,7 @@ export default function AumentosHistorialGlobalModal({
                       <IndiceChip tipo={item.indice_tipo} />
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <EstadoTag aplicado={item.aplicado} />
+                      <EstadoTag deshacible={deshaciblesIds.has(item.id)} />
                     </td>
                     <td className="px-4 py-3 pr-6">
                       <div className="flex items-center justify-end gap-0.5">
@@ -220,9 +233,9 @@ export default function AumentosHistorialGlobalModal({
                             disabled={accionDeshabilitada}
                           />
                         )}
-                        {onDeshacer && !item.aplicado && (
+                        {onDeshacer && deshaciblesIds.has(item.id) && (
                           <IconButton
-                            label="Deshacer aumento acordado"
+                            label="Deshacer aumento"
                             icon={IconUndo}
                             tone="danger"
                             onClick={() => onDeshacer(item)}

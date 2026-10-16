@@ -259,7 +259,12 @@ export default function ReclamoDetalleModal({
 
             <section className="lg:self-start">
               <SeccionTitulo className="mb-2.5">Historial</SeccionTitulo>
-              <ReclamoTimeline eventos={eventos} loading={cargandoEventos} error={errorEventos} />
+              <ReclamoTimeline
+                eventos={eventos}
+                loading={cargandoEventos}
+                error={errorEventos}
+                perfilInquilinoId={reclamo?.inquilinos?.perfil_id ?? null}
+              />
             </section>
           </div>
         </ModalBody>

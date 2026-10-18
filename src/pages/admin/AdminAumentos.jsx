@@ -111,6 +111,7 @@ export default function AdminAumentos() {
   const [paginaActual, setPaginaActual] = useState(1)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmTarget, setConfirmTarget] = useState([])
+  const [confirmModo, setConfirmModo] = useState('uno')
   const [detalleOpen, setDetalleOpen] = useState(false)
   const [propuestaDetalle, setPropuestaDetalle] = useState(null)
   const [historialOpen, setHistorialOpen] = useState(false)
@@ -359,8 +360,9 @@ export default function AdminAumentos() {
     return 'Sin contratos para mostrar'
   }, [loading, propuestasConUi.length, filtro, periodoOperativo])
 
-  const abrirConfirm = (lista) => {
+  const abrirConfirm = (lista, modo) => {
     if (!lista.length) return
+    setConfirmModo(modo)
     setConfirmTarget(lista)
     setConfirmOpen(true)
   }
@@ -393,7 +395,7 @@ export default function AdminAumentos() {
   }
 
   const confirmarDesdeDetalle = (propuesta) => {
-    abrirConfirm([propuesta])
+    abrirConfirm([propuesta], 'uno')
   }
 
   const abrirHistorial = (propuesta) => {
@@ -488,11 +490,18 @@ export default function AdminAumentos() {
       const monto = formatMonto(t.monto_propuesto)
       return `¿Confirmar el aumento de ${nombre}? El monto pasa a ${monto} desde el ${formatFechaAumento(fecha)} y se genera el comprobante PDF.`
     }
-    return `¿Confirmar ${confirmTarget.length} aumento(s)? Se fija el nuevo monto de cada contrato, se genera su comprobante PDF y queda registro en el historial.`
+    if (confirmModo === 'todos') {
+      return `¿Confirmar ${confirmTarget.length} aumento(s) sin revisión individual? Entran solo los que ya se pueden confirmar. Se fija el monto calculado de cada contrato y se genera su comprobante PDF. El redondeo y la nota no se aplican en este lote.`
+    }
+    return `¿Confirmar ${confirmTarget.length} aumento(s) marcados como revisados? Se fija el monto calculado de cada contrato y se genera su comprobante PDF.`
   })()
 
   const tituloConfirm =
-    confirmTarget.length === 1 ? 'Confirmar Aumento' : 'Confirmar Aumentos'
+    confirmModo === 'todos'
+      ? 'Confirmar todos'
+      : confirmTarget.length === 1
+        ? 'Confirmar aumento'
+        : 'Confirmar revisados'
 
   const handleActualizar = () => {
     limpiarError()
@@ -647,13 +656,23 @@ export default function AdminAumentos() {
               <span className="hidden sm:inline">Actualizar</span>
             </button>
 
+            <button
+              type="button"
+              onClick={() => abrirConfirm(listosParaConfirmar, 'todos')}
+              disabled={loading || confirmando || listosParaConfirmar.length === 0}
+              className="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-lg border border-slate-300 bg-white px-4 text-xs font-semibold uppercase tracking-wide text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+            >
+              {listosParaConfirmar.length > 0
+                ? `Confirmar todos (${listosParaConfirmar.length})`
+                : 'Confirmar todos'}
+            </button>
             <AdminNuevoButton
               label={
                 listosRevisados.length > 0
-                  ? `CONFIRMAR REVISADOS (${listosRevisados.length})`
-                  : 'CONFIRMAR REVISADOS'
+                  ? `Confirmar revisados (${listosRevisados.length})`
+                  : 'Confirmar revisados'
               }
-              onClick={() => abrirConfirm(listosRevisados)}
+              onClick={() => abrirConfirm(listosRevisados, 'revisados')}
               variant="primary"
               className="!h-10 whitespace-nowrap"
               disabled={loading || confirmando || listosRevisados.length === 0}
@@ -881,9 +900,10 @@ export default function AdminAumentos() {
               Si faltan índices, se cargan a mano en el detalle.
             </p>
             <p>
-              <span className="font-medium text-slate-800">Acciones:</span> tocá el ícono del ojo para
-              abrir el detalle. Ahí ves el desglose y la fórmula, marcás &quot;Cálculo revisado&quot;
-              y confirmás el aumento.
+              <span className="font-medium text-slate-800">Acciones:</span> desde el detalle confirmás un
+              aumento, con redondeo y nota si hace falta. En la bandeja, Confirmar revisados aplica los
+              que marcaste; Confirmar todos aplica los que ya se pueden confirmar, sin esa marca. No
+              entran los proyectados, los ya confirmados ni los que no tienen un monto válido.
             </p>
           </div>
 

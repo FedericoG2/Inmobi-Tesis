@@ -160,7 +160,6 @@ export default function InquilinoDashboard() {
                   propuesta={propuesta}
                   loading={proyeccionLoading}
                   error={proyeccionError}
-                  mesAumento={resumen.aumentoMesNombre}
                 />
               </div>
             )}

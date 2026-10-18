@@ -232,6 +232,10 @@ export function etiquetaAumentoRelativa(fechaIso, hoy = hoyIsoLocal()) {
   return `Venció hace ${n} ${n === 1 ? 'día' : 'días'}`
 }
 
+/** Aviso del portal cuando el aumento del mes todavía no está confirmado. */
+export const AVISO_AUMENTO_PORTAL =
+  'Este mes corresponde un aumento. El nuevo monto lo confirma la inmobiliaria.'
+
 /**
  * Traduce una propuesta del RPC a lenguaje simple para la UI.
  * @param {object} propuesta
@@ -243,12 +247,13 @@ export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal(), opci
   const fechaAumento = propuesta.fecha_hasta ?? propuesta.fecha_proximo_aumento
 
   if (propuesta.ya_aplicado || propuesta.estado === 'aplicado') {
+    const fechaLabel = formatFechaAumento(fechaAumento)
     return {
       etiqueta: 'aplicado',
       etiquetaTexto: 'Confirmado',
       etiquetaEstado: 'Confirmado',
       observacion: portal
-        ? 'Este aumento ya está registrado en tu contrato.'
+        ? `Tu nuevo alquiler rige desde el ${fechaLabel}.`
         : 'Aumento ya aplicado al contrato.',
       montoMostrar: propuesta.monto_propuesto,
       montoEsAproximado: false,
@@ -265,10 +270,10 @@ export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal(), opci
       etiquetaTexto: 'Acordado',
       etiquetaEstado: 'Acordado',
       observacion: portal
-        ? `Tu nuevo alquiler rige desde el ${fechaLabel}.${aproximado ? ' El valor podría ajustarse al publicarse el índice final.' : ''}`
+        ? `Tu nuevo alquiler rige desde el ${fechaLabel}.`
         : `Aumento acordado: el nuevo monto rige desde el ${fechaLabel}. Se aplica automáticamente en esa fecha.`,
       montoMostrar: propuesta.monto_acordado ?? propuesta.monto_propuesto,
-      montoEsAproximado: aproximado,
+      montoEsAproximado: portal ? false : aproximado,
       puedeConfirmar: false,
       tono: 'sky',
     }
@@ -280,7 +285,7 @@ export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal(), opci
       etiquetaTexto: 'Sin Índices',
       etiquetaEstado: 'Sin Índices',
       observacion: portal
-        ? 'Todavía no hay datos suficientes para estimar el aumento. Consultá con la inmobiliaria.'
+        ? AVISO_AUMENTO_PORTAL
         : 'No hay datos de Argly para calcular este aumento. Cargá los valores oficiales a mano (BCRA/INDEC) y el sistema aplica la misma fórmula.',
       montoMostrar: null,
       montoEsAproximado: false,
@@ -304,25 +309,24 @@ export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal(), opci
       observacion = `Rezagado: pasó el día ${DIA_CORTE_OPERATIVO} del mes siguiente sin confirmar. Confirmá para poner el alquiler al día.`
     } else if (propuesta.fuente === 'manual' && !portal) {
       observacion = `Cálculo con índices cargados a mano. Podés confirmar hasta el ${corte}.`
+    } else if (portal) {
+      observacion = AVISO_AUMENTO_PORTAL
     } else if (aproximado) {
-      observacion = portal
-        ? `Estimación del aumento del alquiler${detalleIpc}. El valor puede variar cuando se publique el índice que falta.`
-        : `Falta un índice del período${detalleIpc}. El monto se muestra igual; puede variar al publicarse.`
+      observacion = `Falta un índice del período${detalleIpc}. El monto se muestra igual; puede variar al publicarse.`
     } else {
-      observacion = portal
-        ? 'Cálculo con índices oficiales de cierre. La inmobiliaria confirmará el nuevo monto.'
-        : dias != null && dias < 0
+      observacion =
+        dias != null && dias < 0
           ? `Pendiente de confirmar desde el ${formatFechaAumento(fechaAumento)}. Plazo: hasta el ${corte}.`
           : `Cálculo con valores oficiales. Podés confirmar hasta el ${corte}.`
     }
 
     return {
-      etiqueta: rezagado && !portal ? 'rezagado' : aproximado ? 'provisorio' : 'listo',
-      etiquetaTexto: rezagado && !portal ? 'Rezagado' : aproximado ? 'Índice pendiente' : 'Definitivo',
-      etiquetaEstado: rezagado && !portal ? 'Rezagado' : aproximado ? 'Índice pendiente' : 'Definitivo',
+      etiqueta: portal ? 'pendiente' : rezagado ? 'rezagado' : aproximado ? 'provisorio' : 'listo',
+      etiquetaTexto: portal ? 'Pendiente' : rezagado ? 'Rezagado' : aproximado ? 'Índice pendiente' : 'Definitivo',
+      etiquetaEstado: portal ? 'Pendiente' : rezagado ? 'Rezagado' : aproximado ? 'Índice pendiente' : 'Definitivo',
       observacion,
-      montoMostrar: propuesta.monto_propuesto,
-      montoEsAproximado: aproximado,
+      montoMostrar: portal ? null : propuesta.monto_propuesto,
+      montoEsAproximado: portal ? false : aproximado,
       puedeConfirmar: !portal,
       tono: rezagado && !portal ? 'red' : aproximado ? 'amber' : 'emerald',
     }
@@ -340,10 +344,10 @@ export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal(), opci
     etiquetaTexto: 'Proyectado',
     etiquetaEstado: 'Proyectado',
     observacion: portal
-      ? `Estimación del aumento del alquiler${detalleIpc}. Puede variar cuando se publiquen los índices definitivos.`
+      ? AVISO_AUMENTO_PORTAL
       : `Estimación del aumento del alquiler${detalleIpc}. Los índices definitivos del período aún no están publicados.`,
-    montoMostrar: propuesta.monto_propuesto,
-    montoEsAproximado: Boolean(propuesta.es_aproximado),
+    montoMostrar: portal ? null : propuesta.monto_propuesto,
+    montoEsAproximado: portal ? false : Boolean(propuesta.es_aproximado),
     puedeConfirmar: false,
     tono: 'indigo',
   }

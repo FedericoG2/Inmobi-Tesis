@@ -8,8 +8,7 @@ import {
 
 export const MAX_IMAGENES_RECLAMO = 5
 import { sinErrores, validarCamposReclamo } from '../utils/validarReclamo'
-import { obtenerSeriesArgly } from './arglyService'
-import { calcularPropuestaAumento, rangosIndicesParaContratos } from '../utils/calcularAumento'
+import { calcularPropuestaAumento } from '../utils/calcularAumento'
 import { hoyIsoLocal } from '../utils/aumentosUi'
 import { eliminarReclamo } from './reclamosService'
 
@@ -273,16 +272,10 @@ export async function obtenerProyeccionAumentoPortal(contratoId) {
     }
   }
 
-  const rangos = rangosIndicesParaContratos([contrato], hoy)
-  const seriesRes = await obtenerSeriesArgly(rangos)
-  const propuesta = calcularPropuestaAumento({
-    contrato,
-    serieIcl: seriesRes.data?.icl ?? [],
-    serieIpc: seriesRes.data?.ipc ?? [],
-    hoy,
-  })
-
-  return { data: { disponible: true, motivo: null, propuesta }, error: null }
+  return {
+    data: { disponible: true, motivo: 'pendiente_confirmacion', propuesta: null },
+    error: null,
+  }
 }
 
 /**

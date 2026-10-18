@@ -169,7 +169,6 @@ export default function InquilinoDocumentos() {
                     propuesta={propuesta}
                     loading={proyeccionLoading}
                     error={proyeccionError}
-                    mesAumento={resumen.aumentoMesNombre}
                   />
                 </div>
               )}

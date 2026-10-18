@@ -65,7 +65,7 @@ function EstadoContratoChip({ contrato }) {
 const FILTRO_ESTADO = [
   { value: 'activos', label: 'Activos' },
   { value: 'programados', label: 'Programados' },
-  { value: 'inactivos', label: 'Inactivos' },
+  { value: 'inactivos', label: 'Finalizados' },
   { value: 'vencidos', label: 'Vencidos' },
   { value: 'todos', label: 'Todos' },
 ]
@@ -257,7 +257,7 @@ export default function AdminContratos() {
     }
     if (filtroEstado === 'activos') return 'No hay contratos activos'
     if (filtroEstado === 'programados') return 'No hay contratos programados'
-    if (filtroEstado === 'inactivos') return 'No hay contratos inactivos'
+    if (filtroEstado === 'inactivos') return 'No hay contratos finalizados'
     if (filtroEstado === 'vencidos') return 'No hay contratos vencidos'
     return 'No hay contratos para mostrar'
   }, [loading, contratos.length, contratosFiltrados.length, filtroEstado, hayFiltrosExtra])

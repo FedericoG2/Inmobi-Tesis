@@ -3,10 +3,8 @@ const TIPOS_INDEXADOS = new Set(['ipc', 'icl'])
 /** Indica si conviene consultar la proyección de aumento para el contrato. */
 export function contratoPuedeProyectarAumento(contrato, resumen) {
   if (contrato?.estado && contrato.estado !== 'activo') return false
-  if (!contrato?.fecha_proximo_aumento) return false
-  if (!TIPOS_INDEXADOS.has((contrato.tipo_ajuste ?? '').toLowerCase())) return false
-  if (contrato.fecha_fin && contrato.fecha_proximo_aumento > contrato.fecha_fin) return false
-  return Boolean(resumen?.hayAumentoEnPeriodo)
+  if (!TIPOS_INDEXADOS.has((contrato?.tipo_ajuste ?? '').toLowerCase())) return false
+  return Boolean(resumen?.fechaAumentoPeriodo)
 }
 
 export function formatMontoInquilino(monto) {

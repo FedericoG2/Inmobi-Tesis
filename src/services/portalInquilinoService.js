@@ -8,8 +8,7 @@ import {
 
 export const MAX_IMAGENES_RECLAMO = 5
 import { sinErrores, validarCamposReclamo } from '../utils/validarReclamo'
-import { calcularPropuestaAumento } from '../utils/calcularAumento'
-import { hoyIsoLocal } from '../utils/aumentosUi'
+import { propuestaDesdeAumentoRegistrado } from '../utils/aumentosUi'
 import { eliminarReclamo } from './reclamosService'
 
 export { etiquetaTipoArchivo }
@@ -57,6 +56,7 @@ export async function listarContratosActivosInquilino(inquilinoId) {
       dia_vencimiento,
       tipo_ajuste,
       periodicidad_meses,
+      fecha_ultimo_aumento,
       fecha_proximo_aumento,
       observaciones,
       estado,
@@ -202,78 +202,55 @@ export async function descargarDocumentoPortal(urlArchivo) {
   return obtenerUrlDescargaDocumento(urlArchivo)
 }
 
-export async function obtenerProyeccionAumentoPortal(contratoId) {
+/**
+ * Aumento del mes del próximo pago para el portal. Solo devuelve el monto si el
+ * aumento ya está confirmado; si no, el portal muestra el aviso sin monto.
+ * `fechaAumento` es la fecha del aumento que cae en ese mes: la del próximo aumento
+ * (todavía sin confirmar) o la del último (ya confirmado: al confirmar, la base
+ * corre `fecha_proximo_aumento` al período siguiente).
+ */
+export async function obtenerProyeccionAumentoPortal(contratoId, fechaAumento) {
   if (!supabase) {
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
 
-  if (!contratoId) {
+  if (!contratoId || !fechaAumento) {
     return { data: null, error: { message: 'Contrato no especificado' } }
   }
 
-  const { data: contrato, error } = await supabase
-    .from('contratos')
+  const { data: aumento, error } = await supabase
+    .from('aumentos')
     .select(
       `
       id,
-      monto_alquiler,
-      fecha_inicio,
-      fecha_ultimo_aumento,
-      fecha_proximo_aumento,
-      fecha_fin,
-      tipo_ajuste,
-      inquilinos ( nombre_completo ),
-      propiedades ( direccion ),
-      aumentos (
-        id,
-        fecha_aplicacion,
-        monto_nuevo,
-        aplicado,
-        detalle_calculo,
-        indice_valor_inicio,
-        indice_valor_fin
-      )
+      contrato_id,
+      fecha_aplicacion,
+      monto_anterior,
+      monto_nuevo,
+      porcentaje_aplicado,
+      indice_tipo,
+      indice_valor_inicio,
+      indice_valor_fin,
+      modo,
+      notas,
+      aplicado,
+      detalle_calculo
     `
     )
-    .eq('id', contratoId)
-    .eq('estado', 'activo')
+    .eq('contrato_id', contratoId)
+    .eq('fecha_aplicacion', fechaAumento)
     .maybeSingle()
 
   if (error) {
     return { data: null, error: { message: error.message } }
   }
 
-  if (!contrato) {
-    return { data: { disponible: false, motivo: 'contrato_no_encontrado', propuesta: null }, error: null }
-  }
-
-  const tipo = (contrato.tipo_ajuste ?? '').toLowerCase()
-  if (!['icl', 'ipc'].includes(tipo)) {
-    return { data: { disponible: false, motivo: 'ajuste_no_indexado', propuesta: null }, error: null }
-  }
-
-  if (!contrato.fecha_proximo_aumento || (contrato.fecha_fin && contrato.fecha_proximo_aumento > contrato.fecha_fin)) {
-    return { data: { disponible: false, motivo: 'sin_aumento_programado', propuesta: null }, error: null }
-  }
-
-  const hoy = hoyIsoLocal()
-  const acordado = (contrato.aumentos ?? []).find(
-    (row) => row.fecha_aplicacion === contrato.fecha_proximo_aumento
-  )
-
-  if (acordado) {
-    return {
-      data: {
-        disponible: true,
-        motivo: null,
-        propuesta: calcularPropuestaAumento({ contrato, acordado, hoy }),
-      },
-      error: null,
-    }
+  if (!aumento) {
+    return { data: { disponible: true, motivo: 'pendiente_confirmacion', propuesta: null }, error: null }
   }
 
   return {
-    data: { disponible: true, motivo: 'pendiente_confirmacion', propuesta: null },
+    data: { disponible: true, motivo: null, propuesta: propuestaDesdeAumentoRegistrado(aumento) },
     error: null,
   }
 }

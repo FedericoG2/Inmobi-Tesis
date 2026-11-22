@@ -1,28 +1,18 @@
-function IconCalendar({ className = 'h-3.5 w-3.5' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden="true">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M6.75 3v2.25M17.25 3v2.25M4.5 8.25h15M4.5 19.5h15a1.5 1.5 0 0 0 1.5-1.5V7.5a1.5 1.5 0 0 0-1.5-1.5h-15a1.5 1.5 0 0 0-1.5 1.5v10.5a1.5 1.5 0 0 0 1.5 1.5Z"
-      />
-    </svg>
-  )
-}
+import { IconCalendar } from '../icons/Icons'
+import { cn } from '../../utils/ui'
 
 function FechaChip({ label, value, destacado = false }) {
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs ring-1 ${
-        destacado
-          ? 'bg-brand-50 text-brand-800 ring-brand-100'
-          : 'bg-slate-50 text-slate-700 ring-slate-100'
-      }`}
+      className={cn(
+        'inline-flex items-center gap-2.5 rounded-lg px-3 py-2 ring-1 ring-inset',
+        destacado ? 'bg-brand-50 ring-brand-600/15' : 'bg-slate-50 ring-slate-200/80'
+      )}
     >
-      <IconCalendar className={destacado ? 'text-brand-500' : 'text-slate-400'} />
+      <IconCalendar className={cn('h-4 w-4', destacado ? 'text-brand-600' : 'text-slate-400')} />
       <span className="flex flex-col leading-tight">
-        <span className="text-[10px] font-semibold uppercase tracking-wide opacity-70">{label}</span>
-        <span className="font-semibold">{value}</span>
+        <span className="text-xs text-slate-500">{label}</span>
+        <span className={cn('text-sm font-medium', destacado ? 'text-brand-800' : 'text-slate-900')}>{value}</span>
       </span>
     </span>
   )
@@ -48,11 +38,9 @@ export function PeriodoPagoChips({ periodoLabel, vencimientoCorto }) {
   if (!periodoLabel && !vencimientoCorto) return null
 
   return (
-    <div className="mt-2 flex flex-wrap gap-2">
+    <div className="mt-3 flex flex-wrap gap-2">
       {periodoLabel && <FechaChip label="Período" value={periodoLabel} />}
-      {vencimientoCorto && (
-        <FechaChip label="Vencimiento" value={vencimientoCorto} destacado />
-      )}
+      {vencimientoCorto && <FechaChip label="Vencimiento" value={vencimientoCorto} destacado />}
     </div>
   )
 }

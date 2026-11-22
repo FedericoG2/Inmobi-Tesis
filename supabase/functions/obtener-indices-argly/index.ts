@@ -1,4 +1,5 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
+import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const ARGLY_ICL_RANGE = 'https://api.argly.com.ar/api/icl/range'
 const ARGLY_IPC_RANGE = 'https://api.argly.com.ar/api/ipc/range'
@@ -38,6 +39,19 @@ Deno.serve(async (req) => {
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) {
     return jsonResponse({ error: 'No autorizado' }, 401)
+  }
+
+  // Los índices los consulta solo el Encargado de Alquileres (bandeja, detalle y Dashboard).
+  const cliente = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
+    global: { headers: { Authorization: authHeader } },
+  })
+  const { data: sesion, error: errSesion } = await cliente.auth.getUser()
+  if (errSesion || !sesion?.user) {
+    return jsonResponse({ error: 'Sesión inválida' }, 401)
+  }
+  const { data: esEncargado } = await cliente.rpc('es_encargado')
+  if (esEncargado !== true) {
+    return jsonResponse({ error: 'Solo el Encargado de Alquileres consulta los índices' }, 403)
   }
 
   let body: { icl?: IclRango | null; ipc?: IpcRango | null } = {}

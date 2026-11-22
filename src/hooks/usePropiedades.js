@@ -27,21 +27,14 @@ export function usePropiedades() {
   const [submitError, setSubmitError] = useState(null)
   const [actionError, setActionError] = useState(null)
 
-  const refetch = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-
-    const { data, error: fetchError } = await listarPropiedades()
-
-    if (fetchError) {
-      setError(fetchError.message)
-      setPropiedades([])
-    } else {
-      setPropiedades(data ?? [])
-    }
-
+  const aplicarListado = useCallback(({ data, error: fetchError }) => {
+    setError(fetchError ? fetchError.message : null)
+    setPropiedades(fetchError ? [] : data ?? [])
     setLoading(false)
   }, [])
+
+  // Recarga sin vaciar la lista: después de cada cambio se ve el dato nuevo sin parpadeo.
+  const refetch = useCallback(async () => aplicarListado(await listarPropiedades()), [aplicarListado])
 
   const crear = useCallback(
     async (datos) => {
@@ -129,8 +122,14 @@ export function usePropiedades() {
   }, [])
 
   useEffect(() => {
-    refetch()
-  }, [refetch])
+    let vigente = true
+    listarPropiedades().then((resultado) => {
+      if (vigente) aplicarListado(resultado)
+    })
+    return () => {
+      vigente = false
+    }
+  }, [aplicarListado])
 
   return {
     propiedades,

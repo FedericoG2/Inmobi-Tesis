@@ -5,7 +5,7 @@ import {
 } from '../utils/normalizarContacto'
 
 const SELECT_PROPIETARIO =
-  'id, tipo_persona, nombre_completo, dni_cuit, telefono, email, domicilio'
+  'id, tipo_persona, nombre_completo, dni_cuit, telefono, email, domicilio, perfil_id'
 
 function cantidadDesdeRelacion(rel) {
   if (Array.isArray(rel) && rel[0]?.count != null) return Number(rel[0].count)
@@ -124,6 +124,18 @@ export async function contarPropiedadesPorPropietario(propietarioId) {
   if (error) return { error }
 
   return { propiedades: count ?? 0 }
+}
+
+/** Propiedades de un propietario, para su detalle (RF-021). */
+export async function listarPropiedadesDePropietario(propietarioId) {
+  if (!supabase) {
+    return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
+  }
+  return supabase
+    .from('propiedades')
+    .select('id, direccion, tipo, estado')
+    .eq('propietario_id', propietarioId)
+    .order('direccion')
 }
 
 export async function eliminarPropietario(id) {

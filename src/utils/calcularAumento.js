@@ -139,10 +139,7 @@ function basePropuesta(contrato, hoy) {
     monto_propuesto: null,
     variacion_pct: null,
     confirmable: false,
-    ya_acordado: false,
     ya_aplicado: false,
-    programado: false,
-    monto_acordado: null,
     detalle_calculo: null,
   }
 }
@@ -312,7 +309,7 @@ function calcularIpc(base, serieIpc, override) {
  * @param {Array} [params.serieIcl]
  * @param {Array} [params.serieIpc]
  * @param {object|null} [params.override]
- * @param {object|null} [params.acordado]
+ * @param {object|null} [params.registrado] aumento ya confirmado para esta fecha, si existe
  * @param {string} params.hoy
  */
 export function calcularPropuestaAumento({
@@ -320,15 +317,15 @@ export function calcularPropuestaAumento({
   serieIcl = [],
   serieIpc = [],
   override = null,
-  acordado = null,
+  registrado = null,
   hoy,
 }) {
   const base = basePropuesta(contrato, hoy)
   const tipo = base.tipo_ajuste
 
-  if (acordado) {
-    const montoNuevo = Number(acordado.monto_nuevo)
-    const aplicado = Boolean(acordado.aplicado)
+  if (registrado) {
+    const montoNuevo = Number(registrado.monto_nuevo)
+    const detalle = registrado.detalle_calculo ?? {}
     const variacion =
       base.monto_actual > 0 && Number.isFinite(montoNuevo)
         ? roundPct((montoNuevo / base.monto_actual - 1) * 100)
@@ -336,24 +333,21 @@ export function calcularPropuestaAumento({
 
     return {
       ...base,
-      estado: aplicado ? 'aplicado' : 'programado',
+      estado: 'aplicado',
       monto_propuesto: montoNuevo,
-      monto_acordado: montoNuevo,
       variacion_pct: variacion,
-      ya_acordado: !aplicado,
-      programado: !aplicado,
-      ya_aplicado: aplicado,
+      ya_aplicado: true,
       confirmable: false,
-      es_aproximado: Boolean(acordado.detalle_calculo?.es_aproximado),
-      fuente: acordado.detalle_calculo?.fuente ?? 'argly',
-      detalle_calculo: acordado.detalle_calculo ?? null,
-      indice_valor_inicio: acordado.detalle_calculo?.icl_inicio ?? acordado.indice_valor_inicio ?? null,
-      indice_valor_fin: acordado.detalle_calculo?.icl_fin ?? acordado.indice_valor_fin ?? null,
-      icl_fecha_fin_usada: acordado.detalle_calculo?.icl_fecha_fin_usada ?? null,
-      ipc_factor: acordado.detalle_calculo?.factor ?? null,
-      ipc_detalle: acordado.detalle_calculo?.detalle_meses ?? null,
-      ipc_meses: acordado.detalle_calculo?.meses_aplicados ?? null,
-      ipc_meses_esperados: acordado.detalle_calculo?.meses_esperados ?? null,
+      es_aproximado: Boolean(detalle.es_aproximado),
+      fuente: detalle.fuente ?? 'argly',
+      detalle_calculo: registrado.detalle_calculo ?? null,
+      indice_valor_inicio: detalle.icl_inicio ?? registrado.indice_valor_inicio ?? null,
+      indice_valor_fin: detalle.icl_fin ?? registrado.indice_valor_fin ?? null,
+      icl_fecha_fin_usada: detalle.icl_fecha_fin_usada ?? null,
+      ipc_factor: detalle.factor ?? null,
+      ipc_detalle: detalle.detalle_meses ?? null,
+      ipc_meses: detalle.meses_aplicados ?? null,
+      ipc_meses_esperados: detalle.meses_esperados ?? null,
     }
   }
 
@@ -384,4 +378,39 @@ export function ultimoIpcDeSerie(serie) {
   return last
     ? { anio: Number(last.anio), mes: Number(last.mes), valor: Number(last.valor) }
     : null
+}
+
+/**
+ * Índices cargados a mano (tabla indices_manuales) que le sirven a un contrato, como override del
+ * cálculo. Solo completan lo que Argly no publicó: si el valor oficial existe, se usa el oficial.
+ * Devuelve null si el contrato no necesita ninguno.
+ */
+export function overrideDesdeIndicesManuales(contrato, series, manuales = []) {
+  const tipo = (contrato?.tipo_ajuste ?? '').toLowerCase()
+  const desde = contrato?.fecha_ultimo_aumento ?? contrato?.fecha_inicio
+  const hasta = contrato?.fecha_proximo_aumento
+  if (!desde || !hasta || !manuales.length) return null
+
+  if (tipo === 'ipc') {
+    const ipcMeses = {}
+    for (const m of mesesIpcPeriodo(desde, hasta)) {
+      if (ipcValorMes(series?.ipc, m.anio, m.mes) != null) continue
+      const manual = manuales.find((x) => x.tipo === 'ipc' && Number(x.anio) === m.anio && Number(x.mes) === m.mes)
+      if (manual && Number(manual.valor) > 0) ipcMeses[m.clave] = Number(manual.valor)
+    }
+    return Object.keys(ipcMeses).length ? { ipcMeses } : null
+  }
+
+  if (tipo === 'icl') {
+    const manualEn = (fecha) => manuales.find((x) => x.tipo === 'icl' && x.fecha === fecha && Number(x.valor) > 0)
+    const oficialInicio = iclValorEnFecha(series?.icl, desde)
+    const manualInicio = oficialInicio ? null : manualEn(desde)
+    const manualFin = iclCierrePublicado(series?.icl, hasta) ? null : manualEn(hasta)
+    if (!manualInicio && !manualFin) return null
+    const inicio = manualInicio ? Number(manualInicio.valor) : oficialInicio?.valor
+    const fin = manualFin ? Number(manualFin.valor) : iclValorEnFecha(series?.icl, hasta)?.valor
+    return inicio > 0 && fin > 0 ? { iclInicio: inicio, iclFin: fin } : null
+  }
+
+  return null
 }

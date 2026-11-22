@@ -1,83 +1,66 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 
-// ==========================================
-// PASO 1: CREAR EL CANAL DE AUTENTICACIÓN
-// ==========================================
-// Creamos el canal de datos para que la sesión de Inmobi viaje por la app.
+/*
+ * Sesión y rol del usuario para toda la aplicación.
+ *
+ * 1. Supabase Auth guarda la sesión en el navegador; al iniciar, onAuthStateChange avisa si hay una.
+ * 2. Con la sesión, se lee el rol en public.perfiles ('admin', 'encargado', 'inquilino' o 'propietario').
+ * 3. Los guards (src/guards) usan useAuth() para dejar pasar o redirigir a la pantalla de cada rol.
+ *    Sin perfil o sin rol, la cuenta no entra (RF-005).
+ */
 const AuthContext = createContext(null)
 
-// ==========================================
-// PASO 4 (MOMENTO B): CONSULTA A LA BASE DE DATOS
-// ==========================================
-// Esta función va a internet, entra a la tabla 'perfiles' de Supabase
-// y trae el rol ('admin', 'encargado' o 'inquilino') usando el ID del usuario.
-async function fetchRol(userId) {
+async function obtenerRol(userId) {
   if (!supabase) return null
 
-  const { data, error } = await supabase
-    .from('perfiles')
-    .select('rol')
-    .eq('id', userId)
-    .single()
+  const { data, error } = await supabase.from('perfiles').select('rol').eq('id', userId).maybeSingle()
 
   if (error) {
-    console.error('[Inmobi] Error al obtener el rol de la base de datos:', error.message)
+    console.error('[Inmobi] No se pudo obtener el rol:', error.message)
     return null
   }
 
   return data?.rol ?? null
 }
 
-// Pantalla de inicio de cada rol: administración de cuentas, panel de la inmobiliaria o portal.
-export function rutaInicioPorRol(rol) {
-  if (rol === 'admin') return '/cuentas'
-  if (rol === 'encargado') return '/admin/dashboard'
-  if (rol === 'inquilino') return '/inquilino/dashboard'
-  return null
+// Pantalla de inicio de cada rol: administración de cuentas, panel de la inmobiliaria o portales.
+const RUTA_INICIO = {
+  admin: '/cuentas',
+  encargado: '/admin/dashboard',
+  inquilino: '/inquilino/dashboard',
+  propietario: '/propietario/inicio',
 }
 
-// ==========================================
-// COMPONENTE PRINCIPAL
-// ==========================================
 export function AuthProvider({ children }) {
-  // ==========================================
-  // PASO 2: LOS TRES ESTADOS INICIALES
-  // ==========================================
-  // Guardan los datos en la memoria mientras la app esté abierta.
-  const [user, setUser] = useState(null) // Guarda el email y el ID de Supabase
-  const [rol, setRol] = useState(null) // Guarda si es 'admin', 'encargado' o 'inquilino'
-  const [initializing, setInitializing] = useState(true) // Solo true al primer arranque de la app
-  const [rolLoading, setRolLoading] = useState(false) // true solo mientras trae el rol post-login
+  const [user, setUser] = useState(null)
+  const [rol, setRol] = useState(null)
+  // Solo es true mientras se resuelve la sesión al abrir la aplicación.
+  const [initializing, setInitializing] = useState(Boolean(supabase))
+  // true mientras se lee el rol después de iniciar sesión.
+  const [rolLoading, setRolLoading] = useState(false)
   const userIdRef = useRef(null)
 
-  // ==========================================
-  // PASO 4: LA VERIFICACIÓN REAL CON SUPABASE
-  // ==========================================
   useEffect(() => {
-    if (!supabase) {
-      setInitializing(false)
-      return
-    }
+    if (!supabase) return undefined
 
     let mounted = true
-
-    const finishInitializing = () => {
+    const terminarInicio = () => {
       if (mounted) setInitializing(false)
     }
+    // Si Supabase no responde, la aplicación no queda trabada en "Cargando".
+    const limiteInicio = setTimeout(terminarInicio, 8000)
 
-    const loadingTimeout = setTimeout(finishInitializing, 8000)
-
-    const applySession = async (session) => {
+    const aplicarSesion = async (session) => {
       if (!mounted) return
 
       if (session?.user) {
         userIdRef.current = session.user.id
         setUser(session.user)
         setRolLoading(true)
-        const perfilRol = await fetchRol(session.user.id)
+        const rolPerfil = await obtenerRol(session.user.id)
         if (mounted) {
-          setRol(perfilRol)
+          setRol(rolPerfil)
           setRolLoading(false)
         }
       } else {
@@ -91,31 +74,28 @@ export function AuthProvider({ children }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
+      // Fuera del callback de Supabase: hacer consultas dentro de él puede bloquear la sesión.
       setTimeout(async () => {
         if (!mounted) return
 
-        // Al volver a la pestaña Supabase refresca el token — no hay que re-cargar la app
+        // Al volver a la pestaña Supabase renueva el token: no hace falta recargar nada.
         if (event === 'TOKEN_REFRESHED') return
 
-        // Sesión ya cargada: ignorar eventos duplicados al cambiar de pestaña
-        if (
-          event === 'SIGNED_IN' &&
-          session?.user?.id === userIdRef.current &&
-          userIdRef.current !== null
-        ) {
+        // La misma sesión ya está cargada: se ignora el evento repetido al cambiar de pestaña.
+        if (event === 'SIGNED_IN' && userIdRef.current !== null && session?.user?.id === userIdRef.current) {
           return
         }
 
         try {
           if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-            await applySession(session)
+            await aplicarSesion(session)
           }
         } catch (error) {
-          console.error('[Inmobi] Error en la verificación:', error)
+          console.error('[Inmobi] Error al verificar la sesión:', error)
         } finally {
           if (event === 'INITIAL_SESSION' || event === 'SIGNED_OUT') {
-            clearTimeout(loadingTimeout)
-            finishInitializing()
+            clearTimeout(limiteInicio)
+            terminarInicio()
           }
         }
       }, 0)
@@ -123,76 +103,28 @@ export function AuthProvider({ children }) {
 
     return () => {
       mounted = false
-      clearTimeout(loadingTimeout)
+      clearTimeout(limiteInicio)
       subscription.unsubscribe()
     }
   }, [])
 
-  // ==========================================
-  // PASO 3: CREAR EL PAQUETE Y COMPARTIRLO
-  // ==========================================
-
-  // 3-A: Armamos el objeto 'value' con respuestas lógicas de Sí o No (booleanos)
   const value = {
     user,
     rol,
     initializing,
     rolLoading,
-    loading: initializing, // alias: solo bloquea en el primer arranque
-    isAuthenticated: user !== null, // true si el usuario logueó
+    loading: initializing,
+    isAuthenticated: user !== null,
     isAdminSistema: rol === 'admin', // Administrador de sistema: solo administra cuentas
     isEncargado: rol === 'encargado', // Encargado de Alquileres: opera la cartera
-    isInquilino: rol === 'inquilino', // true si es cliente/inquilino
-    rutaInicio: rutaInicioPorRol(rol),
+    isInquilino: rol === 'inquilino',
+    isPropietario: rol === 'propietario',
+    rutaInicio: RUTA_INICIO[rol] ?? null,
   }
 
-  // 3-B: Metemos el paquete en el canal (.Provider) y envolvemos al Router ({children})
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-// ==========================================
-// PASO 5: EL ATRAJO (HOOK) PARA LAS RUTAS Y PANTALLAS
-// ==========================================
-// Cualquier archivo de Inmobi llama a esta función para leer el paquete 'value'.
 export function useAuth() {
   return useContext(AuthContext)
 }
-
-
-
-// =========================================================================
-// 📝 MINI RESUMEN PARA EL EL FUTURO (LEER DE CORRIDO EN ESTE ORDEN):
-// =========================================================================
-/*
-PASO 1: CREAR EL CANAL VACÍO (createContext)
-- El problema en React es que pasar datos de un archivo a otro es un viaje total. Las variables 
-  acá adentro y en cada archivo por defecto son privadas. Por eso creamos un canal central vacío para Inmobi, este canal vacio se va a llenar de info como por ejemplo si hay una sesion iniciada o no, que usuario esta logueado, etc y luego este canal se va a compartir con cualquier componente que lo necesite como por ejemplo el Router, va a poder acceder a la info de este canal mediante una funcion llamada useAuth(). EL Router con esa info puede decidir si mostrar un componente o otro, si mostrar un boton o no, etc.
-
-PASO 2: CONGELAR LA APP AL ARRANCAR (useState)
-- Creamos la memoria del archivo (user, rol) es decir aun no hay usario ni rol pero si el loading esta en true, la app se congela y no se muestra nada hasta que el loading sea false. Esto se debe a que el ruter pregunta sobre el loading y si esta en true, muestra el cartel de carga.
-
-PASO 3: MANDAR EL PAQUETE AL CANAL (value y .Provider)
-- Juntamos los estados en un paquete cómodo lleno de atajos de Sí/No (como 'isAdmin').
-- ¿Cómo ponemos ese paquete 'value' dentro del canal? Lo metemos en la propiedad 'value' del (.Provider).
-- Al envolver a los '{children}', hacemos que esos datos dejen de ser privados y pasen a ser 
-  pÚblicos para el Router que está metido ahí adentro. Como la carga es 'true', el Router ve 
-  esto y muestra la pantalla de "Cargando Inmobi...".
-
-
-
-
-PASO 4: LA VERIFICACIÓN REAL CON SUPABASE (useEffect)
-- Mientras el usuario ve el cartel de carga, este bloque se despierta y hace el laburo:
-  A) React consulta con supabase que este le pregunta al navegador (LocalStorage) si hay un token de sesión guardado.
-  B) Si hay, guarda el usuario (user) y viaja a internet a la tabla 'perfiles' de Supabase 
-     a buscar el rol ('admin', 'encargado' o 'inquilino').
-  C) Cuando vuelve con el rol, cambia 'loading' a 'false'. Si no había nadie, también lo pasa a 'false'.
-
-PASO 5: LA LIBERACIÓN Y EL ENCHUFE (useAuth)
-- Como en el Paso 4 cambiamos los estados, este archivo se vuelve a ejecutar automáticamente, 
-  pero ahora el paquete 'value' viaja con loading en 'false', isAuthenticated en true y el rol real.
-- El Router recibe esta actualización del canal, saca el cartel de carga y te dibuja el Dashboard 
-  si sos admin de la inmobiliaria, o el Login si no estabas conectado.
-- Creamos la función 'useAuth()' como un "enchufe" para que mañana, cualquier otra ruta o pantalla 
-  del sistema llame a esa función en una sola línea y sepa qué mostrar u ocultar según el rol.
-*/

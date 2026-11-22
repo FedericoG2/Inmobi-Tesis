@@ -9,8 +9,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const ROLES_ASIGNABLES = ['encargado', 'inquilino'] as const
+const ROLES_ASIGNABLES = ['encargado', 'inquilino', 'propietario'] as const
 type RolAsignable = (typeof ROLES_ASIGNABLES)[number]
+
+// Las cuentas de portal se vinculan con su ficha: la del inquilino o la del propietario.
+const FICHAS = {
+  inquilino: { tabla: 'inquilinos', persona: 'inquilino' },
+  propietario: { tabla: 'propietarios', persona: 'propietario' },
+} as const
+type RolConFicha = keyof typeof FICHAS
+const tieneFicha = (rol: string | null): rol is RolConFicha => rol === 'inquilino' || rol === 'propietario'
+
 const BLOQUEO_INDEFINIDO = '876000h'
 const MIN_PASSWORD = 8
 
@@ -29,7 +38,7 @@ function jsonResponse(body: unknown, status = 200) {
 
 function validarRol(rol: unknown): RolAsignable {
   if (!ROLES_ASIGNABLES.includes(rol as RolAsignable)) {
-    throw new ErrorNegocio('El rol debe ser Encargado de Alquileres o inquilino')
+    throw new ErrorNegocio('El rol debe ser Encargado de Alquileres, Inquilino o Propietario')
   }
   return rol as RolAsignable
 }
@@ -58,46 +67,70 @@ async function cuentaModificable(admin: SupabaseClient, userId: unknown, solicit
   return { id, rol }
 }
 
-async function vincularInquilino(admin: SupabaseClient, userId: string, inquilinoId: unknown) {
-  const id = Number(inquilinoId)
+/** Verifica que la ficha exista y no tenga otra cuenta. Devuelve su id. */
+async function fichaLibre(admin: SupabaseClient, rol: RolConFicha, fichaId: unknown, userId: string | null) {
+  const { tabla, persona } = FICHAS[rol]
+  const id = Number(fichaId)
   if (!Number.isFinite(id) || id <= 0) {
-    throw new ErrorNegocio('Elegí la ficha del inquilino a la que pertenece la cuenta')
+    throw new ErrorNegocio(`Elegí la ficha del ${persona} a la que pertenece la cuenta`)
   }
-  const { data: ficha, error } = await admin
-    .from('inquilinos')
-    .select('id, perfil_id')
-    .eq('id', id)
-    .maybeSingle()
+  const { data: ficha, error } = await admin.from(tabla).select('id, perfil_id').eq('id', id).maybeSingle()
   if (error) throw error
-  if (!ficha) throw new ErrorNegocio('La ficha del inquilino no existe')
+  if (!ficha) throw new ErrorNegocio(`La ficha del ${persona} no existe`)
   if (ficha.perfil_id && ficha.perfil_id !== userId) {
-    throw new ErrorNegocio('Ese inquilino ya tiene una cuenta para el portal')
+    throw new ErrorNegocio(`Ese ${persona} ya tiene una cuenta para el portal`)
   }
-
-  await admin.from('inquilinos').update({ perfil_id: null }).eq('perfil_id', userId).neq('id', id)
-  const { error: errUpd } = await admin.from('inquilinos').update({ perfil_id: userId }).eq('id', id)
-  if (errUpd) throw errUpd
+  return id
 }
+
+/** Deja la cuenta vinculada solo con la ficha de su rol (o con ninguna, si el rol no tiene ficha). */
+async function vincularFicha(admin: SupabaseClient, userId: string, rol: RolAsignable, fichaId: unknown) {
+  for (const otro of Object.keys(FICHAS) as RolConFicha[]) {
+    if (otro === rol) continue
+    const { error } = await admin.from(FICHAS[otro].tabla).update({ perfil_id: null }).eq('perfil_id', userId)
+    if (error) throw error
+  }
+  if (!tieneFicha(rol)) return
+
+  const { tabla } = FICHAS[rol]
+  const id = await fichaLibre(admin, rol, fichaId, userId)
+  const { error: errLiberar } = await admin.from(tabla).update({ perfil_id: null }).eq('perfil_id', userId).neq('id', id)
+  if (errLiberar) throw errLiberar
+  const { error } = await admin.from(tabla).update({ perfil_id: userId }).eq('id', id)
+  if (error) throw error
+}
+
+type Ficha = { id: number; nombre_completo: string; dni_cuit: string; email: string | null; perfil_id: string | null }
 
 async function listar(admin: SupabaseClient) {
   const { data: usuarios, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
   if (error) throw error
 
-  const [{ data: perfiles, error: errPerfiles }, { data: inquilinos, error: errInq }] = await Promise.all([
+  const columnas = 'id, nombre_completo, dni_cuit, email, perfil_id'
+  const [perfilesRes, inquilinosRes, propietariosRes] = await Promise.all([
     admin.from('perfiles').select('id, rol'),
-    admin.from('inquilinos').select('id, nombre_completo, dni_cuit, email, perfil_id').order('nombre_completo'),
+    admin.from('inquilinos').select(columnas).order('nombre_completo'),
+    admin.from('propietarios').select(columnas).order('nombre_completo'),
   ])
-  if (errPerfiles) throw errPerfiles
-  if (errInq) throw errInq
+  if (perfilesRes.error) throw perfilesRes.error
+  if (inquilinosRes.error) throw inquilinosRes.error
+  if (propietariosRes.error) throw propietariosRes.error
 
-  const rolPorId = new Map((perfiles ?? []).map((p) => [p.id, p.rol]))
-  const inquilinoPorPerfil = new Map(
-    (inquilinos ?? []).filter((i) => i.perfil_id).map((i) => [i.perfil_id, i])
-  )
+  const inquilinos = (inquilinosRes.data ?? []) as Ficha[]
+  const propietarios = (propietariosRes.data ?? []) as Ficha[]
+  const rolPorId = new Map((perfilesRes.data ?? []).map((p) => [p.id, p.rol]))
+
+  const fichaPorPerfil = new Map<string, { tipo: RolConFicha; id: number; nombre_completo: string; dni_cuit: string }>()
+  const indexar = (tipo: RolConFicha, filas: Ficha[]) => {
+    for (const f of filas) {
+      if (f.perfil_id) fichaPorPerfil.set(f.perfil_id, { tipo, id: f.id, nombre_completo: f.nombre_completo, dni_cuit: f.dni_cuit })
+    }
+  }
+  indexar('inquilino', inquilinos)
+  indexar('propietario', propietarios)
+
   const ahora = Date.now()
-
   const cuentas = usuarios.users.map((u) => {
-    const ficha = inquilinoPorPerfil.get(u.id)
     const bannedUntil = (u as { banned_until?: string | null }).banned_until ?? null
     return {
       id: u.id,
@@ -106,15 +139,18 @@ async function listar(admin: SupabaseClient) {
       bloqueado: Boolean(bannedUntil && new Date(bannedUntil).getTime() > ahora),
       creado: u.created_at,
       ultimo_ingreso: u.last_sign_in_at ?? null,
-      inquilino: ficha ? { id: ficha.id, nombre_completo: ficha.nombre_completo, dni_cuit: ficha.dni_cuit } : null,
+      ficha: fichaPorPerfil.get(u.id) ?? null,
     }
   })
 
-  const inquilinosSinCuenta = (inquilinos ?? [])
-    .filter((i) => !i.perfil_id)
-    .map(({ id, nombre_completo, dni_cuit, email }) => ({ id, nombre_completo, dni_cuit, email }))
+  const sinCuenta = (filas: Ficha[]) =>
+    filas.filter((f) => !f.perfil_id).map(({ id, nombre_completo, dni_cuit, email }) => ({ id, nombre_completo, dni_cuit, email }))
 
-  return { cuentas, inquilinosSinCuenta }
+  return {
+    cuentas,
+    inquilinosSinCuenta: sinCuenta(inquilinos),
+    propietariosSinCuenta: sinCuenta(propietarios),
+  }
 }
 
 async function crear(admin: SupabaseClient, body: Record<string, unknown>) {
@@ -122,16 +158,7 @@ async function crear(admin: SupabaseClient, body: Record<string, unknown>) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ErrorNegocio('El email no es válido')
   const password = validarPassword(body.password)
   const rol = validarRol(body.rol)
-
-  if (rol === 'inquilino') {
-    const { data: ficha } = await admin
-      .from('inquilinos')
-      .select('perfil_id')
-      .eq('id', Number(body.inquilino_id))
-      .maybeSingle()
-    if (!ficha) throw new ErrorNegocio('Elegí la ficha del inquilino a la que pertenece la cuenta')
-    if (ficha.perfil_id) throw new ErrorNegocio('Ese inquilino ya tiene una cuenta para el portal')
-  }
+  if (tieneFicha(rol)) await fichaLibre(admin, rol, body.ficha_id, null)
 
   const { data, error } = await admin.auth.admin.createUser({
     email,
@@ -148,8 +175,9 @@ async function crear(admin: SupabaseClient, body: Record<string, unknown>) {
 
   const userId = data.user.id
   try {
-    await admin.from('perfiles').upsert({ id: userId, rol })
-    if (rol === 'inquilino') await vincularInquilino(admin, userId, body.inquilino_id)
+    const { error: errPerfil } = await admin.from('perfiles').upsert({ id: userId, rol })
+    if (errPerfil) throw errPerfil
+    await vincularFicha(admin, userId, rol, body.ficha_id)
   } catch (err) {
     await admin.auth.admin.deleteUser(userId)
     throw err
@@ -161,17 +189,30 @@ async function crear(admin: SupabaseClient, body: Record<string, unknown>) {
 async function cambiarRol(admin: SupabaseClient, body: Record<string, unknown>, solicitante: string) {
   const { id } = await cuentaModificable(admin, body.user_id, solicitante)
   const rol = validarRol(body.rol)
+  if (tieneFicha(rol)) await fichaLibre(admin, rol, body.ficha_id, id)
 
-  if (rol === 'inquilino') {
-    await vincularInquilino(admin, id, body.inquilino_id)
-  } else {
-    await admin.from('inquilinos').update({ perfil_id: null }).eq('perfil_id', id)
-  }
-
+  // El perfil va primero: la ficha del propietario referencia a perfiles.
   const { error } = await admin.from('perfiles').upsert({ id, rol })
   if (error) throw error
+  await vincularFicha(admin, id, rol, body.ficha_id)
   await admin.auth.admin.updateUserById(id, { app_metadata: { rol } })
   return { id, rol }
+}
+
+/** Modifica la cuenta (CU-062): el email de acceso y, si se indica, el rol y la ficha vinculada. */
+async function modificar(admin: SupabaseClient, body: Record<string, unknown>, solicitante: string) {
+  const { id } = await cuentaModificable(admin, body.user_id, solicitante)
+  if (body.email != null) {
+    const email = String(body.email).trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ErrorNegocio('El email no es válido')
+    const { error } = await admin.auth.admin.updateUserById(id, { email, email_confirm: true })
+    if (error) {
+      if (/already|registered|exists/i.test(error.message)) throw new ErrorNegocio('Ya existe una cuenta con ese email')
+      throw error
+    }
+  }
+  if (body.rol != null) return cambiarRol(admin, body, solicitante)
+  return { id }
 }
 
 async function bloquear(admin: SupabaseClient, body: Record<string, unknown>, solicitante: string) {
@@ -231,6 +272,8 @@ Deno.serve(async (req) => {
         return jsonResponse(await crear(admin, body))
       case 'cambiar_rol':
         return jsonResponse(await cambiarRol(admin, body, sesion.user.id))
+      case 'modificar':
+        return jsonResponse(await modificar(admin, body, sesion.user.id))
       case 'bloquear':
         return jsonResponse(await bloquear(admin, body, sesion.user.id))
       case 'restablecer_password':

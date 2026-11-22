@@ -4,6 +4,7 @@ import {
   normalizarNombreCompleto,
   normalizarSoloDigitos,
 } from '../utils/normalizarContacto'
+import { hoyIsoLocal } from '../utils/contratoVigencia'
 
 export { esErrorContratosActivos as esErrorContratosAsociados }
 
@@ -18,13 +19,13 @@ function sanitizarInquilino(datos) {
       tipo_persona: esJuridica ? 'Jurídica' : 'Física',
       nombre_completo: normalizarNombreCompleto(datos.nombre_completo),
       dni_cuit: normalizarSoloDigitos(datos.dni_cuit),
-      telefono: (datos.telefono ?? '').trim(),
+      telefono: normalizarSoloDigitos(datos.telefono),
       email: (datos.email ?? '').trim().toLowerCase() || null,
       fecha_nacimiento: esJuridica ? null : (datos.fecha_nacimiento || null),
       estado_civil: esJuridica ? null : (datos.estado_civil ?? '').trim() || null,
       ocupacion: (datos.ocupacion ?? '').trim() || null,
       emergencia_nombre: (datos.emergencia_nombre ?? '').trim() || null,
-      emergencia_telefono: (datos.emergencia_telefono ?? '').trim() || null,
+      emergencia_telefono: normalizarSoloDigitos(datos.emergencia_telefono) || null,
       observaciones: (datos.observaciones ?? '').trim() || null,
     },
   }
@@ -148,9 +149,12 @@ export async function actualizarInquilino(id, datos) {
   return { data, error: null }
 }
 
-/** Tipo de persona y DNI/CUIT quedan fijos si el inquilino tiene o tuvo un contrato activo. */
+/**
+ * Tipo de persona y DNI/CUIT quedan fijos si el inquilino tiene o tuvo un contrato activo.
+ * Una reserva cancelada antes de empezar no cuenta (misma regla que la base).
+ */
 export function identidadInquilinoBloqueada(deps) {
-  return (deps?.contratos_activos ?? 0) + (deps?.contratos_historicos ?? 0) > 0
+  return (deps?.contratos_activos ?? 0) + (deps?.contratos_historicos_iniciados ?? 0) > 0
 }
 
 export async function contarContratosPorInquilino(inquilinoId) {
@@ -181,7 +185,7 @@ export async function contarDependenciasInquilino(inquilinoId) {
         .eq('estado', 'programado'),
       supabase
         .from('contratos')
-        .select('id', { count: 'exact', head: true })
+        .select('fecha_inicio')
         .eq('inquilino_id', inquilinoId)
         .eq('estado', 'inactivo'),
       supabase
@@ -198,7 +202,10 @@ export async function contarDependenciasInquilino(inquilinoId) {
   return {
     contratos_activos: contratosActivosRes.count ?? 0,
     contratos_programados: contratosProgramadosRes.count ?? 0,
-    contratos_historicos: contratosHistoricosRes.count ?? 0,
+    contratos_historicos: contratosHistoricosRes.data?.length ?? 0,
+    contratos_historicos_iniciados: (contratosHistoricosRes.data ?? []).filter(
+      (c) => c.fecha_inicio <= hoyIsoLocal()
+    ).length,
     reclamos: reclamosRes.count ?? 0,
   }
 }

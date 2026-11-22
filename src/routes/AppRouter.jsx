@@ -4,11 +4,13 @@ import { useAuth } from '../contexts/AuthContext'
 import CuentasRoute from '../guards/CuentasRoute'
 import EncargadoRoute from '../guards/EncargadoRoute'
 import InquilinoRoute from '../guards/InquilinoRoute'
+import PropietarioRoute from '../guards/PropietarioRoute'
 import ProtectedRoute from '../guards/ProtectedRoute'
 import LoginPage from '../pages/auth/LoginPage'
 
 const AdminLayout = lazy(() => import('../layouts/admin/AdminLayout'))
 const InquilinoLayout = lazy(() => import('../layouts/InquilinoLayout'))
+const PropietarioLayout = lazy(() => import('../layouts/PropietarioLayout'))
 const AdminDashboard = lazy(() => import('../pages/admin/AdminDashboard'))
 const AdminPropietarios = lazy(() => import('../pages/admin/AdminPropietarios'))
 const AdminPropiedades = lazy(() => import('../pages/admin/AdminPropiedades'))
@@ -16,11 +18,17 @@ const AdminInquilinos = lazy(() => import('../pages/admin/AdminInquilinos'))
 const AdminContratos = lazy(() => import('../pages/admin/AdminContratos'))
 const AdminReclamos = lazy(() => import('../pages/admin/AdminReclamos'))
 const AdminAumentos = lazy(() => import('../pages/admin/AdminAumentos'))
+const AdminAlquileres = lazy(() => import('../pages/admin/AdminAlquileres'))
 const AdminCuentas = lazy(() => import('../pages/cuentas/AdminCuentas'))
 const InquilinoDashboard = lazy(() => import('../pages/inquilino/InquilinoDashboard'))
 const InquilinoReclamos = lazy(() => import('../pages/inquilino/InquilinoReclamos'))
 const InquilinoDocumentos = lazy(() => import('../pages/inquilino/InquilinoDocumentos'))
 const InquilinoPerfil = lazy(() => import('../pages/inquilino/InquilinoPerfil'))
+const InquilinoPagos = lazy(() => import('../pages/inquilino/InquilinoPagos'))
+const PropietarioInicio = lazy(() => import('../pages/propietario/PropietarioInicio'))
+const PropietarioPropiedades = lazy(() => import('../pages/propietario/PropietarioPropiedades'))
+const PropietarioAlquileres = lazy(() => import('../pages/propietario/PropietarioAlquileres'))
+const PropietarioPerfil = lazy(() => import('../pages/propietario/PropietarioPerfil'))
 
 function PageLoader() {
   return (
@@ -69,6 +77,7 @@ export default function AppRouter() {
                 <Route path="propiedades" element={<AdminPropiedades />} />
                 <Route path="inquilinos" element={<AdminInquilinos />} />
                 <Route path="contratos" element={<AdminContratos />} />
+                <Route path="alquileres" element={<AdminAlquileres />} />
                 <Route path="aumentos" element={<AdminAumentos />} />
                 <Route path="reclamos" element={<AdminReclamos />} />
               </Route>
@@ -81,7 +90,18 @@ export default function AppRouter() {
                 <Route path="reclamos" element={<InquilinoReclamos />} />
                 <Route path="contrato" element={<InquilinoDocumentos />} />
                 <Route path="documentos" element={<InquilinoDocumentos />} />
+                <Route path="pagos" element={<InquilinoPagos />} />
                 <Route path="perfil" element={<InquilinoPerfil />} />
+              </Route>
+            </Route>
+
+            <Route element={<PropietarioRoute />}>
+              <Route path="/propietario" element={<PropietarioLayout />}>
+                <Route index element={<Navigate to="inicio" replace />} />
+                <Route path="inicio" element={<PropietarioInicio />} />
+                <Route path="propiedades" element={<PropietarioPropiedades />} />
+                <Route path="alquileres" element={<PropietarioAlquileres />} />
+                <Route path="perfil" element={<PropietarioPerfil />} />
               </Route>
             </Route>
           </Route>

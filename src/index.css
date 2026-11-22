@@ -1,6 +1,17 @@
 @import 'tailwindcss';
 
+/*
+ * Sistema de diseño Inmobi
+ * - Tipografía: Geist (UI) con cifras tabulares para montos.
+ * - Color: brand (azul institucional) + slate como neutro.
+ *   Semánticos: emerald (ok), amber (atención), red (error/peligro).
+ * - Radios: controles rounded-lg · tarjetas rounded-xl · modales rounded-2xl · pills rounded-full.
+ * Las clases reutilizables viven en src/utils/ui.js y los componentes en src/components/ui/.
+ */
 @theme {
+  --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
   --color-brand-50: #eef1fa;
   --color-brand-100: #d5dcf4;
   --color-brand-200: #abb9e9;
@@ -12,18 +23,200 @@
   --color-brand-800: #112055;
   --color-brand-900: #0d1842;
   --color-brand-950: #080f2a;
+
+  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+  --shadow-pop: 0 12px 32px -8px rgb(15 23 42 / 0.18), 0 2px 6px -2px rgb(15 23 42 / 0.08);
+  --shadow-modal: 0 24px 64px -16px rgb(15 23 42 / 0.35);
+
+  --animate-overlay-in: overlay-in 160ms ease-out;
+  --animate-modal-in: modal-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  @keyframes overlay-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes modal-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
 }
 
 @source "../node_modules/@tremor/react/dist/**/*.{js,ts,jsx,tsx}";
 
-html,
-body,
-#root {
-  min-height: 100%;
+@layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-slate-50);
+    color: var(--color-slate-900);
+    font-family: var(--font-sans);
+    font-feature-settings: 'ss01', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: var(--color-brand-100);
+    color: var(--color-brand-900);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: var(--color-brand-600);
+  }
+
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: none;
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-slate-300) transparent;
+  }
 }
 
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+/* Selects sin chevron propio (los que no usan selectClass): mismo chevron del sistema en vez de la flecha nativa,
+   que en cada navegador y celular se ve distinta. Sin capa para ganarle al padding de inputClass. */
+select:not(.appearance-none):not([multiple]) {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='2' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='m19.5 8.25-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E");
+  background-position: right 0.75rem center;
+  background-repeat: no-repeat;
+  background-size: 1rem;
+  padding-right: 2.25rem;
+}
+
+/* Tablas del panel en celulares y tablets (sin sidebar fijo): cada fila es una tarjeta (ver AdminTable). Sin capa para ganarle a las utilidades de ancho y padding de cada columna. */
+@media (max-width: 1023.98px) {
+  .tabla-responsiva table,
+  .tabla-responsiva tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .tabla-responsiva tr {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .tabla-responsiva thead {
+    display: none;
+  }
+
+  /* Etiqueta a la izquierda; todo lo que tenga la celda se apila a la derecha. */
+  .tabla-responsiva td {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    justify-items: end;
+    column-gap: 1rem;
+    width: auto;
+    max-width: none;
+    padding: 0.3125rem 1.25rem;
+    text-align: right;
+    white-space: normal;
+  }
+
+  .tabla-responsiva td::before {
+    content: attr(data-label);
+    grid-column: 1;
+    justify-self: start;
+    text-align: left;
+    font-size: 0.75rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+    color: var(--color-slate-500);
+  }
+
+  .tabla-responsiva td > * {
+    grid-column: 2;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .tabla-responsiva td[data-celda='titulo'] {
+    order: -1;
+    padding-top: 0.875rem;
+  }
+
+  .tabla-responsiva tr > td:last-child {
+    padding-bottom: 0.875rem;
+  }
+
+  .tabla-responsiva td[data-celda='titulo'] {
+    display: block;
+    justify-items: normal;
+    padding-bottom: 0.5rem;
+    text-align: left !important;
+  }
+
+  /* En la tarjeta hay lugar: el nombre se lee completo en vez de cortarse. */
+  .tabla-responsiva td[data-celda='titulo'] .truncate {
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .tabla-responsiva td[data-celda='vacia'] {
+    display: block;
+    justify-items: normal;
+    text-align: center;
+  }
+
+  .tabla-responsiva td[data-celda='acciones'] {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0.375rem 1.25rem 0;
+    padding: 0.5rem 0 0.75rem;
+    border-top: 1px solid var(--color-slate-100);
+  }
+
+  .tabla-responsiva td[data-celda='acciones'] > div {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+
+  .tabla-responsiva td[data-celda]::before {
+    content: none;
+  }
 }

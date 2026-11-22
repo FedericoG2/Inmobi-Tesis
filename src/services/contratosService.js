@@ -10,6 +10,7 @@ import {
   MENSAJE_SOLAPAMIENTO_CONTRATO,
 } from '../utils/propiedadElegibleContrato'
 import { sincronizarEstadoPropiedadPorContratos } from './propiedadesService'
+import { BUCKET_CONTRATOS } from './documentosService'
 
 async function activarContratosProgramados() {
   if (!supabase) return
@@ -40,6 +41,9 @@ export async function listarContratos() {
       dia_vencimiento,
       observaciones,
       estado,
+      motivo_cierre,
+      observaciones_cierre,
+      cerrado_en,
       propiedad_id,
       inquilino_id,
       propiedades ( direccion ),
@@ -70,6 +74,9 @@ export async function obtenerContratoDetalle(id) {
       dia_vencimiento,
       observaciones,
       estado,
+      motivo_cierre,
+      observaciones_cierre,
+      cerrado_en,
       propiedad_id,
       inquilino_id,
       propiedades (
@@ -106,6 +113,21 @@ export async function obtenerContratoDetalle(id) {
     `)
     .eq('id', id)
     .order('fecha_aplicacion', { foreignTable: 'aumentos', ascending: false })
+    .maybeSingle()
+
+  return { data, error }
+}
+
+/** Inquilino y propiedad de un contrato (para abrir sus fichas desde el detalle de un aumento). */
+export async function obtenerPartesContrato(id) {
+  if (!supabase) {
+    return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
+  }
+
+  const { data, error } = await supabase
+    .from('contratos')
+    .select('inquilino_id, propiedad_id')
+    .eq('id', id)
     .maybeSingle()
 
   return { data, error }
@@ -187,23 +209,21 @@ export async function contarMovimientosContrato(contratoId, inquilinoId, propied
     return { error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
 
-  const [aumentosRes, reclamosRes] = await Promise.all([
-    supabase
-      .from('aumentos')
-      .select('id', { count: 'exact', head: true })
-      .eq('contrato_id', contratoId),
-    supabase
-      .from('reclamos')
-      .select('id', { count: 'exact', head: true })
-      .eq('inquilino_id', inquilinoId)
-      .eq('propiedad_id', propiedadId),
+  const contar = (tabla) => supabase.from(tabla).select('id', { count: 'exact', head: true })
+  const [aumentosRes, periodosRes, comprobantesRes, reclamosRes] = await Promise.all([
+    contar('aumentos').eq('contrato_id', contratoId),
+    contar('periodos_alquiler').eq('contrato_id', contratoId),
+    contar('comprobantes_pago').eq('contrato_id', contratoId),
+    contar('reclamos').eq('inquilino_id', inquilinoId).eq('propiedad_id', propiedadId),
   ])
 
-  if (aumentosRes.error) return { error: aumentosRes.error }
-  if (reclamosRes.error) return { error: reclamosRes.error }
+  const conError = [aumentosRes, periodosRes, comprobantesRes, reclamosRes].find((r) => r.error)
+  if (conError) return { error: conError.error }
 
   return {
     aumentos: aumentosRes.count ?? 0,
+    periodos: periodosRes.count ?? 0,
+    comprobantes: comprobantesRes.count ?? 0,
     reclamos: reclamosRes.count ?? 0,
   }
 }
@@ -212,6 +232,14 @@ export async function anularContrato(id) {
   if (!supabase) {
     return { error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
+
+  // Las rutas se leen antes: al borrar el contrato, la base borra sus filas de documentos.
+  const { data: adjuntos, error: errorAdjuntos } = await supabase
+    .from('documentos')
+    .select('url_archivo')
+    .eq('contrato_id', id)
+
+  if (errorAdjuntos) return { error: errorAdjuntos }
 
   const { data, error } = await supabase
     .from('contratos')
@@ -228,19 +256,33 @@ export async function anularContrato(id) {
   }
 
   const syncError = await sincronizarEstadoPropiedadPorContratos(data.propiedad_id)
+
+  // Los archivos se borran recién cuando el contrato ya se eliminó: si la base lo rechaza, quedan.
+  const rutas = (adjuntos ?? []).map((d) => d.url_archivo).filter(Boolean)
+  if (rutas.length) {
+    const { error: errorStorage } = await supabase.storage.from(BUCKET_CONTRATOS).remove(rutas)
+    if (errorStorage) {
+      console.error('[Inmobi] No se pudieron borrar los adjuntos del contrato eliminado:', errorStorage.message)
+    }
+  }
+
   if (syncError.error) return { error: syncError.error }
 
   return { error: null }
 }
 
-export async function finalizarContrato(id) {
+/**
+ * Cierra un contrato (CU-010 y CU-011): un activo se finaliza o se rescinde; un programado se
+ * cancela. La base valida el motivo, guarda la fecha de cierre y libera la propiedad.
+ */
+export async function finalizarContrato(id, { motivo = null, observaciones = '' } = {}) {
   if (!supabase) {
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
   }
 
   const { data, error } = await supabase
     .from('contratos')
-    .update({ estado: 'inactivo' })
+    .update({ estado: 'inactivo', motivo_cierre: motivo, observaciones_cierre: observaciones?.trim() || null })
     .eq('id', id)
     .in('estado', ['activo', 'programado'])
     .select(`
@@ -249,6 +291,7 @@ export async function finalizarContrato(id) {
       fecha_fin,
       monto_alquiler,
       estado,
+      motivo_cierre,
       propiedad_id,
       inquilino_id,
       propiedades ( direccion ),
@@ -266,4 +309,15 @@ export async function finalizarContrato(id) {
   if (syncError.error) return { data, error: syncError.error }
 
   return { data, error: null }
+}
+
+/**
+ * Historial de cambios de un contrato (tabla auditoria): el contrato, sus períodos, aumentos y
+ * comprobantes, con quién hizo cada cambio y los valores de antes y de después.
+ */
+export async function listarAuditoriaContrato(contratoId) {
+  if (!supabase) {
+    return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
+  }
+  return supabase.rpc('auditoria_contrato', { p_contrato_id: contratoId })
 }

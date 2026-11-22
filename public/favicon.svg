@@ -1,17 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <defs>
-    <linearGradient id="inmobi-brand" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#2548a8" />
-      <stop offset="0.5" stop-color="#1C398E" />
-      <stop offset="1" stop-color="#152a6e" />
-    </linearGradient>
-  </defs>
-  <rect width="32" height="32" rx="7" fill="url(#inmobi-brand)" />
-  <path
-    stroke="#fff"
-    stroke-width="1.75"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    d="M7.5 26h17M8.5 7h15M9 7v19m14 0V7M12.5 11h1.5m-1.5 3h1.5m-1.5 3h1.5m4.5-6H18m-1.5 3H18m-1.5 3H18M12.5 26v-2.2c0-.5.4-.8.8-.8h5.4c.5 0 .8.4.8.8V26"
-  />
+  <rect width="32" height="32" rx="8" fill="#1c398e" />
+  <g transform="translate(5 5) scale(0.9167)" fill="#fff">
+    <path d="M12 3.5 4.5 10.25V20a1 1 0 0 0 1 1H9v-5.5h6V20h3.5a1 1 0 0 0 1-1V10.25L12 3.5Z" />
+    <path d="M16.25 9.5h4.75V20h-2.25v-6.75h-2.5V9.5Z" fill-opacity="0.45" />
+  </g>
 </svg>

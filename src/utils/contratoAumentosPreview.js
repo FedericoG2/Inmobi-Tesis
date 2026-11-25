@@ -7,8 +7,8 @@ export const PERIODICIDAD_OPCIONES = [
 ]
 
 export const TIPO_AJUSTE_OPCIONES = [
-  { value: 'ipc', label: 'IPC (vivienda)' },
-  { value: 'icl', label: 'ICL (comercial)' },
+  { value: 'ipc', label: 'IPC (Índice de Precios al Consumidor)' },
+  { value: 'icl', label: 'ICL (Índice para Contratos de Locación)' },
 ]
 
 const TIPO_AJUSTE_LEGACY_LABELS = {

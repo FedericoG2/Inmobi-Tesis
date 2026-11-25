@@ -8,10 +8,39 @@ import {
   actualizarReclamoPortal,
   eliminarReclamoPortal,
 } from '../services/portalInquilinoService'
+import { suscribirActividad } from '../services/actividadService'
 
 const STORAGE_KEY_CONTRATO = 'portal_inquilino_contrato_id'
 
 const PortalInquilinoContext = createContext(null)
+
+// Vigentes primero; después los finalizados (historial), cada grupo por fecha de inicio.
+const ordenarContratos = (lista) =>
+  [...lista].sort((a, b) => {
+    if (a.estado !== b.estado) return a.estado === 'activo' ? -1 : 1
+    return (b.fecha_inicio ?? '').localeCompare(a.fecha_inicio ?? '')
+  })
+
+/** Ficha del inquilino de la sesión, sus contratos (activos y finalizados) y sus reclamos. */
+async function consultarPortal(userId) {
+  const { data: inquilino, error: inquilinoError } = await obtenerInquilinoPorPerfil(userId)
+  if (inquilinoError) return { error: inquilinoError.message }
+  if (!inquilino) {
+    return { error: 'No encontramos tu perfil de inquilino vinculado a esta cuenta. Contactá a la inmobiliaria.' }
+  }
+
+  const [contratosRes, reclamosRes] = await Promise.all([
+    listarContratosActivosInquilino(inquilino.id),
+    listarReclamosInquilino(inquilino.id),
+  ])
+
+  return {
+    inquilino,
+    error: contratosRes.error?.message ?? null,
+    contratos: contratosRes.error ? null : ordenarContratos(contratosRes.data ?? []),
+    reclamos: reclamosRes.error ? null : (reclamosRes.data ?? []),
+  }
+}
 
 export function PortalInquilinoProvider({ children }) {
   const { user } = useAuth()
@@ -25,6 +54,8 @@ export function PortalInquilinoProvider({ children }) {
   const [reclamosLoading, setReclamosLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
+  // Sube cuando la inmobiliaria confirma o deshace un pago: la pantalla de Pagos vuelve a consultar.
+  const [versionPagos, setVersionPagos] = useState(0)
 
   const refetchReclamos = useCallback(async (inquilinoId) => {
     if (!inquilinoId) return
@@ -34,59 +65,49 @@ export function PortalInquilinoProvider({ children }) {
     setReclamosLoading(false)
   }, [])
 
-  const cargarDatos = useCallback(async () => {
-    if (!user?.id) return
-
-    setLoading(true)
-    setError(null)
-
-    const { data: inquilinoData, error: inquilinoError } = await obtenerInquilinoPorPerfil(user.id)
-
-    if (inquilinoError) {
-      setError(inquilinoError.message)
-      setLoading(false)
-      return
-    }
-
-    if (!inquilinoData) {
-      setError('No encontramos tu perfil de inquilino vinculado a esta cuenta. Contactá a la inmobiliaria.')
-      setLoading(false)
-      return
-    }
-
-    setInquilino(inquilinoData)
-
-    const [contratosRes, reclamosRes] = await Promise.all([
-      listarContratosActivosInquilino(inquilinoData.id),
-      listarReclamosInquilino(inquilinoData.id),
-    ])
-
-    if (contratosRes.error) {
-      setError(contratosRes.error.message)
-    } else {
-      // Vigentes primero; después los finalizados (historial), cada grupo por fecha de inicio.
-      const lista = [...(contratosRes.data ?? [])].sort((a, b) => {
-        if (a.estado !== b.estado) return a.estado === 'activo' ? -1 : 1
-        return (b.fecha_inicio ?? '').localeCompare(a.fecha_inicio ?? '')
-      })
+  const aplicarPortal = useCallback(({ error: errorCarga, inquilino: ficha, contratos: lista, reclamos: propios }) => {
+    if (ficha) setInquilino(ficha)
+    if (lista) {
       setContratos(lista)
-
       const guardado = sessionStorage.getItem(STORAGE_KEY_CONTRATO)
       const idGuardado = guardado ? Number(guardado) : null
       const existe = lista.some((c) => Number(c.id) === idGuardado)
       setContratoSeleccionadoIdState(existe ? idGuardado : (lista[0]?.id ?? null))
     }
-
-    if (!reclamosRes.error) {
-      setReclamos(reclamosRes.data ?? [])
-    }
-
+    if (propios) setReclamos(propios)
+    setError(errorCarga ?? null)
     setLoading(false)
-  }, [user?.id])
+  }, [])
 
+  const userId = user?.id
   useEffect(() => {
-    cargarDatos()
-  }, [cargarDatos])
+    if (!userId) return undefined
+    let vigente = true
+    consultarPortal(userId).then((resultado) => {
+      if (vigente) aplicarPortal(resultado)
+    })
+    return () => {
+      vigente = false
+    }
+  }, [userId, aplicarPortal])
+
+  // En vivo: cuando la inmobiliaria gestiona un reclamo, confirma un aumento o un pago, o cambia
+  // el contrato, el portal se actualiza sin recargar (RLS filtra los eventos ajenos).
+  const inquilinoId = inquilino?.id
+  useEffect(() => {
+    if (!inquilinoId) return undefined
+    return suscribirActividad(async (evento) => {
+      if (evento.entidad === 'pago') {
+        setVersionPagos((v) => v + 1)
+      } else if (evento.entidad === 'reclamo') {
+        const { data, error: err } = await listarReclamosInquilino(inquilinoId)
+        if (!err) setReclamos(data ?? [])
+      } else if (['contrato', 'aumento', 'documento'].includes(evento.entidad)) {
+        const { data, error: err } = await listarContratosActivosInquilino(inquilinoId)
+        if (!err) setContratos(ordenarContratos(data ?? []))
+      }
+    })
+  }, [inquilinoId])
 
   const setContratoSeleccionado = useCallback((id) => {
     const numId = Number(id)
@@ -180,6 +201,7 @@ export function PortalInquilinoProvider({ children }) {
     contratos,
     contratoActivo,
     puedeReclamar,
+    versionPagos,
     contratoSeleccionadoId,
     setContratoSeleccionado,
     reclamos,

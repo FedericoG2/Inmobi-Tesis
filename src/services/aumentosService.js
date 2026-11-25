@@ -1,10 +1,16 @@
 import { supabase } from '../supabaseClient'
 import { activarContratosProgramados } from './contratosService'
-import { eliminarComprobanteAumento, subirComprobanteAumento } from './documentosService'
+import {
+  eliminarDocumentoContrato,
+  obtenerComprobanteAumento,
+  subirComprobanteAumento,
+} from './documentosService'
 import { obtenerSeriesArgly } from './arglyService'
+import { listarIndicesManuales } from './indicesManualesService'
 import { puedeDeshacerAumento } from '../utils/aumentosUi'
 import {
   calcularPropuestaAumento,
+  overrideDesdeIndicesManuales,
   rangosIndicesParaContratos,
   ultimoIclDeSerie,
   ultimoIpcDeSerie,
@@ -33,79 +39,9 @@ function sumarDiasIso(fechaIso, dias) {
   return `${yy}-${mm}-${dd}`
 }
 
-function diffDiasIso(desdeIso, hastaIso) {
-  const [y1, m1, d1] = desdeIso.split('-').map(Number)
-  const [y2, m2, d2] = hastaIso.split('-').map(Number)
-  const ms = new Date(y2, m2 - 1, d2).getTime() - new Date(y1, m1 - 1, d1).getTime()
-  return Math.round(ms / 86400000)
-}
-
-function mapColaItem(row, hoy) {
-  const fecha = row.fecha_proximo_aumento
-  const esVencido = fecha <= hoy
-  const dias = diffDiasIso(esVencido ? fecha : hoy, esVencido ? hoy : fecha)
-
-  return {
-    contrato_id: row.id,
-    tipo_ajuste: row.tipo_ajuste,
-    inquilino_nombre: row.inquilinos?.nombre_completo ?? null,
-    propiedad_direccion: row.propiedades?.direccion ?? null,
-    monto_actual: row.monto_alquiler,
-    fecha_proximo_aumento: fecha,
-    periodicidad_meses: row.periodicidad_meses,
-    es_vencido: esVencido,
-    dias,
-  }
-}
-
-/** Cola operativa ICL/IPC: vencidos + próximos N días (sin calcular montos). */
-export async function listarColaAumentos({ diasProximos = 30 } = {}) {
-  if (!supabase) {
-    return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
-  }
-
-  await ejecutarMantenimientoContratos()
-
-  const hoy = hoyIsoLocal()
-  const limite = sumarDiasIso(hoy, diasProximos)
-
-  const { data, error } = await supabase
-    .from('contratos')
-    .select(`
-      id,
-      tipo_ajuste,
-      monto_alquiler,
-      fecha_proximo_aumento,
-      fecha_fin,
-      periodicidad_meses,
-      inquilinos ( nombre_completo ),
-      propiedades ( direccion )
-    `)
-    .eq('estado', 'activo')
-    .in('tipo_ajuste', ['icl', 'ipc'])
-    .not('fecha_proximo_aumento', 'is', null)
-    .lte('fecha_proximo_aumento', limite)
-    .order('fecha_proximo_aumento', { ascending: true })
-
-  if (error) {
-    return { data: null, error: { message: error.message } }
-  }
-
-  const items = (data ?? [])
-    .filter((row) => !row.fecha_fin || row.fecha_proximo_aumento <= row.fecha_fin)
-    .map((row) => mapColaItem(row, hoy))
-  const vencidos = items.filter((i) => i.es_vencido)
-  const proximos = items.filter((i) => !i.es_vencido)
-
-  return {
-    data: { items, vencidos, proximos, total: items.length, fecha_referencia: hoy },
-    error: null,
-  }
-}
-
 /**
  * Historial de aumentos registrados de un contrato (trazabilidad).
- * Incluye aplicados y acordados/programados (aplicado=false), del más nuevo al más viejo.
+ * Del más nuevo al más viejo.
  */
 export async function listarHistorialAumentos(contratoId) {
   if (!supabase) {
@@ -182,15 +118,19 @@ async function listarContratosColaAumentos({ incluirProximos = false, diasProxim
   return { data: contratos, error: null }
 }
 
-function armarPropuestasDesdeContratos(contratos, series, acordadosPorClave, overrides, hoy) {
+// Los índices cargados a mano completan lo que Argly no publicó (el oficial siempre gana).
+function armarPropuestasDesdeContratos(contratos, series, registradosPorClave, overrides, hoy, manuales = []) {
   return contratos.map((contrato) => {
     const clave = `${Number(contrato.id)}|${contrato.fecha_proximo_aumento}`
     return calcularPropuestaAumento({
       contrato,
       serieIcl: series?.icl ?? [],
       serieIpc: series?.ipc ?? [],
-      override: overrides?.[contrato.id] ?? overrides?.[String(contrato.id)] ?? null,
-      acordado: acordadosPorClave.get(clave) ?? null,
+      override:
+        overrides?.[contrato.id] ??
+        overrides?.[String(contrato.id)] ??
+        overrideDesdeIndicesManuales(contrato, series, manuales),
+      registrado: registradosPorClave.get(clave) ?? null,
       hoy,
     })
   })
@@ -219,7 +159,7 @@ export async function calcularAumentosPendientes({
   const contratos = contratosRes.data ?? []
   const ids = contratos.map((c) => c.id)
 
-  let acordadosPorClave = new Map()
+  let registradosPorClave = new Map()
   if (ids.length > 0) {
     const { data: aumentos, error: aumentosError } = await supabase
       .from('aumentos')
@@ -232,16 +172,17 @@ export async function calcularAumentosPendientes({
       return { data: null, error: { message: aumentosError.message } }
     }
 
-    acordadosPorClave = new Map(
+    registradosPorClave = new Map(
       (aumentos ?? []).map((row) => [`${Number(row.contrato_id)}|${row.fecha_aplicacion}`, row])
     )
   }
 
   const rangos = rangosIndicesParaContratos(contratos, hoy)
-  const seriesRes = await obtenerSeriesArgly(rangos)
+  const [seriesRes, manualesRes] = await Promise.all([obtenerSeriesArgly(rangos), listarIndicesManuales()])
   const series = seriesRes.data ?? { icl: [], ipc: [] }
+  const indicesManuales = manualesRes.data ?? []
 
-  const propuestas = armarPropuestasDesdeContratos(contratos, series, acordadosPorClave, overrides, hoy)
+  const propuestas = armarPropuestasDesdeContratos(contratos, series, registradosPorClave, overrides, hoy, indicesManuales)
 
   return {
     data: {
@@ -250,7 +191,8 @@ export async function calcularAumentosPendientes({
       fecha_calculo: hoy,
       contratos,
       series,
-      acordadosPorClave: Object.fromEntries(acordadosPorClave),
+      registradosPorClave: Object.fromEntries(registradosPorClave),
+      indicesManuales,
       indicesResumen: {
         icl: ultimoIclDeSerie(series.icl),
         ipc: ultimoIpcDeSerie(series.ipc),
@@ -261,13 +203,49 @@ export async function calcularAumentosPendientes({
   }
 }
 
-export function recalcularPropuestasConOverrides({ contratos, series, acordadosPorClave, overrides, hoy }) {
+export function recalcularPropuestasConOverrides({ contratos, series, registradosPorClave, overrides, hoy, indicesManuales = [] }) {
   const mapa =
-    acordadosPorClave instanceof Map
-      ? acordadosPorClave
-      : new Map(Object.entries(acordadosPorClave ?? {}))
+    registradosPorClave instanceof Map
+      ? registradosPorClave
+      : new Map(Object.entries(registradosPorClave ?? {}))
 
-  return armarPropuestasDesdeContratos(contratos ?? [], series, mapa, overrides, hoy)
+  return armarPropuestasDesdeContratos(contratos ?? [], series, mapa, overrides, hoy, indicesManuales)
+}
+
+/*
+ * Revisión de aumentos pendientes (Pendiente → Revisado → Confirmado): la marca de revisado, las
+ * observaciones y el monto redondeado quedan guardados hasta confirmar. Al confirmar, la base
+ * borra la revisión porque sus datos pasan al aumento.
+ */
+export const claveRevision = (contratoId, fechaAplicacion) => `${Number(contratoId)}|${fechaAplicacion}`
+
+export async function listarRevisionesAumento() {
+  if (!supabase) return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
+  const { data, error } = await supabase
+    .from('revisiones_aumento')
+    .select('contrato_id, fecha_aplicacion, revisado, observaciones, monto_ajustado')
+  if (error) return { data: null, error }
+  return { data: new Map((data ?? []).map((r) => [claveRevision(r.contrato_id, r.fecha_aplicacion), r])), error: null }
+}
+
+export async function guardarRevisionAumento({ contratoId, fechaAplicacion, revisado, observaciones, montoAjustado }) {
+  if (!supabase) return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
+  const monto = Number(montoAjustado)
+  return supabase
+    .from('revisiones_aumento')
+    .upsert(
+      {
+        contrato_id: contratoId,
+        fecha_aplicacion: fechaAplicacion,
+        revisado: Boolean(revisado),
+        observaciones: observaciones?.trim() ? observaciones.trim().slice(0, 500) : null,
+        monto_ajustado: Number.isFinite(monto) && monto > 0 ? monto : null,
+        actualizado_en: new Date().toISOString(),
+      },
+      { onConflict: 'contrato_id,fecha_aplicacion' }
+    )
+    .select('contrato_id, fecha_aplicacion, revisado, observaciones, monto_ajustado')
+    .single()
 }
 
 export async function confirmarAumentos(propuestas) {
@@ -387,18 +365,29 @@ export async function deshacerAumento(aumento) {
     }
   }
 
+  // El comprobante se busca antes: al borrar el aumento se pierde el vínculo aumento_id.
+  const { data: comprobante } = await obtenerComprobanteAumento({
+    aumentoId,
+    contratoId: aumento.contrato_id,
+    fechaAplicacion: aumento.fecha_aplicacion,
+  })
+
   const { data, error } = await supabase.rpc('deshacer_aumento', { p_aumento_id: aumentoId })
 
   if (error) {
     return { data: null, error: { message: error.message } }
   }
 
-  // Limpia el comprobante asociado (no interrumpe si falla la limpieza).
-  await eliminarComprobanteAumento({
-    aumentoId,
-    contratoId: aumento.contrato_id,
-    fechaAplicacion: aumento.fecha_aplicacion,
-  })
+  if (comprobante) {
+    const { error: errorComprobante } = await eliminarDocumentoContrato(comprobante)
+    if (errorComprobante) {
+      return {
+        data,
+        error: null,
+        aviso: 'El aumento se deshizo, pero no se pudo borrar su comprobante PDF. Eliminalo desde la ficha del contrato.',
+      }
+    }
+  }
 
   return { data, error: null }
 }
@@ -413,7 +402,7 @@ function rangoMesIso(claveMes) {
 }
 
 /**
- * Aumentos confirmados (acordados o aplicados) cuya fecha de aplicación cae en el mes indicado.
+ * Aumentos confirmados cuya fecha de aplicación cae en el mes indicado.
  * Fuente de verdad para la pestaña Confirmados del período operativo.
  */
 export async function listarAumentosConfirmadosEnPeriodo({ claveMes }) {

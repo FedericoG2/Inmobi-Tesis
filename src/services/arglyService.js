@@ -66,14 +66,6 @@ export function normalizarSerieIpc(filas) {
     .sort((a, b) => (a.anio !== b.anio ? a.anio - b.anio : a.mes - b.mes))
 }
 
-function ultimoIpcDesdeFilas(filas) {
-  return normalizarSerieIpc(filas).at(-1) ?? null
-}
-
-function ultimoIclDesdeFilas(filas) {
-  return normalizarSerieIcl(filas).at(-1) ?? null
-}
-
 const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
 function mapIpcArglyAnual(filas) {
@@ -187,36 +179,3 @@ export async function obtenerIpcAnualArgly(anio = new Date().getFullYear()) {
   return { data: { anio, ipcAnual }, error: null }
 }
 
-/** Últimos ICL/IPC publicados en Argly. */
-export async function obtenerUltimosIndicesArgly() {
-  const hoy = hoyIsoLocal()
-  const { data, error } = await obtenerSeriesArgly({
-    ipc: rangoConsultaIpc(hoy),
-    icl: rangoConsultaIcl(hoy),
-  })
-
-  if (error) {
-    return { data: null, error }
-  }
-
-  return {
-    data: {
-      icl: ultimoIclDesdeFilas(data?.icl),
-      ipc: ultimoIpcDesdeFilas(data?.ipc),
-    },
-    error: null,
-  }
-}
-
-/** @deprecated usar obtenerSeriesArgly / obtenerUltimosIndicesArgly */
-export async function obtenerUltimosIndicesLocal() {
-  return obtenerUltimosIndicesArgly()
-}
-
-/** @deprecated ya no se persiste en tabla `indices`. */
-export async function syncIndices(rangos = {}) {
-  return obtenerSeriesArgly(rangos)
-}
-
-/** @deprecated alias */
-export const syncIcl = syncIndices

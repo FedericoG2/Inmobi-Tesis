@@ -15,7 +15,7 @@ import {
 const MENSAJE_SOLO_INACTIVO =
   'Solo se pueden eliminar contratos finalizados o programados. Finalizá el contrato antes de eliminarlo.'
 const MENSAJE_MOVIMIENTOS =
-  'No se puede eliminar el contrato porque tiene aumentos confirmados o reclamos registrados para ese inquilino y propiedad.'
+  'No se puede eliminar el contrato porque tiene aumentos confirmados, períodos de alquiler, comprobantes de pago o reclamos de ese inquilino sobre la propiedad. Se conserva como historial.'
 
 export function useContratos() {
   const [contratos, setContratos] = useState([])
@@ -27,21 +27,14 @@ export function useContratos() {
   const [anulando, setAnulando] = useState(false)
   const [actionError, setActionError] = useState(null)
 
-  const refetch = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-
-    const { data, error: fetchError } = await listarContratos()
-
-    if (fetchError) {
-      setError(fetchError.message)
-      setContratos([])
-    } else {
-      setContratos(data ?? [])
-    }
-
+  const aplicarListado = useCallback(({ data, error: fetchError }) => {
+    setError(fetchError ? fetchError.message : null)
+    setContratos(fetchError ? [] : data ?? [])
     setLoading(false)
   }, [])
+
+  // Recarga sin vaciar la lista: después de cada cambio se ve el dato nuevo sin parpadeo.
+  const refetch = useCallback(async () => aplicarListado(await listarContratos()), [aplicarListado])
 
   const crear = useCallback(
     async (datos) => {
@@ -94,11 +87,11 @@ export function useContratos() {
   )
 
   const finalizar = useCallback(
-    async (id) => {
+    async (id, cierre) => {
       setFinalizando(true)
       setActionError(null)
 
-      const { error: finalizeError } = await finalizarContrato(id)
+      const { error: finalizeError } = await finalizarContrato(id, cierre)
 
       if (finalizeError) {
         setActionError(finalizeError.message)
@@ -136,7 +129,11 @@ export function useContratos() {
         return false
       }
 
-      const total = (movimientos.aumentos ?? 0) + (movimientos.reclamos ?? 0)
+      const total =
+        (movimientos.aumentos ?? 0) +
+        (movimientos.periodos ?? 0) +
+        (movimientos.comprobantes ?? 0) +
+        (movimientos.reclamos ?? 0)
 
       if (total > 0) {
         setActionError(MENSAJE_MOVIMIENTOS)
@@ -174,8 +171,14 @@ export function useContratos() {
   }, [])
 
   useEffect(() => {
-    refetch()
-  }, [refetch])
+    let vigente = true
+    listarContratos().then((resultado) => {
+      if (vigente) aplicarListado(resultado)
+    })
+    return () => {
+      vigente = false
+    }
+  }, [aplicarListado])
 
   return {
     contratos,

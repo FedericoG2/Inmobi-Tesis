@@ -19,21 +19,14 @@ export function usePropietarios() {
   const [submitError, setSubmitError] = useState(null)
   const [actionError, setActionError] = useState(null)
 
-  const refetch = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-
-    const { data, error: fetchError } = await listarPropietarios()
-
-    if (fetchError) {
-      setError(fetchError.message)
-      setPropietarios([])
-    } else {
-      setPropietarios(data ?? [])
-    }
-
+  const aplicarListado = useCallback(({ data, error: fetchError }) => {
+    setError(fetchError ? fetchError.message : null)
+    setPropietarios(fetchError ? [] : data ?? [])
     setLoading(false)
   }, [])
+
+  // Recarga sin vaciar la lista: después de cada cambio se ve el dato nuevo sin parpadeo.
+  const refetch = useCallback(async () => aplicarListado(await listarPropietarios()), [aplicarListado])
 
   const crear = useCallback(
     async (datos) => {
@@ -105,8 +98,14 @@ export function usePropietarios() {
   }, [])
 
   useEffect(() => {
-    refetch()
-  }, [refetch])
+    let vigente = true
+    listarPropietarios().then((resultado) => {
+      if (vigente) aplicarListado(resultado)
+    })
+    return () => {
+      vigente = false
+    }
+  }, [aplicarListado])
 
   return {
     propietarios,

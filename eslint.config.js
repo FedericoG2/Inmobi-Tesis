@@ -23,7 +23,17 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^[A-Z_]' }],
+      // Cada contexto exporta su Provider y el hook para leerlo, como recomienda React.
+      'react-refresh/only-export-components': [
+        'error',
+        { allowConstantExport: true, allowExportNames: ['useAuth', 'useToast', 'useAdminLayout', 'usePortalInquilino', 'usePortalPropietario'] },
+      ],
     },
+  },
+  {
+    // Scripts de mantenimiento y pruebas: corren en Node.
+    files: ['scripts/**/*.{js,mjs}', 'tests/**/*.js', 'vite.config.js'],
+    languageOptions: { globals: globals.node },
   },
 ])

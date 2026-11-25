@@ -5,21 +5,11 @@ import {
   TONO_SITUACION,
 } from '../../utils/aumentosUi'
 import { formatMontoInquilino } from '../../utils/proyeccionAumentoInquilino'
-
-function IconTrendUp({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 17l6-6 4 4 8-8" />
-    </svg>
-  )
-}
+import { IconTrendingUp } from '../icons/Icons'
+import { calloutClass, cn } from '../../utils/ui'
 
 function AvisoAumento({ className = '' }) {
-  return (
-    <div className={`rounded-xl bg-amber-50 px-3 py-3 ring-1 ring-amber-200/80 ${className}`.trim()}>
-      <p className="text-xs leading-relaxed text-amber-900">{AVISO_AUMENTO_PORTAL}</p>
-    </div>
-  )
+  return <div className={calloutClass('warning', className)}>{AVISO_AUMENTO_PORTAL}</div>
 }
 
 function datosConfirmados(propuesta, ui) {
@@ -38,16 +28,15 @@ function datosConfirmados(propuesta, ui) {
   return { nuevo, anterior: hayAnterior ? anteriorBase : null, variacion }
 }
 
-export default function ProyeccionAumentoInquilinoCard({
-  propuesta,
-  loading,
-  error,
-  className = '',
-}) {
+/**
+ * Aumento del mes del próximo pago (RF-078): si ya está confirmado muestra el monto nuevo,
+ * el porcentaje y desde cuándo rige; si no, solo el aviso, sin un monto estimado.
+ */
+export default function ProyeccionAumentoInquilinoCard({ propuesta, loading, error, className = '' }) {
   if (loading) {
     return (
-      <div className={`rounded-xl bg-slate-50 px-3 py-3 ring-1 ring-slate-200 ${className}`.trim()}>
-        <p className="text-xs text-slate-500">Consultando el aumento...</p>
+      <div className={calloutClass('neutral', className)}>
+        <p className="text-slate-500">Consultando el aumento…</p>
       </div>
     )
   }
@@ -57,8 +46,7 @@ export default function ProyeccionAumentoInquilinoCard({
   }
 
   const ui = interpretarPropuestaAumentoPortal(propuesta)
-  const confirmado = ui.etiqueta === 'aplicado' || ui.etiqueta === 'acordado'
-  if (!confirmado || ui.montoMostrar == null) {
+  if (ui.etiqueta !== 'aplicado' || ui.montoMostrar == null) {
     return <AvisoAumento className={className} />
   }
 
@@ -66,39 +54,35 @@ export default function ProyeccionAumentoInquilinoCard({
   const { nuevo, anterior, variacion } = datosConfirmados(propuesta, ui)
 
   return (
-    <div
-      className={`rounded-xl px-3 py-3 ring-1 ring-inset ${TONO_SITUACION[ui.tono] ?? TONO_SITUACION.slate} ${className}`.trim()}
-    >
+    <div className={cn('rounded-xl px-4 py-3.5 ring-1 ring-inset', TONO_SITUACION[ui.tono] ?? TONO_SITUACION.slate, className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          <IconTrendUp />
-          <span className="text-xs font-semibold">Próximo aumento</span>
+          <IconTrendingUp className="h-4 w-4" />
+          <span className="text-sm font-medium">Aumento del período</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+          <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-medium ring-1 ring-inset ring-current/10">
             Confirmado
           </span>
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${indicador.className}`}>
-            {indicador.label}
-          </span>
+          <span className={indicador.className}>{indicador.label}</span>
         </div>
       </div>
 
       <div className="mt-3">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           {anterior != null && (
-            <span className="text-sm text-slate-500 line-through">{formatMontoInquilino(anterior)}</span>
+            <span className="text-sm tabular-nums text-slate-500 line-through">{formatMontoInquilino(anterior)}</span>
           )}
-          <span className="text-xl font-bold leading-none">{formatMontoInquilino(nuevo)}</span>
+          <span className="text-2xl font-semibold leading-none tabular-nums tracking-tight">
+            {formatMontoInquilino(nuevo)}
+          </span>
         </div>
         {variacion != null && (
-          <p className="mt-1 text-xs font-medium opacity-90">
-            +{Number(variacion).toLocaleString('es-AR')}% respecto al monto actual
-          </p>
+          <p className="mt-1 text-sm opacity-90">+{Number(variacion).toLocaleString('es-AR')}% respecto al monto anterior</p>
         )}
       </div>
 
-      <p className="mt-2 text-xs leading-relaxed opacity-90">{ui.observacion}</p>
+      <p className="mt-2 text-sm leading-relaxed opacity-90">{ui.observacion}</p>
     </div>
   )
 }

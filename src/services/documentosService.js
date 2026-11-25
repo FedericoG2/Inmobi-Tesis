@@ -36,13 +36,14 @@ const MIME_IMAGEN_PERMITIDOS = new Set([
 const EXTENSIONES_IMAGEN_PERMITIDAS = ['.jpg', '.jpeg', '.png', '.webp', '.gif']
 const MAX_BYTES_IMAGEN = 10 * 1024 * 1024
 
-function extensionArchivo(nombre) {
+export function extensionArchivo(nombre) {
   const idx = nombre.lastIndexOf('.')
   if (idx < 0) return ''
   return nombre.slice(idx).toLowerCase()
 }
 
-function sanitizarNombreArchivo(nombre) {
+/** Nombre de archivo apto para Storage: sin tildes, espacios ni símbolos. */
+export function sanitizarNombreArchivo(nombre) {
   return (nombre ?? 'documento')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')

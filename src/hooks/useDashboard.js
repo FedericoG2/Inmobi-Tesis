@@ -2,73 +2,80 @@ import { useCallback, useEffect, useState } from 'react'
 import { obtenerIpcAnualArgly } from '../services/arglyService'
 import { obtenerDashboardAdmin } from '../services/dashboardService'
 
+const RESUMEN_VACIO = {
+  kpis: null,
+  reclamosPendientes: [],
+  contratosPorVencer: [],
+  ingresoMensual: 0,
+  aumentosPeriodo: null,
+}
+
+const consultarTodo = () => {
+  const anio = new Date().getFullYear()
+  return Promise.all([obtenerDashboardAdmin(), obtenerIpcAnualArgly(anio)]).then(([resumen, ipc]) => ({
+    resumen,
+    ipc,
+    anio,
+  }))
+}
+
 export function useDashboard() {
-  const [kpis, setKpis] = useState(null)
-  const [reclamosPendientes, setReclamosPendientes] = useState([])
-  const [contratosPorVencer, setContratosPorVencer] = useState([])
-  const [ingresoMensual, setIngresoMensual] = useState(0)
-  const [aumentosPeriodo, setAumentosPeriodo] = useState(null)
-  const [ipcAnual, setIpcAnual] = useState([])
-  const [ipcAnio, setIpcAnio] = useState(new Date().getFullYear())
-  const [ipcError, setIpcError] = useState(null)
+  const [resumen, setResumen] = useState(RESUMEN_VACIO)
+  const [ipc, setIpc] = useState({ anual: [], anio: new Date().getFullYear(), error: null })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [actualizado, setActualizado] = useState(null)
 
-  const refetch = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    setIpcError(null)
-
-    const anioActual = new Date().getFullYear()
-
-    const [dashboardResult, ipcResult] = await Promise.all([
-      obtenerDashboardAdmin(),
-      obtenerIpcAnualArgly(anioActual),
-    ])
-
-    if (dashboardResult.error) {
-      setError(dashboardResult.error.message)
-      setKpis(null)
-      setReclamosPendientes([])
-      setContratosPorVencer([])
-      setIngresoMensual(0)
-      setAumentosPeriodo(null)
-    } else {
-      setKpis(dashboardResult.data.kpis)
-      setReclamosPendientes(dashboardResult.data.reclamosPendientes)
-      setContratosPorVencer(dashboardResult.data.contratosPorVencer)
-      setIngresoMensual(dashboardResult.data.ingresoMensual)
-      setAumentosPeriodo(dashboardResult.data.aumentosPeriodo)
-    }
-
-    if (ipcResult.error) {
-      setIpcAnual([])
-      setIpcAnio(anioActual)
-      setIpcError(ipcResult.error.message)
-    } else {
-      setIpcAnual(ipcResult.data.ipcAnual)
-      setIpcAnio(ipcResult.data.anio)
-      setIpcError(null)
-    }
-
-    setLoading(false)
+  const aplicarResumen = useCallback((resultado) => {
+    setError(resultado.error ? resultado.error.message : null)
+    setResumen(resultado.error ? RESUMEN_VACIO : resultado.data)
+    setActualizado(new Date())
   }, [])
 
+  const aplicarTodo = useCallback(
+    ({ resumen: resultadoResumen, ipc: resultadoIpc, anio }) => {
+      aplicarResumen(resultadoResumen)
+      setIpc(
+        resultadoIpc.error
+          ? { anual: [], anio, error: resultadoIpc.error.message }
+          : { anual: resultadoIpc.data.ipcAnual, anio: resultadoIpc.data.anio, error: null }
+      )
+      setLoading(false)
+    },
+    [aplicarResumen]
+  )
+
+  /** silencioso: recalcula los indicadores sin volver a pedir el IPC (lo usa la actividad en vivo). */
+  const refetch = useCallback(
+    async ({ silencioso = false } = {}) => {
+      if (silencioso) {
+        const resultado = await obtenerDashboardAdmin()
+        if (!resultado.error) aplicarResumen(resultado)
+        return
+      }
+      aplicarTodo(await consultarTodo())
+    },
+    [aplicarResumen, aplicarTodo]
+  )
+
   useEffect(() => {
-    refetch()
-  }, [refetch])
+    let vigente = true
+    consultarTodo().then((resultado) => {
+      if (vigente) aplicarTodo(resultado)
+    })
+    return () => {
+      vigente = false
+    }
+  }, [aplicarTodo])
 
   return {
-    kpis,
-    reclamosPendientes,
-    contratosPorVencer,
-    ingresoMensual,
-    aumentosPeriodo,
-    ipcAnual,
-    ipcAnio,
-    ipcError,
+    ...resumen,
+    ipcAnual: ipc.anual,
+    ipcAnio: ipc.anio,
+    ipcError: ipc.error,
     loading,
     error,
+    actualizado,
     refetch,
   }
 }

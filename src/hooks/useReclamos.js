@@ -15,21 +15,14 @@ export function useReclamos() {
   const [submitError, setSubmitError] = useState(null)
   const [actionError, setActionError] = useState(null)
 
-  const refetch = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-
-    const { data, error: fetchError } = await listarReclamos()
-
-    if (fetchError) {
-      setError(fetchError.message)
-      setReclamos([])
-    } else {
-      setReclamos(data ?? [])
-    }
-
+  const aplicarListado = useCallback(({ data, error: fetchError }) => {
+    setError(fetchError ? fetchError.message : null)
+    setReclamos(fetchError ? [] : data ?? [])
     setLoading(false)
   }, [])
+
+  // Recarga sin vaciar la lista: después de cada cambio se ve el dato nuevo sin parpadeo.
+  const refetch = useCallback(async () => aplicarListado(await listarReclamos()), [aplicarListado])
 
   const crear = useCallback(
     async (datos) => {
@@ -129,8 +122,14 @@ export function useReclamos() {
   }, [])
 
   useEffect(() => {
-    refetch()
-  }, [refetch])
+    let vigente = true
+    listarReclamos().then((resultado) => {
+      if (vigente) aplicarListado(resultado)
+    })
+    return () => {
+      vigente = false
+    }
+  }, [aplicarListado])
 
   return {
     reclamos,

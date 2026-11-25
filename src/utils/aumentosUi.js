@@ -1,3 +1,6 @@
+import { IconChart, IconDocument, IconHome } from '../components/icons/Icons'
+import { badgeClass } from './ui'
+
 export function formatPeriodoIpc(anio, mes) {
   if (anio == null || mes == null) return '—'
   const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
@@ -18,6 +21,12 @@ export function formatValorIpc(valor) {
     minimumFractionDigits: 1,
     maximumFractionDigits: 2,
   })}%`
+}
+
+/** Variación porcentual con coma decimal (es-AR): 35,71 %. */
+export function formatPorcentaje(valor) {
+  if (valor == null || !Number.isFinite(Number(valor))) return '—'
+  return `${Number(valor).toLocaleString('es-AR', { maximumFractionDigits: 2 })} %`
 }
 
 export function hoyIsoLocal() {
@@ -90,14 +99,6 @@ function infoMes(anio, mes) {
 export function mesActualInfo(hoy = hoyIsoLocal()) {
   const [y, m] = hoy.split('-').map(Number)
   return infoMes(y, m)
-}
-
-/** Info del mes siguiente al actual. */
-export function mesProximoInfo(hoy = hoyIsoLocal()) {
-  const [y, m] = hoy.split('-').map(Number)
-  const anio = m >= 12 ? y + 1 : y
-  const mes = m >= 12 ? 1 : m + 1
-  return infoMes(anio, mes)
 }
 
 /**
@@ -179,35 +180,6 @@ export function diasHastaFinPeriodoOperativo(hoy = hoyIsoLocal()) {
   return diasHastaFecha(ultimoDiaPeriodoOperativoIso(hoy), hoy)
 }
 
-/** Último día (ISO) del mes próximo. */
-export function ultimoDiaMesProximoIso(hoy = hoyIsoLocal()) {
-  const { anio, mes } = mesProximoInfo(hoy)
-  const d = new Date(anio, mes, 0)
-  const yy = d.getFullYear()
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  return `${yy}-${mm}-${dd}`
-}
-
-/** Días desde hoy hasta el fin del mes próximo (para cubrir todo el período). */
-export function diasHastaFinMesProximo(hoy = hoyIsoLocal()) {
-  return diasHastaFecha(ultimoDiaMesProximoIso(hoy), hoy)
-}
-
-export function etiquetaFechaAumento(fechaIso, hoy = hoyIsoLocal()) {
-  const dias = diasHastaFecha(fechaIso, hoy)
-  if (dias == null) return '—'
-  if (dias === 0) return 'Hoy'
-  if (dias < 0) {
-    const n = Math.abs(dias)
-    if (n === 1) return 'Pendiente desde ayer'
-    return `Pendiente hace ${n} días`
-  }
-  if (dias === 1) return 'Mañana'
-  if (dias <= 30) return `En ${dias} días`
-  return formatFechaAumento(fechaIso)
-}
-
 /** Subtítulo para la columna de período: "Aumento en julio", etc. */
 export function etiquetaPeriodoAumento(fechaIso, hoy = hoyIsoLocal()) {
   if (!fechaIso) return ''
@@ -219,17 +191,6 @@ export function etiquetaPeriodoAumento(fechaIso, hoy = hoyIsoLocal()) {
   const mes = Number(fechaIso.split('-')[1])
   if (!mes || !MESES_LARGOS[mes - 1]) return ''
   return `Aumento en ${capitalizar(MESES_LARGOS[mes - 1])}`
-}
-
-/** Subtítulo relativo para la columna de fecha: "Aumento en 5 días", "Aumenta hoy", etc. */
-export function etiquetaAumentoRelativa(fechaIso, hoy = hoyIsoLocal()) {
-  const dias = diasHastaFecha(fechaIso, hoy)
-  if (dias == null) return ''
-  if (dias === 0) return 'Aumenta hoy'
-  if (dias === 1) return 'Aumento mañana'
-  if (dias > 1) return `Aumento en ${dias} días`
-  const n = Math.abs(dias)
-  return `Venció hace ${n} ${n === 1 ? 'día' : 'días'}`
 }
 
 /** Aviso del portal cuando el aumento del mes todavía no está confirmado. */
@@ -246,6 +207,7 @@ export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal(), opci
   const { portal = false } = opciones
   const fechaAumento = propuesta.fecha_hasta ?? propuesta.fecha_proximo_aumento
 
+  // Un aumento registrado ya está confirmado: confirmar_aumentos fija el monto en el momento.
   if (propuesta.ya_aplicado || propuesta.estado === 'aplicado') {
     const fechaLabel = formatFechaAumento(fechaAumento)
     return {
@@ -254,28 +216,11 @@ export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal(), opci
       etiquetaEstado: 'Confirmado',
       observacion: portal
         ? `Tu nuevo alquiler rige desde el ${fechaLabel}.`
-        : 'Aumento ya aplicado al contrato.',
+        : 'Aumento confirmado: el monto nuevo ya rige en el contrato.',
       montoMostrar: propuesta.monto_propuesto,
       montoEsAproximado: false,
       puedeConfirmar: false,
       tono: 'emerald',
-    }
-  }
-
-  if (propuesta.programado || propuesta.ya_acordado || propuesta.estado === 'programado') {
-    const aproximado = Boolean(propuesta.es_aproximado)
-    const fechaLabel = formatFechaAumento(fechaAumento)
-    return {
-      etiqueta: 'acordado',
-      etiquetaTexto: 'Acordado',
-      etiquetaEstado: 'Acordado',
-      observacion: portal
-        ? `Tu nuevo alquiler rige desde el ${fechaLabel}.`
-        : `Aumento acordado: el nuevo monto rige desde el ${fechaLabel}. Se aplica automáticamente en esa fecha.`,
-      montoMostrar: propuesta.monto_acordado ?? propuesta.monto_propuesto,
-      montoEsAproximado: portal ? false : aproximado,
-      puedeConfirmar: false,
-      tono: 'sky',
     }
   }
 
@@ -312,7 +257,7 @@ export function interpretarPropuestaAumento(propuesta, hoy = hoyIsoLocal(), opci
     } else if (portal) {
       observacion = AVISO_AUMENTO_PORTAL
     } else if (aproximado) {
-      observacion = `Falta un índice del período${detalleIpc}. El monto se muestra igual; puede variar al publicarse.`
+      observacion = `Falta un índice del período${detalleIpc}. El monto se muestra igual; si confirmás ahora, queda fijo con los índices publicados.`
     } else {
       observacion =
         dias != null && dias < 0
@@ -363,44 +308,40 @@ export function mensajeConfirmarDeshabilitado(ui) {
   if (!ui) return 'No se puede confirmar'
   if (ui.puedeConfirmar) return 'Confirmar aumento'
   if (ui.etiqueta === 'sin_indices') return 'Cargá los índices a mano para calcular'
-  if (ui.etiqueta === 'acordado') return 'Ya acordado: se aplica en la fecha'
   if (ui.etiqueta === 'proyectado') return `Se podrá confirmar desde el día ${DIA_INICIO_BANDEJA} del mes del aumento`
   return 'No disponible para confirmar'
 }
 
 export const BADGE_INDICADOR = {
-  ipc: { label: 'IPC', className: 'bg-violet-600 text-white' },
-  icl: { label: 'ICL', className: 'bg-slate-600 text-white' },
+  ipc: { label: 'IPC', className: badgeClass('neutral', 'font-semibold') },
+  icl: { label: 'ICL', className: badgeClass('neutral', 'font-semibold') },
 }
 
 export const TONO_SITUACION = {
-  emerald: 'bg-emerald-50 text-emerald-800 ring-emerald-100',
-  amber: 'bg-amber-50 text-amber-800 ring-amber-100',
-  red: 'bg-red-50 text-red-800 ring-red-100',
-  indigo: 'bg-brand-50 text-brand-800 ring-brand-100',
-  sky: 'bg-sky-50 text-sky-800 ring-sky-100',
-  slate: 'bg-slate-100 text-slate-600 ring-slate-200',
+  emerald: 'bg-emerald-50 text-emerald-800 ring-emerald-600/15',
+  amber: 'bg-amber-50 text-amber-900 ring-amber-600/20',
+  red: 'bg-red-50 text-red-800 ring-red-600/15',
+  indigo: 'bg-brand-50 text-brand-800 ring-brand-600/15',
+  sky: 'bg-brand-50 text-brand-800 ring-brand-600/15',
+  slate: 'bg-slate-50 text-slate-700 ring-slate-500/15',
 }
-
-/** @deprecated usar TONO_SITUACION */
-export const TONO_BADGE = TONO_SITUACION
 
 export function badgeIndicador(tipo) {
   const key = (tipo ?? '').toLowerCase()
-  return BADGE_INDICADOR[key] ?? { label: (tipo ?? '—').toUpperCase(), className: 'bg-slate-500 text-white' }
+  return BADGE_INDICADOR[key] ?? { label: (tipo ?? '—').toUpperCase(), className: badgeClass('neutral', 'font-semibold') }
 }
 
 /** Chip de índice estilo categoría de reclamos: ícono + sigla. */
 export const CHIP_INDICADOR = {
   ipc: {
     label: 'IPC',
-    icon: '📈',
+    icon: IconChart,
     tooltip:
       'IPC — Índice de Precios al Consumidor (INDEC). Variación mensual de inflación del nivel general. Inmobi lo consulta en vivo desde Argly (fuente INDEC) para calcular el aumento del período. Al confirmar, guarda en el aumento una copia de los valores usados.',
   },
   icl: {
     label: 'ICL',
-    icon: '🏠',
+    icon: IconHome,
     tooltip:
       'ICL — Índice para Contratos de Locación (BCRA). Índice oficial para actualizar alquileres. Inmobi lo consulta en vivo desde Argly (fuente BCRA) para calcular el aumento del período. Al confirmar, guarda en el aumento una copia de los valores usados.',
   },
@@ -411,7 +352,7 @@ export function chipIndicador(tipo) {
   return (
     CHIP_INDICADOR[key] ?? {
       label: (tipo ?? '—').toUpperCase(),
-      icon: '📄',
+      icon: IconDocument,
       tooltip: null,
     }
   )
@@ -458,10 +399,11 @@ export function estimarProximaPublicacion(propuesta) {
 }
 
 /**
- * Advertencia estilo calculadora oficial cuando el valor es aproximado.
- * Devuelve null si la propuesta no es aproximada.
+ * Advertencia cuando falta un índice del período. Devuelve null si la propuesta no es aproximada.
+ * Antes de confirmar avisa que el monto queda fijo al confirmar; con `fijo` (comprobante ya
+ * confirmado) dice qué índice no estaba publicado: el monto confirmado no se recalcula.
  */
-export function advertenciaAproximado(propuesta) {
+export function advertenciaAproximado(propuesta, { fijo = false } = {}) {
   if (!propuesta?.es_aproximado) return null
 
   const fechaHasta = propuesta.fecha_hasta ?? propuesta.fecha_proximo_aumento
@@ -473,20 +415,21 @@ export function advertenciaAproximado(propuesta) {
     const faltantes = (propuesta.ipc_detalle ?? [])
       .filter((m) => !m.publicado)
       .map((m) => formatPeriodoIpc(m.anio, m.mes))
-    if (faltantes.length === 1) {
-      texto = `Falta el IPC de ${faltantes[0]}. El monto se calculó con los meses ya publicados y puede variar cuando salga ese índice.`
-    } else if (faltantes.length > 1) {
-      texto = `Faltan IPC de ${faltantes.join(', ')}. El monto se calculó con los meses ya publicados y puede variar cuando salgan esos índices.`
-    } else {
-      texto = `Este valor todavía no es de cierre: falta un IPC del período. Puede variar al publicarse.`
-    }
+    const meses = faltantes.length > 0 ? faltantes.join(', ') : 'un mes del período'
+    const plural = faltantes.length > 1
+    texto = fijo
+      ? `El IPC de ${meses} no estaba publicado al confirmar. El aumento se calculó con los meses publicados y el monto quedó fijo.`
+      : `${plural ? 'Faltan los IPC' : 'Falta el IPC'} de ${meses}. El monto se calculó con los meses ya publicados. Si confirmás ahora, ${plural ? 'esos meses no se incluyen' : 'ese mes no se incluye'} y el monto queda fijo.`
   } else if (tipo === 'icl') {
     const usado = propuesta.icl_fecha_fin_usada ?? propuesta.detalle_calculo?.icl_fecha_fin_usada
-    texto = usado
-      ? `Falta el ICL al ${formatFechaAumento(fechaHasta)}. Se usó el último valor publicado (${formatFechaAumento(usado)}). El monto puede variar.`
-      : `Falta el ICL al ${formatFechaAumento(fechaHasta)}. El monto se calculó con el último valor publicado y puede variar.`
+    const valorUsado = usado ? ` (${formatFechaAumento(usado)})` : ''
+    texto = fijo
+      ? `El ICL al ${formatFechaAumento(fechaHasta)} no estaba publicado al confirmar. Se usó el último valor publicado${valorUsado} y el monto quedó fijo.`
+      : `Falta el ICL al ${formatFechaAumento(fechaHasta)}. Se usó el último valor publicado${valorUsado}. Si confirmás ahora, el monto queda fijo con ese valor.`
   } else {
-    texto = `Falta un índice del período. El monto se muestra igual y puede variar al publicarse.`
+    texto = fijo
+      ? `Un índice del período no estaba publicado al confirmar. El monto quedó fijo con los índices publicados.`
+      : `Falta un índice del período. Si confirmás ahora, el monto queda fijo con los índices publicados.`
   }
 
   return {
@@ -504,7 +447,7 @@ export function advertenciaAproximado(propuesta) {
 export function observacionOperativaDetalle(detalle) {
   const { ui, tipo, periodo } = detalle
 
-  if (ui.etiqueta === 'aplicado' || ui.etiqueta === 'acordado' || ui.etiqueta === 'sin_indices') {
+  if (ui.etiqueta === 'aplicado' || ui.etiqueta === 'sin_indices') {
     return ui.observacion
   }
 
@@ -531,7 +474,7 @@ export function observacionOperativaDetalle(detalle) {
 /**
  * Detalle técnico del cálculo para el modal.
  */
-export function detalleCalculoAumento(propuesta, hoy = hoyIsoLocal()) {
+export function detalleCalculoAumento(propuesta, hoy = hoyIsoLocal(), opciones = {}) {
   const ui = interpretarPropuestaAumento(propuesta, hoy)
   const tipo = (propuesta.tipo_ajuste ?? propuesta.indice_tipo ?? '').toLowerCase()
   const fechaDesde = propuesta.fecha_desde
@@ -561,14 +504,22 @@ export function detalleCalculoAumento(propuesta, hoy = hoyIsoLocal()) {
     }
   }
 
+  // Si el monto se redondeó, la fórmula muestra el monto calculado y el redondeo va aparte.
+  const montoCalculado = propuesta.monto_calculado ?? propuesta.detalle_calculo?.monto_calculado ?? null
+  const montoFormula = montoCalculado ?? propuesta.monto_propuesto
+  const redondeo =
+    montoCalculado != null && Number(montoCalculado) !== Number(propuesta.monto_propuesto)
+      ? { calculado: Number(montoCalculado), final: Number(propuesta.monto_propuesto) }
+      : null
+
   let formula = null
   if (ui.montoMostrar != null && propuesta.monto_actual != null) {
     if (tipo === 'icl' && propuesta.indice_valor_inicio && propuesta.indice_valor_fin) {
-      formula = `${formatMontoDetalle(propuesta.monto_actual)} × (${propuesta.indice_valor_fin} ÷ ${propuesta.indice_valor_inicio}) = ${formatMontoDetalle(propuesta.monto_propuesto)}`
+      formula = `${formatMontoDetalle(propuesta.monto_actual)} × (${propuesta.indice_valor_fin} ÷ ${propuesta.indice_valor_inicio}) = ${formatMontoDetalle(montoFormula)}`
     } else if (tipo === 'ipc' && propuesta.ipc_factor != null) {
-      formula = `${formatMontoDetalle(propuesta.monto_actual)} × ${Number(propuesta.ipc_factor).toFixed(6)} = ${formatMontoDetalle(propuesta.monto_propuesto)}`
+      formula = `${formatMontoDetalle(propuesta.monto_actual)} × ${Number(propuesta.ipc_factor).toFixed(6)} = ${formatMontoDetalle(montoFormula)}`
     } else {
-      formula = `${formatMontoDetalle(propuesta.monto_actual)} → ${formatMontoDetalle(propuesta.monto_propuesto)}`
+      formula = `${formatMontoDetalle(propuesta.monto_actual)} → ${formatMontoDetalle(montoFormula)}`
     }
   }
 
@@ -586,6 +537,7 @@ export function detalleCalculoAumento(propuesta, hoy = hoyIsoLocal()) {
     },
     filasIndice,
     formula,
+    redondeo,
     ipcDetalle,
     iclValores:
       tipo === 'icl'
@@ -600,7 +552,7 @@ export function detalleCalculoAumento(propuesta, hoy = hoyIsoLocal()) {
           }
         : null,
     ipcFactor: propuesta.ipc_factor != null ? Number(propuesta.ipc_factor) : null,
-    advertencia: advertenciaAproximado(propuesta),
+    advertencia: advertenciaAproximado(propuesta, opciones),
     variacionPct: propuesta.variacion_pct,
     montoActual: propuesta.monto_actual,
     montoPropuesto: propuesta.monto_propuesto,
@@ -620,7 +572,7 @@ export function propuestaDesdeAumentoRegistrado(row) {
     propiedad_direccion: row.propiedad_direccion,
     monto_actual: row.monto_anterior,
     monto_propuesto: row.monto_nuevo,
-    monto_acordado: row.monto_nuevo,
+    monto_calculado: detalle.monto_calculado ?? null,
     variacion_pct: row.porcentaje_aplicado,
     fecha_desde: detalle.fecha_desde ?? null,
     fecha_hasta: row.fecha_aplicacion,
@@ -637,11 +589,9 @@ export function propuestaDesdeAumentoRegistrado(row) {
     es_aproximado: Boolean(detalle.es_aproximado),
     modo: row.modo ?? 'calculado',
     notas: row.notas ?? null,
-    ya_acordado: !row.aplicado,
-    ya_aplicado: row.aplicado,
-    programado: !row.aplicado,
+    ya_aplicado: true,
     confirmable: false,
-    estado: row.aplicado ? 'aplicado' : 'programado',
+    estado: 'aplicado',
     registrado_en_historial: true,
   }
 }

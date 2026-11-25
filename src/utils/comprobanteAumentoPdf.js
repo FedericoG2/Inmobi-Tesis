@@ -29,10 +29,18 @@ const fmtFechaEmision = (fecha) => {
 }
 
 const tipoAjusteLabel = {
-  icl: 'ICL (Índice Casa Propia)',
-  ipc: 'IPC (Nivel General)',
+  icl: 'ICL (Índice para Contratos de Locación, BCRA)',
+  ipc: 'IPC (Índice de Precios al Consumidor, INDEC)',
   porcentaje_fijo: 'Porcentaje fijo',
   manual: 'Manual',
+}
+
+/** De dónde salen los índices: organismo oficial y vía de consulta, o carga manual. */
+function fuenteIndices(propuesta, tipo) {
+  const organismo = tipo === 'icl' ? 'BCRA' : tipo === 'ipc' ? 'INDEC' : 'organismo oficial'
+  const fuente = propuesta.fuente ?? propuesta.detalle_calculo?.fuente
+  if (fuente === 'manual') return `${organismo} · valores cargados a mano por la inmobiliaria`
+  return `${organismo} · consultado mediante la API Argly`
 }
 
 /** Nombre de archivo del comprobante (incluye el período del aumento). */
@@ -47,8 +55,9 @@ export function nombreComprobanteAumento(propuesta) {
  * @returns {{ blob: Blob, filename: string }}
  */
 export function generarComprobanteAumentoPdf(propuesta, opciones = {}) {
-  const { fechaEmision = new Date(), inmobiliaria = 'INMOBI · Gestión Inmobiliaria' } = opciones
-  const detalle = detalleCalculoAumento(propuesta)
+  const { fechaEmision = new Date(), inmobiliaria = 'Zitelli & Asociados S.R.L. · Inmobi' } = opciones
+  // El comprobante se emite al confirmar: el monto ya quedó fijo.
+  const detalle = detalleCalculoAumento(propuesta, undefined, { fijo: true })
 
   const doc = new jsPDF({ unit: 'pt', format: 'a4' })
   const pageW = doc.internal.pageSize.getWidth()
@@ -111,7 +120,10 @@ export function generarComprobanteAumentoPdf(propuesta, opciones = {}) {
   sectionTitle('Resultado')
   filaDato('Monto anterior', fmtMoneda(propuesta.monto_actual))
   filaDato('Variación aplicada', fmtPct(propuesta.variacion_pct))
-  filaDato('Nuevo monto', `${detalle.esAproximado ? '~ ' : ''}${fmtMoneda(propuesta.monto_propuesto)}`, {
+  if (detalle.redondeo) {
+    filaDato('Monto calculado', fmtMoneda(detalle.redondeo.calculado))
+  }
+  filaDato(detalle.redondeo ? 'Nuevo monto (redondeado)' : 'Nuevo monto', fmtMoneda(propuesta.monto_propuesto), {
     bold: true,
     size: 13,
     color: COLOR_ACENTO,
@@ -120,6 +132,7 @@ export function generarComprobanteAumentoPdf(propuesta, opciones = {}) {
 
   // ----- Cómo se calculó -----
   sectionTitle('Cómo se calculó')
+  filaDato('Fuente de los índices', fuenteIndices(propuesta, detalle.tipo))
   if (detalle.filasIndice.length > 0) {
     detalle.filasIndice.forEach((fila) => filaDato(fila.label, fila.value))
   }
@@ -156,7 +169,7 @@ export function generarComprobanteAumentoPdf(propuesta, opciones = {}) {
       doc.text(label, marginX, y)
       doc.text(mes.variacion_pct != null ? fmtPct(mes.variacion_pct) : '—', marginX + 160, y)
       setColor(mes.publicado ? COLOR_TEXTO : COLOR_AMBAR)
-      doc.text(mes.publicado ? 'Publicado' : 'Estimado', marginX + contentW, y, { align: 'right' })
+      doc.text(mes.publicado ? 'Publicado' : 'No publicado (no incluido)', marginX + contentW, y, { align: 'right' })
       setColor(COLOR_TEXTO)
       y += 15
     })
@@ -174,7 +187,7 @@ export function generarComprobanteAumentoPdf(propuesta, opciones = {}) {
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(9.5)
     setColor(COLOR_AMBAR)
-    doc.text('Valor provisorio', marginX + 12, y + 16)
+    doc.text('Índice no publicado al confirmar', marginX + 12, y + 16)
     doc.setFont('helvetica', 'normal')
     setColor(COLOR_TEXTO)
     doc.text(lineas, marginX + 12, y + 30)
@@ -187,7 +200,7 @@ export function generarComprobanteAumentoPdf(propuesta, opciones = {}) {
   doc.setFontSize(8)
   setColor(COLOR_SUAVE)
   const pie = doc.splitTextToSize(
-    'Comprobante generado automáticamente a partir de los índices oficiales utilizados en el cálculo. Documento informativo del ajuste; no constituye factura ni recibo de pago.',
+    'Comprobante generado automáticamente con los índices oficiales usados en el cálculo (IPC: INDEC · ICL: BCRA, consultados mediante la API Argly). Documento informativo del ajuste; no constituye factura ni recibo de pago.',
     contentW
   )
   doc.text(pie, marginX, footerY)

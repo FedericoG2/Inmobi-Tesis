@@ -37,13 +37,14 @@ function mesActualContrato(fechaInicio, fechaFin, hoy) {
 }
 
 function calcularProximoPeriodoAlquiler(diaVencimiento, hoy) {
-  const dia = Number(diaVencimiento) || 1
+  // Sin día de vencimiento cargado, el próximo pago es el del mes en curso y no se inventa un día.
+  const dia = Number(diaVencimiento) || null
   const [y, m, d] = hoy.split('-').map(Number)
 
   let periodYear = y
   let periodMonth = m
 
-  if (d > dia) {
+  if (dia && d > dia) {
     periodMonth += 1
     if (periodMonth > 12) {
       periodMonth = 1
@@ -68,31 +69,47 @@ export function armarResumenAlquilerInquilino(contrato, hoy = hoyIsoLocal()) {
   const periodo = calcularProximoPeriodoAlquiler(contrato.dia_vencimiento, hoy)
   const { actual, total } = mesActualContrato(contrato.fecha_inicio, contrato.fecha_fin, hoy)
 
-  let hayAumentoEnPeriodo = false
-  let aumentoLabel = null
-  let aumentoMesNombre = null
-  if (contrato.fecha_proximo_aumento && contrato.estado !== 'inactivo') {
-    const [y, m] = contrato.fecha_proximo_aumento.split('-').map(Number)
-    if (y === periodo.year && m === periodo.month) {
-      hayAumentoEnPeriodo = true
-      aumentoLabel = `Aumento en ${MESES_CAPITALIZADOS[m - 1]}`
-      aumentoMesNombre = MESES_CAPITALIZADOS[m - 1]
+  // El aumento que cae en el mes del próximo pago: el próximo (todavía sin confirmar) o el
+  // último, si ya se confirmó (al confirmar, la base corre fecha_proximo_aumento al período siguiente).
+  let fechaAumentoPeriodo = null
+  if (contrato.estado !== 'inactivo') {
+    const clavePago = `${periodo.year}-${String(periodo.month).padStart(2, '0')}`
+    const proximoVigente =
+      contrato.fecha_proximo_aumento &&
+      (!contrato.fecha_fin || contrato.fecha_proximo_aumento <= contrato.fecha_fin)
+    if (proximoVigente && contrato.fecha_proximo_aumento.slice(0, 7) === clavePago) {
+      fechaAumentoPeriodo = contrato.fecha_proximo_aumento
+    } else if (contrato.fecha_ultimo_aumento?.slice(0, 7) === clavePago) {
+      fechaAumentoPeriodo = contrato.fecha_ultimo_aumento
     }
   }
 
+  const hayAumentoEnPeriodo = fechaAumentoPeriodo != null
+  const mesAumento = hayAumentoEnPeriodo ? Number(fechaAumentoPeriodo.split('-')[1]) : null
+  const aumentoMesNombre = mesAumento ? MESES_CAPITALIZADOS[mesAumento - 1] : null
+  const aumentoLabel = aumentoMesNombre ? `Aumento en ${aumentoMesNombre}` : null
+
+  const diaTexto = periodo.diaVencimiento ? String(periodo.diaVencimiento).padStart(2, '0') : null
+  const mesTexto = String(periodo.month).padStart(2, '0')
+
   return {
     periodoLabel: `${MESES_CAPITALIZADOS[periodo.month - 1]} ${periodo.year}`,
-    vencimientoLabel: `Vence el ${periodo.diaVencimiento} de ${MESES[periodo.month - 1]} de ${periodo.year}`,
-    periodoResumenLine: `${MESES_CAPITALIZADOS[periodo.month - 1]} ${periodo.year} · Vence el ${String(periodo.diaVencimiento).padStart(2, '0')}/${String(periodo.month).padStart(2, '0')}`,
-    vencimientoCorto: `${String(periodo.diaVencimiento).padStart(2, '0')}/${String(periodo.month).padStart(2, '0')}`,
+    vencimientoLabel: periodo.diaVencimiento
+      ? `Vence el ${periodo.diaVencimiento} de ${MESES[periodo.month - 1]} de ${periodo.year}`
+      : null,
+    periodoResumenLine: diaTexto
+      ? `${MESES_CAPITALIZADOS[periodo.month - 1]} ${periodo.year} · Vence el ${diaTexto}/${mesTexto}`
+      : `${MESES_CAPITALIZADOS[periodo.month - 1]} ${periodo.year}`,
+    vencimientoCorto: diaTexto ? `${diaTexto}/${mesTexto}` : null,
     monto: contrato.monto_alquiler,
     hayAumentoEnPeriodo,
+    fechaAumentoPeriodo,
     aumentoLabel,
     aumentoMesNombre,
     mesContratoLabel:
-      actual != null && total != null ? `Mes ${actual} de ${total} del Contrato` : null,
+      actual != null && total != null ? `Mes ${actual} de ${total} del contrato` : null,
     mesContratoCorto:
-      actual != null && total != null ? `Mes ${actual}/${total} del Contrato` : null,
+      actual != null && total != null ? `Mes ${actual}/${total} del contrato` : null,
     mesContratoActual: actual,
     mesContratoTotal: total,
     diasRestantes: diasHasta(contrato.fecha_fin, hoy),

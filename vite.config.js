@@ -4,6 +4,10 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  test: {
+    include: ['tests/**/*.test.js'],
+    testTimeout: 20000,
+  },
   optimizeDeps: {
     include: ['tslib', '@tremor/react', '@supabase/supabase-js'],
   },

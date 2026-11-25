@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Card } from '@tremor/react'
+import { useMemo, useState } from 'react'
 import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
 import AdminListLayout from '../../components/admin/AdminListLayout'
 import AdminNuevoButton from '../../components/admin/AdminNuevoButton'
@@ -13,8 +12,9 @@ import {
   AdminTableHead,
   AdminTableHeaderCell,
   AdminTableRow,
+  AdminTableToolbar,
 } from '../../components/admin/AdminDataTable'
-import FilterSelect, { toolbarInputClass } from '../../components/admin/FilterSelect'
+import FilterSelect from '../../components/admin/FilterSelect'
 import ReclamoFormModal from '../../components/admin/forms/ReclamoFormModal'
 import ReclamoDetalleModal from '../../components/admin/ReclamoDetalleModal'
 import ReclamoGestionModal from '../../components/admin/ReclamoGestionModal'
@@ -26,10 +26,14 @@ import {
 import ReclamoRowActions from '../../components/admin/ReclamoRowActions'
 import StatCard from '../../components/admin/StatCard'
 import { useInquilinos } from '../../hooks/useInquilinos'
+import { usePaginacion } from '../../hooks/usePaginacion'
 import { useContratos } from '../../hooks/useContratos'
 import { usePropiedades } from '../../hooks/usePropiedades'
 import { useReclamos } from '../../hooks/useReclamos'
+import { useToast } from '../../contexts/ToastContext'
 import { celdaNombre, celdaNumero } from '../../utils/adminModuleUi'
+import { IconSearch } from '../../components/icons/Icons'
+import { calloutClass, cn, inputClass } from '../../utils/ui'
 
 const estados = ['Pendiente', 'En Proceso', 'Revision', 'Resuelto']
 const prioridades = ['Baja', 'Media', 'Alta', 'Urgente']
@@ -51,19 +55,8 @@ const CATEGORIAS = [
   { id: 'Gas', label: 'Gas' },
 ]
 
-function IconSearch({ className = 'h-4 w-4' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-      />
-    </svg>
-  )
-}
-
 export default function AdminReclamos() {
+  const toast = useToast()
   const [modalOpen, setModalOpen] = useState(false)
   const [reclamoEditando, setReclamoEditando] = useState(null)
   const [detalleOpen, setDetalleOpen] = useState(false)
@@ -78,7 +71,6 @@ export default function AdminReclamos() {
   const [filtroEstado, setFiltroEstado] = useState('')
   const [filtroPrioridad, setFiltroPrioridad] = useState('')
   const [filtroCategoria, setFiltroCategoria] = useState('')
-  const [paginaActual, setPaginaActual] = useState(1)
 
   const {
     reclamos,
@@ -154,9 +146,32 @@ export default function AdminReclamos() {
 
   const handleSubmit = async (form) => {
     if (reclamoEditando) {
-      return actualizar(reclamoEditando.id, form)
+      const resultado = await actualizar(reclamoEditando.id, form)
+      if (resultado) toast.success('Reclamo actualizado', `Se guardaron los cambios de "${form.titulo}".`)
+      return resultado
     }
-    return crear(form)
+    const resultado = await crear(form)
+    if (resultado) {
+      toast.success('Reclamo creado', `"${form.titulo}" quedó en estado Pendiente con prioridad ${form.prioridad}.`)
+    }
+    return resultado
+  }
+
+  const handleGestionar = async ({ reclamoId, estado, comentario }) => {
+    const res = await gestionar({ reclamoId, estado, comentario })
+    if (res?.ok) {
+      if (estado) {
+        toast.success(
+          `Reclamo en estado ${estado === 'Revision' ? 'Revisión' : estado}`,
+          estado === 'Resuelto'
+            ? 'Se cerró el reclamo y el inquilino lo ve como resuelto en su portal.'
+            : 'El cambio quedó registrado en el historial y lo ve el inquilino.'
+        )
+      } else {
+        toast.success('Nota agregada', 'El comentario quedó registrado en el historial del reclamo.')
+      }
+    }
+    return res
   }
 
   const handleEliminar = (reclamo) => {
@@ -177,6 +192,7 @@ export default function AdminReclamos() {
     const ok = await eliminar(reclamoAEliminar.id)
     setEliminando(false)
     if (ok) {
+      toast.success('Reclamo eliminado', `"${reclamoAEliminar.titulo}" se quitó del sistema.`)
       cancelarEliminar()
     }
   }
@@ -209,55 +225,36 @@ export default function AdminReclamos() {
   }, [reclamos, filtroTexto, filtroEstado, filtroPrioridad, filtroCategoria])
 
   // 2. Paginado.
-  const totalPaginas = useMemo(
-    () => Math.max(1, Math.ceil(reclamosFiltrados.length / FILAS_POR_PAGINA)),
-    [reclamosFiltrados.length]
-  )
-
-  const reclamosPagina = useMemo(() => {
-    const inicio = (paginaActual - 1) * FILAS_POR_PAGINA
-    return reclamosFiltrados.slice(inicio, inicio + FILAS_POR_PAGINA)
-  }, [reclamosFiltrados, paginaActual])
-
-  useEffect(() => {
-    setPaginaActual(1)
-  }, [filtroTexto, filtroEstado, filtroPrioridad, filtroCategoria])
-
-  useEffect(() => {
-    if (paginaActual > totalPaginas) {
-      setPaginaActual(totalPaginas)
-    }
-  }, [paginaActual, totalPaginas])
+  const {
+    pagina: paginaActual,
+    totalPaginas,
+    visibles: reclamosPagina,
+    irAPagina: setPaginaActual,
+  } = usePaginacion(reclamosFiltrados, FILAS_POR_PAGINA, [filtroTexto, filtroEstado, filtroPrioridad, filtroCategoria])
 
   return (
     <>
       <AdminListLayout
-        compact
         title="Reclamos"
-        subtitle="Tickets de mantenimiento por inquilino y propiedad (contrato activo al crear)"
+        subtitle="Pedidos de mantenimiento por inquilino y propiedad, desde la carga hasta su resolución."
+        actions={<AdminNuevoButton label="Nuevo reclamo" onClick={abrirModalCrear} />}
         alerts={
-          <>
-            {error && (
-              <Card className="border border-red-200 bg-red-50">
-                <p className="text-sm text-red-700">Error al cargar reclamos: {error}</p>
-              </Card>
-            )}
-            {actionError && (
-              <Card className="border border-red-200 bg-red-50">
-                <p className="text-sm text-red-700">{actionError}</p>
-              </Card>
-            )}
-          </>
+          error || actionError ? (
+            <div className="space-y-2">
+              {error && <div className={calloutClass('danger')}>Error al cargar reclamos: {error}</div>}
+              {actionError && <div className={calloutClass('danger')}>{actionError}</div>}
+            </div>
+          ) : null
         }
         summary={
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatCard
               compact
               label="Pendientes"
               value={loading ? '…' : kpis.pendientes}
               hint="Recién cargados, sin gestionar"
               icon="clipboard"
-              theme="slate"
+              theme={!loading && kpis.pendientes > 0 ? 'amber' : 'slate'}
             />
             <StatCard
               compact
@@ -273,7 +270,7 @@ export default function AdminReclamos() {
               value={loading ? '…' : kpis.urgentes}
               hint="Prioridad urgente sin resolver"
               icon="alert"
-              theme="slate"
+              theme={!loading && kpis.urgentes > 0 ? 'red' : 'slate'}
             />
             <StatCard
               compact
@@ -281,13 +278,12 @@ export default function AdminReclamos() {
               value={loading ? '…' : kpis.resueltos}
               hint="Ya cerrados"
               icon="check"
-              theme="slate"
+              theme="emerald"
             />
           </div>
         }
       >
-        <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-3 lg:px-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <AdminTableToolbar className="sm:flex-wrap">
           <div className="relative min-w-0 flex-1 sm:min-w-[12rem]">
             <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -295,8 +291,8 @@ export default function AdminReclamos() {
               type="search"
               value={filtroTexto}
               onChange={(e) => setFiltroTexto(e.target.value)}
-              placeholder="Buscar reclamos por inquilino o propiedad."
-              className={`${toolbarInputClass} pl-9`}
+              placeholder="Buscar por inquilino o propiedad…"
+              className={cn(inputClass, 'pl-9')}
             />
           </div>
 
@@ -340,19 +336,10 @@ export default function AdminReclamos() {
               </option>
             ))}
           </FilterSelect>
-
-          <div className="shrink-0 sm:ml-auto">
-            <AdminNuevoButton
-              label="NUEVO RECLAMO"
-              onClick={abrirModalCrear}
-              className="h-10 w-full whitespace-nowrap sm:w-auto"
-            />
-          </div>
-          </div>
-        </div>
+        </AdminTableToolbar>
 
         <AdminTable className="w-full">
-          <AdminTableHead className="!bg-slate-100/90">
+          <AdminTableHead>
             <AdminTableRow>
               <AdminTableHeaderCell>Inquilino</AdminTableHeaderCell>
               <AdminTableHeaderCell>Reclamo</AdminTableHeaderCell>
@@ -372,7 +359,7 @@ export default function AdminReclamos() {
           <AdminTableBody>
             {loading && (
               <AdminTableRow>
-                <AdminTableEmptyCell colSpan={6}>Cargando reclamos...</AdminTableEmptyCell>
+                <AdminTableEmptyCell colSpan={6}>Cargando reclamos…</AdminTableEmptyCell>
               </AdminTableRow>
             )}
 
@@ -385,10 +372,9 @@ export default function AdminReclamos() {
             )}
 
             {!loading &&
-              reclamosPagina.map((r, index) => {
-                const zebra = index % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'
+              reclamosPagina.map((r) => {
                 return (
-                <AdminTableRow key={r.id} className={`${zebra} hover:bg-brand-50/40`}>
+                <AdminTableRow key={r.id}>
                   <AdminTableCell className="max-w-[14rem]">
                     <p className={`truncate ${celdaNombre}`}>
                       {r.inquilinos?.nombre_completo ?? '—'}
@@ -399,7 +385,7 @@ export default function AdminReclamos() {
                   </AdminTableCell>
                   <AdminTableCell className="max-w-sm">
                     <p className={`truncate ${celdaNombre}`}>{r.titulo}</p>
-                    <span className="mt-1 inline-block">
+                    <span className="mt-1.5 inline-block">
                       <ReclamoCategoriaChip categoria={r.categoria} />
                     </span>
                   </AdminTableCell>
@@ -422,7 +408,7 @@ export default function AdminReclamos() {
                     <ReclamoRowActions
                       onView={() => abrirDetalle(r)}
                       onManage={() => abrirGestion(r)}
-                      onEdit={() => abrirModalEditar(r)}
+                      onEdit={r.estado !== 'Resuelto' ? () => abrirModalEditar(r) : undefined}
                       onDelete={r.estado !== 'Resuelto' ? () => handleEliminar(r) : undefined}
                     />
                   </AdminTableActionsCell>
@@ -442,6 +428,7 @@ export default function AdminReclamos() {
       </AdminListLayout>
 
       <ReclamoFormModal
+        key={modalOpen ? `formulario-${reclamoEditando?.id ?? 'nuevo'}` : 'formulario-cerrado'}
         open={modalOpen}
         onClose={cerrarModal}
         onSubmit={handleSubmit}
@@ -456,6 +443,7 @@ export default function AdminReclamos() {
       />
 
       <ReclamoDetalleModal
+        key={detalleOpen ? `detalle-${reclamoDetalle?.id}` : 'detalle-cerrado'}
         open={detalleOpen}
         reclamo={reclamoDetalle}
         onClose={cerrarDetalle}
@@ -468,10 +456,11 @@ export default function AdminReclamos() {
       />
 
       <ReclamoGestionModal
+        key={gestionOpen ? `gestion-${reclamoGestion?.id}` : 'gestion-cerrado'}
         open={gestionOpen}
         reclamo={reclamoGestion}
         onClose={cerrarGestion}
-        onGestionar={gestionar}
+        onGestionar={handleGestionar}
       />
 
       <AdminConfirmModal

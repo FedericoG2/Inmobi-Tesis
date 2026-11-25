@@ -1,3 +1,5 @@
+import { badgeClass } from './ui'
+
 /** Duración del plazo contractual en años (fecha fin = inicio + N años − 1 día). */
 export const DURACION_CONTRATO_OPCIONES = [
   { key: '1', label: '1 año', anios: 1 },
@@ -64,32 +66,35 @@ export function esContratoPlazoVencido(contrato, hoy = hoyIsoLocal()) {
 }
 
 export function contratoComprometePropiedad(contrato) {
-  if (contrato?.estado) {
-    return ESTADOS_CONTRATO_VIGENTES.includes(contrato.estado)
-  }
-  return Boolean(contrato?.activo)
+  return ESTADOS_CONTRATO_VIGENTES.includes(contrato?.estado)
+}
+
+/** Cómo terminó un contrato cerrado (estado inactivo): Finalizado, Rescindido o Cancelado. */
+export const MOTIVOS_CIERRE = {
+  Finalizado: 'Finalizado',
+  Rescindido: 'Rescindido',
+  Cancelado: 'Cancelado',
 }
 
 export function etiquetaEstadoContrato(contrato) {
   if (esContratoPlazoVencido(contrato)) return 'Vencido'
   if (contrato?.estado === 'programado') return 'Programado'
-  if (contrato?.estado === 'activo' || contrato?.activo) return 'Activo'
-  if (contrato?.estado === 'inactivo') return 'Finalizado'
-  return contrato?.activo ? 'Activo' : 'Finalizado'
+  if (contrato?.estado === 'activo') return 'Activo'
+  return MOTIVOS_CIERRE[contrato?.motivo_cierre] ?? 'Finalizado'
 }
 
 export function colorEstadoContrato(contrato) {
   if (esContratoPlazoVencido(contrato)) return 'red'
   if (contrato?.estado === 'programado') return 'amber'
-  if (contrato?.estado === 'activo' || contrato?.activo) return 'emerald'
+  if (contrato?.estado === 'activo') return 'emerald'
   return 'gray'
 }
 
 const ESTADO_PILL_TONOS = {
-  emerald: 'bg-emerald-100 text-emerald-800 ring-1 ring-inset ring-emerald-200',
-  amber: 'bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-200',
-  red: 'bg-red-100 text-red-800 ring-1 ring-inset ring-red-200',
-  gray: 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200',
+  emerald: badgeClass('success'),
+  amber: badgeClass('warning'),
+  red: badgeClass('danger'),
+  gray: badgeClass('neutral'),
 }
 
 export function badgeEstadoContratoUi(contrato) {
@@ -105,19 +110,5 @@ export function puedeFinalizarContrato(contrato) {
 }
 
 export function etiquetaFinalizarContrato(contrato) {
-  return contrato?.estado === 'programado' ? 'Cancelar reserva' : 'Finalizar contrato'
-}
-
-export function mensajeConfirmacionFinalizarContrato(contrato) {
-  if (!contrato) return ''
-
-  const inquilino = contrato.inquilinos?.nombre_completo ?? 'este inquilino'
-  const direccion = contrato.propiedades?.direccion ?? 'esta propiedad'
-  const base = `¿Finalizar el contrato de ${inquilino} en ${direccion}?`
-
-  if (contrato.estado === 'programado') {
-    return `${base} Se cancelará la reserva programada y la propiedad volverá a Disponible.`
-  }
-
-  return `${base} El contrato quedará finalizado, la propiedad se liberará y dejará de incluirse en aumentos. El historial se conserva.`
+  return contrato?.estado === 'programado' ? 'Cancelar contrato' : 'Finalizar o rescindir'
 }

@@ -1,51 +1,21 @@
-import { useEffect, useState } from 'react'
 import { obtenerProyeccionAumentoPortal } from '../services/portalInquilinoService'
 import { contratoPuedeProyectarAumento } from '../utils/proyeccionAumentoInquilino'
+import { useConsulta } from './useConsulta'
 
+/** Aumento del mes del próximo pago para el portal (RF-078). */
 export default function useProyeccionAumentoInquilino(contrato, resumen) {
-  const [propuesta, setPropuesta] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-
   const debeConsultar = contratoPuedeProyectarAumento(contrato, resumen)
   const contratoId = contrato?.id
+  const fechaAumento = resumen?.fechaAumentoPeriodo ?? null
 
-  useEffect(() => {
-    if (!debeConsultar || !contratoId) {
-      setPropuesta(null)
-      setError(null)
-      setLoading(false)
-      return
-    }
+  const { data, error, cargando } = useConsulta(debeConsultar && contratoId ? [contratoId, fechaAumento] : null, () =>
+    obtenerProyeccionAumentoPortal(contratoId, fechaAumento)
+  )
 
-    let cancelado = false
-
-    const cargar = async () => {
-      setLoading(true)
-      setError(null)
-
-      const { data, error: err } = await obtenerProyeccionAumentoPortal(contratoId)
-
-      if (cancelado) return
-
-      if (err) {
-        setPropuesta(null)
-        setError(err.message)
-      } else if (data?.disponible && data.propuesta) {
-        setPropuesta(data.propuesta)
-      } else {
-        setPropuesta(null)
-      }
-
-      setLoading(false)
-    }
-
-    cargar()
-
-    return () => {
-      cancelado = true
-    }
-  }, [contratoId, debeConsultar])
-
-  return { propuesta, loading, error, debeConsultar }
+  return {
+    propuesta: data?.disponible && data.propuesta ? data.propuesta : null,
+    loading: cargando,
+    error: error?.message ?? null,
+    debeConsultar,
+  }
 }

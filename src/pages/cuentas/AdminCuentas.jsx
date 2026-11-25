@@ -11,65 +11,87 @@ import {
   AdminTableHead,
   AdminTableHeaderCell,
   AdminTableRow,
+  AdminTableToolbar,
 } from '../../components/admin/AdminDataTable'
+import FilterSelect from '../../components/admin/FilterSelect'
+import Badge from '../../components/ui/Badge'
+import Button from '../../components/ui/Button'
+import IconButton from '../../components/ui/IconButton'
+import { IconEye, IconKey, IconLock, IconPencil, IconSearch } from '../../components/icons/Icons'
+import { useToast } from '../../contexts/ToastContext'
 import {
-  CambiarRolModal,
   CrearCuentaModal,
+  DetalleCuentaModal,
+  EditarCuentaModal,
   RestablecerPasswordModal,
 } from '../../components/cuentas/CuentaModales'
 import { useAuth } from '../../contexts/AuthContext'
 import {
   ROL_LABEL,
   bloquearCuenta,
-  cambiarRolCuenta,
   crearCuenta,
   listarCuentas,
+  modificarCuenta,
   restablecerPasswordCuenta,
 } from '../../services/cuentasService'
-import { inputToolbarClass, selectToolbarClass } from '../../utils/adminModuleUi'
+import { calloutClass, cn, inputClass } from '../../utils/ui'
 
-const BADGE_ROL = {
-  admin: 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200',
-  encargado: 'bg-brand-50 text-brand-800 ring-1 ring-inset ring-brand-200',
-  inquilino: 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200',
+const TONO_ROL = {
+  admin: 'neutral',
+  encargado: 'brand',
+  inquilino: 'success',
+  propietario: 'warning',
 }
 
-const botonAccion =
-  'rounded-md px-2 py-1 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-200 transition hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40'
+const FICHA_LABEL = { inquilino: 'Inquilino', propietario: 'Propietario' }
+const sinFichas = { inquilino: [], propietario: [] }
 
 function formatoFecha(iso) {
   if (!iso) return 'Nunca'
   return new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
+// En escritorio angosto las acciones quedan como íconos (el texto sigue para lectores de pantalla).
+const textoAccion = 'lg:max-2xl:sr-only'
+
 export default function AdminCuentas() {
   const { user } = useAuth()
+  const toast = useToast()
   const [cuentas, setCuentas] = useState([])
-  const [inquilinosSinCuenta, setInquilinosSinCuenta] = useState([])
+  const [fichasSinCuenta, setFichasSinCuenta] = useState(sinFichas)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [aviso, setAviso] = useState('')
   const [busqueda, setBusqueda] = useState('')
   const [filtroRol, setFiltroRol] = useState('')
   const [modal, setModal] = useState(null)
   const [procesando, setProcesando] = useState(false)
 
-  const cargar = useCallback(async () => {
-    setLoading(true)
-    const { data, error: err } = await listarCuentas()
+  const aplicarCuentas = useCallback(({ data, error: err }) => {
     if (err) {
       setError(err.message)
     } else {
       setError('')
       setCuentas(data.cuentas ?? [])
-      setInquilinosSinCuenta(data.inquilinosSinCuenta ?? [])
+      setFichasSinCuenta({
+        inquilino: data.inquilinosSinCuenta ?? [],
+        propietario: data.propietariosSinCuenta ?? [],
+      })
     }
     setLoading(false)
   }, [])
 
+  // Recarga después de cada acción, sin vaciar la tabla.
+  const cargar = useCallback(async () => aplicarCuentas(await listarCuentas()), [aplicarCuentas])
+
   useEffect(() => {
-    cargar()
-  }, [cargar])
+    let vigente = true
+    listarCuentas().then((resultado) => {
+      if (vigente) aplicarCuentas(resultado)
+    })
+    return () => {
+      vigente = false
+    }
+  }, [aplicarCuentas])
 
   const filtradas = useMemo(() => {
     const texto = busqueda.trim().toLowerCase()
@@ -79,7 +101,7 @@ export default function AdminCuentas() {
         (c) =>
           !texto ||
           c.email?.toLowerCase().includes(texto) ||
-          c.inquilino?.nombre_completo?.toLowerCase().includes(texto)
+          c.ficha?.nombre_completo?.toLowerCase().includes(texto)
       )
       .sort((a, b) => (a.email ?? '').localeCompare(b.email ?? ''))
   }, [cuentas, busqueda, filtroRol])
@@ -90,7 +112,7 @@ export default function AdminCuentas() {
     const resultado = await accion()
     if (resultado.error) return resultado
     setModal(null)
-    setAviso(mensajeOk)
+    toast.success(mensajeOk.titulo, mensajeOk.detalle)
     await cargar()
     return resultado
   }
@@ -100,7 +122,9 @@ export default function AdminCuentas() {
     setProcesando(true)
     const resultado = await ejecutar(
       () => bloquearCuenta({ userId: cuenta.id, bloquear: !cuenta.bloqueado }),
-      cuenta.bloqueado ? `Cuenta ${cuenta.email} desbloqueada.` : `Cuenta ${cuenta.email} bloqueada.`
+      cuenta.bloqueado
+        ? { titulo: 'Cuenta desbloqueada', detalle: `${cuenta.email} ya puede volver a iniciar sesión.` }
+        : { titulo: 'Cuenta bloqueada', detalle: `${cuenta.email} no puede iniciar sesión hasta que la desbloquees.` }
     )
     setProcesando(false)
     if (resultado.error) {
@@ -115,48 +139,51 @@ export default function AdminCuentas() {
       subtitle="Usuarios que ingresan al sistema: alta, rol, bloqueo y restablecimiento de contraseña."
       actionLabel="Nueva cuenta"
       onAction={() => setModal({ tipo: 'crear' })}
-      alerts={
-        (error || aviso) && (
-          <div className="space-y-2">
-            {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-            {aviso && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{aviso}</p>}
-          </div>
-        )
-      }
+      alerts={error ? <div className={calloutClass('danger')}>{error}</div> : null}
     >
-      <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row">
-        <input
-          type="search"
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          className={inputToolbarClass}
-          placeholder="Buscar por email o inquilino"
-        />
-        <select value={filtroRol} onChange={(e) => setFiltroRol(e.target.value)} className={selectToolbarClass}>
-          <option value="">Todos los roles</option>
+      <AdminTableToolbar>
+        <div className="relative min-w-0 flex-1">
+          <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            type="search"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            className={cn(inputClass, 'pl-9')}
+            placeholder="Buscar por email o ficha vinculada…"
+          />
+        </div>
+        <FilterSelect
+          id="filtro-rol-cuenta"
+          value={filtroRol}
+          onChange={(e) => setFiltroRol(e.target.value)}
+          onClear={() => setFiltroRol('')}
+          ariaLabel="Filtrar por rol"
+          className="sm:w-56"
+        >
+          <option value="">Rol: Todos</option>
           {Object.entries(ROL_LABEL).map(([valor, label]) => (
             <option key={valor} value={valor}>
               {label}
             </option>
           ))}
-        </select>
-      </div>
+        </FilterSelect>
+      </AdminTableToolbar>
 
       <AdminTable>
         <AdminTableHead>
           <AdminTableRow>
             <AdminTableHeaderCell>Email</AdminTableHeaderCell>
-            <AdminTableHeaderCell>Rol</AdminTableHeaderCell>
-            <AdminTableHeaderCell>Inquilino vinculado</AdminTableHeaderCell>
-            <AdminTableHeaderCell>Estado</AdminTableHeaderCell>
-            <AdminTableHeaderCell>Último ingreso</AdminTableHeaderCell>
-            <AdminTableActionsHeaderCell className="!w-80" />
+            <AdminTableHeaderCell className="w-[12.5rem]">Rol</AdminTableHeaderCell>
+            <AdminTableHeaderCell className="w-[12rem]">Ficha vinculada</AdminTableHeaderCell>
+            <AdminTableHeaderCell className="w-[7rem]">Estado</AdminTableHeaderCell>
+            <AdminTableHeaderCell className="w-[8rem]">Último ingreso</AdminTableHeaderCell>
+            <AdminTableActionsHeaderCell className="lg:!w-48 2xl:!w-[24rem]" />
           </AdminTableRow>
         </AdminTableHead>
         <AdminTableBody>
           {loading ? (
             <AdminTableRow>
-              <AdminTableEmptyCell colSpan={6}>Cargando cuentas...</AdminTableEmptyCell>
+              <AdminTableEmptyCell colSpan={6}>Cargando cuentas…</AdminTableEmptyCell>
             </AdminTableRow>
           ) : filtradas.length === 0 ? (
             <AdminTableRow>
@@ -167,52 +194,77 @@ export default function AdminCuentas() {
               const editable = cuenta.id !== user?.id && cuenta.rol !== 'admin'
               return (
                 <AdminTableRow key={cuenta.id}>
-                  <AdminTableCell className="font-medium text-slate-900">{cuenta.email}</AdminTableCell>
+                  <AdminTableCell className="font-medium text-slate-900">
+                    <span className="block truncate" title={cuenta.email}>
+                      {cuenta.email}
+                    </span>
+                  </AdminTableCell>
                   <AdminTableCell>
                     {cuenta.rol ? (
-                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${BADGE_ROL[cuenta.rol]}`}>
-                        {ROL_LABEL[cuenta.rol]}
-                      </span>
+                      <Badge tone={TONO_ROL[cuenta.rol] ?? 'neutral'}>{ROL_LABEL[cuenta.rol]}</Badge>
                     ) : (
-                      <span className="text-xs text-amber-700">Sin rol</span>
+                      <Badge tone="warning">Sin rol</Badge>
                     )}
                   </AdminTableCell>
-                  <AdminTableCell>{cuenta.inquilino?.nombre_completo ?? '—'}</AdminTableCell>
                   <AdminTableCell>
-                    {cuenta.bloqueado ? (
-                      <span className="inline-flex rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-200">
-                        Bloqueada
+                    {cuenta.ficha ? (
+                      <span className="block min-w-0" title={`${FICHA_LABEL[cuenta.ficha.tipo]} · ${cuenta.ficha.nombre_completo}`}>
+                        <span className="block truncate">{cuenta.ficha.nombre_completo}</span>
+                        <span className="block text-xs text-slate-500">{FICHA_LABEL[cuenta.ficha.tipo]}</span>
                       </span>
                     ) : (
-                      <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800 ring-1 ring-inset ring-emerald-200">
+                      '—'
+                    )}
+                  </AdminTableCell>
+                  <AdminTableCell>
+                    {cuenta.bloqueado ? (
+                      <Badge tone="danger" dot>
+                        Bloqueada
+                      </Badge>
+                    ) : (
+                      <Badge tone="success" dot>
                         Activa
-                      </span>
+                      </Badge>
                     )}
                   </AdminTableCell>
                   <AdminTableCell className="tabular-nums">{formatoFecha(cuenta.ultimo_ingreso)}</AdminTableCell>
-                  <AdminTableActionsCell className="!w-80">
+                  <AdminTableActionsCell className="lg:!w-48 2xl:!w-[24rem]">
+                    <IconButton label="Ver cuenta" icon={IconEye} tone="brand" onClick={() => setModal({ tipo: 'detalle', cuenta })} />
                     {editable ? (
                       <>
-                        <button type="button" className={botonAccion} onClick={() => setModal({ tipo: 'rol', cuenta })}>
-                          Rol
-                        </button>
-                        <button
-                          type="button"
-                          className={botonAccion}
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          icon={IconPencil}
+                          className="max-lg:flex-1"
+                          title="Editar email y rol"
+                          onClick={() => setModal({ tipo: 'editar', cuenta })}
+                        >
+                          <span className={textoAccion}>Editar</span>
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          icon={IconKey}
+                          className="max-lg:flex-1"
+                          title="Restablecer contraseña"
                           onClick={() => setModal({ tipo: 'password', cuenta })}
                         >
-                          Contraseña
-                        </button>
-                        <button
-                          type="button"
-                          className={botonAccion}
+                          <span className={textoAccion}>Contraseña</span>
+                        </Button>
+                        <Button
+                          variant={cuenta.bloqueado ? 'secondary' : 'dangerOutline'}
+                          size="sm"
+                          icon={IconLock}
+                          className="max-lg:flex-1"
+                          title={cuenta.bloqueado ? 'Desbloquear' : 'Bloquear'}
                           onClick={() => setModal({ tipo: 'bloqueo', cuenta })}
                         >
-                          {cuenta.bloqueado ? 'Desbloquear' : 'Bloquear'}
-                        </button>
+                          <span className={textoAccion}>{cuenta.bloqueado ? 'Desbloquear' : 'Bloquear'}</span>
+                        </Button>
                       </>
                     ) : (
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-slate-500">
                         {cuenta.id === user?.id ? 'Tu cuenta' : 'Sin acciones'}
                       </span>
                     )}
@@ -226,17 +278,38 @@ export default function AdminCuentas() {
 
       {modal?.tipo === 'crear' && (
         <CrearCuentaModal
-          inquilinosSinCuenta={inquilinosSinCuenta}
+          fichasSinCuenta={fichasSinCuenta}
           onClose={cerrarModal}
-          onGuardar={(datos) => ejecutar(() => crearCuenta(datos), `Cuenta ${datos.email} creada.`)}
+          onGuardar={(datos) =>
+            ejecutar(() => crearCuenta(datos), {
+              titulo: 'Cuenta creada',
+              detalle: `${datos.email} ya puede iniciar sesión con el rol asignado.`,
+            })
+          }
         />
       )}
-      {modal?.tipo === 'rol' && (
-        <CambiarRolModal
+      {modal?.tipo === 'detalle' && (
+        <DetalleCuentaModal
           cuenta={modal.cuenta}
-          inquilinosSinCuenta={inquilinosSinCuenta}
           onClose={cerrarModal}
-          onGuardar={(datos) => ejecutar(() => cambiarRolCuenta(datos), `Rol de ${modal.cuenta.email} actualizado.`)}
+          onEditar={
+            modal.cuenta.id !== user?.id && modal.cuenta.rol !== 'admin'
+              ? () => setModal({ tipo: 'editar', cuenta: modal.cuenta })
+              : undefined
+          }
+        />
+      )}
+      {modal?.tipo === 'editar' && (
+        <EditarCuentaModal
+          cuenta={modal.cuenta}
+          fichasSinCuenta={fichasSinCuenta}
+          onClose={cerrarModal}
+          onGuardar={(datos) =>
+            ejecutar(() => modificarCuenta(datos), {
+              titulo: 'Cuenta actualizada',
+              detalle: `${datos.email ?? modal.cuenta.email} es ${ROL_LABEL[datos.rol] ?? datos.rol}.`,
+            })
+          }
         />
       )}
       {modal?.tipo === 'password' && (
@@ -244,7 +317,10 @@ export default function AdminCuentas() {
           cuenta={modal.cuenta}
           onClose={cerrarModal}
           onGuardar={(datos) =>
-            ejecutar(() => restablecerPasswordCuenta(datos), `Contraseña de ${modal.cuenta.email} restablecida.`)
+            ejecutar(() => restablecerPasswordCuenta(datos), {
+              titulo: 'Contraseña restablecida',
+              detalle: `La nueva contraseña de ${modal.cuenta.email} ya está activa.`,
+            })
           }
         />
       )}

@@ -1,19 +1,73 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   calcularAumentosPendientes,
+  claveRevision,
   confirmarAumentos,
   ejecutarMantenimientoContratos,
   generarComprobantesAumentos,
+  guardarRevisionAumento,
   listarAumentosConfirmadosEnPeriodo,
+  listarRevisionesAumento,
   recalcularPropuestasConOverrides,
 } from '../services/aumentosService'
 import { obtenerSeriesArgly } from '../services/arglyService'
+import {
+  eliminarIndiceManual,
+  guardarIndiceManual,
+  guardarIndicesManuales,
+} from '../services/indicesManualesService'
 import { diasHastaFinPeriodoOperativo, hoyIsoLocal, periodoOperativoInfo } from '../utils/aumentosUi'
-import { rangosIndicesParaContratos } from '../utils/calcularAumento'
+import { iclCierrePublicado, iclValorEnFecha, rangosIndicesParaContratos } from '../utils/calcularAumento'
 
 function formatearErroresConfirmacion(errores) {
   if (!Array.isArray(errores) || errores.length === 0) return ''
   return errores.map((e) => `Contrato #${e.contrato_id}: ${e.error}`).join(' · ')
+}
+
+/**
+ * Contratos con aumento en la bandeja (ya calculados, con los índices oficiales y los cargados a
+ * mano), los confirmados del período que se trabaja y las revisiones guardadas.
+ */
+async function consultarBandeja({ diasProximos, overrides = {} } = {}) {
+  const clavePeriodo = periodoOperativoInfo(hoyIsoLocal()).clave
+  const confirmadosPromesa = listarAumentosConfirmadosEnPeriodo({ claveMes: clavePeriodo })
+  await ejecutarMantenimientoContratos()
+  const [calculo, confirmados, revisiones] = await Promise.all([
+    calcularAumentosPendientes({
+      incluirProximos: true,
+      diasProximos: diasProximos ?? diasHastaFinPeriodoOperativo(),
+      skipMaintenance: true,
+      overrides,
+    }),
+    confirmadosPromesa,
+    listarRevisionesAumento(),
+  ])
+  return { calculo, confirmados, revisiones }
+}
+
+/**
+ * Valores que se cargaron en el detalle de un aumento → filas de indices_manuales. Solo se guardan
+ * los que Argly no publicó: el oficial siempre gana.
+ */
+function indicesDesdeCargaManual(contrato, override, series) {
+  const desde = contrato.fecha_ultimo_aumento ?? contrato.fecha_inicio
+  const hasta = contrato.fecha_proximo_aumento
+  if (override?.ipcMeses) {
+    return Object.entries(override.ipcMeses)
+      .filter(([clave]) => {
+        const [anio, mes] = clave.split('-').map(Number)
+        return !(series.ipc ?? []).some((r) => Number(r.anio) === anio && Number(r.mes) === mes && Number(r.valor) > 0)
+      })
+      .map(([clave, valor]) => ({ tipo: 'ipc', mes: clave, valor }))
+  }
+  const entradas = []
+  if (override?.iclInicio && !iclValorEnFecha(series.icl, desde)) {
+    entradas.push({ tipo: 'icl', fecha: desde, valor: override.iclInicio })
+  }
+  if (override?.iclFin && !iclCierrePublicado(series.icl, hasta)) {
+    entradas.push({ tipo: 'icl', fecha: hasta, valor: override.iclFin })
+  }
+  return entradas
 }
 
 export function useAumentos() {
@@ -28,33 +82,19 @@ export function useAumentos() {
   const [colaCalculo, setColaCalculo] = useState({
     contratos: [],
     series: { icl: [], ipc: [] },
-    acordadosPorClave: {},
+    registradosPorClave: {},
+    indicesManuales: [],
   })
   const [overrides, setOverrides] = useState({})
+  const [revisiones, setRevisiones] = useState(() => new Map())
 
-  const cargarAumentos = useCallback(async ({ diasProximos, keepOverrides = false } = {}) => {
-    const dias = diasProximos ?? diasHastaFinPeriodoOperativo()
-    setLoading(true)
-    setError(null)
+  // Aplica el resultado de consultarBandeja. Si es una recarga sin índices manuales, los descarta.
+  const aplicarBandeja = useCallback(({ calculo, confirmados, revisiones: guardadas, keepOverrides }) => {
     if (!keepOverrides) setOverrides({})
+    if (guardadas && !guardadas.error) setRevisiones(guardadas.data ?? new Map())
 
-    const clavePeriodo = periodoOperativoInfo(hoyIsoLocal()).clave
-    const confirmadosPromise = listarAumentosConfirmadosEnPeriodo({ claveMes: clavePeriodo })
-
-    await ejecutarMantenimientoContratos()
-
-    const [{ data, error: calcError }, confirmadosResult] = await Promise.all([
-      calcularAumentosPendientes({
-        incluirProximos: true,
-        diasProximos: dias,
-        skipMaintenance: true,
-        overrides: keepOverrides ? overrides : {},
-      }),
-      confirmadosPromise,
-    ])
-
-    if (calcError) {
-      setError(calcError.message)
+    if (calculo.error) {
+      setError(calculo.error.message)
       setPropuestas([])
       setConfirmadosPeriodo([])
       setMeta(null)
@@ -63,52 +103,98 @@ export function useAumentos() {
       return false
     }
 
+    const { data } = calculo
     const lista = Array.isArray(data?.propuestas) ? data.propuestas : []
+    setError(null)
     setPropuestas(lista)
-    setConfirmadosPeriodo(
-      confirmadosResult.error ? [] : Array.isArray(confirmadosResult.data) ? confirmadosResult.data : []
-    )
+    setConfirmadosPeriodo(!confirmados.error && Array.isArray(confirmados.data) ? confirmados.data : [])
     setMeta({ total: lista.length, fecha_calculo: data?.fecha_calculo })
     setIndicesResumen(data?.indicesResumen ?? { icl: null, ipc: null })
     setColaCalculo({
       contratos: data?.contratos ?? [],
       series: data?.series ?? { icl: [], ipc: [] },
-      acordadosPorClave: data?.acordadosPorClave ?? {},
+      registradosPorClave: data?.registradosPorClave ?? {},
+      indicesManuales: data?.indicesManuales ?? [],
     })
-
-    if (data?.indicesError) {
-      setSyncWarning(
-        'No pudimos obtener los índices oficiales (Argly). Podés cargarlos a mano en el detalle de cada aumento.'
-      )
-    } else {
-      setSyncWarning(null)
-    }
-
+    setSyncWarning(
+      data?.indicesError
+        ? 'No pudimos obtener los índices oficiales (Argly). Podés cargarlos a mano en "Carga manual de índices".'
+        : null
+    )
     setLoading(false)
     return true
-  }, [overrides])
-
-  useEffect(() => {
-    cargarAumentos()
-    // Primera carga: no re-disparar cuando cambian overrides.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const aplicarIndicesManuales = useCallback((contratoId, override) => {
-    setOverrides((prev) => {
-      const next = { ...prev, [contratoId]: override, [String(contratoId)]: override }
-      setPropuestas(
-        recalcularPropuestasConOverrides({
-          contratos: colaCalculo.contratos,
-          series: colaCalculo.series,
-          acordadosPorClave: colaCalculo.acordadosPorClave,
-          overrides: next,
-          hoy: hoyIsoLocal(),
-        })
-      )
-      return next
+  /** Recarga desde la pantalla (Actualizar, después de confirmar o deshacer), con indicador de carga. */
+  const cargarAumentos = useCallback(
+    async ({ diasProximos, keepOverrides = false } = {}) => {
+      setLoading(true)
+      const resultado = await consultarBandeja({ diasProximos, overrides: keepOverrides ? overrides : {} })
+      return aplicarBandeja({ ...resultado, keepOverrides })
+    },
+    [overrides, aplicarBandeja]
+  )
+
+  useEffect(() => {
+    let vigente = true
+    consultarBandeja().then((resultado) => {
+      if (vigente) aplicarBandeja({ ...resultado, keepOverrides: false })
     })
-  }, [colaCalculo])
+    return () => {
+      vigente = false
+    }
+  }, [aplicarBandeja])
+
+  /**
+   * Índices cargados desde el detalle de un aumento: se guardan en indices_manuales (sirven para
+   * todos los aumentos que los usen) y se recalcula la bandeja.
+   */
+  const aplicarIndicesManuales = useCallback(
+    async (contratoId, override) => {
+      const contrato = colaCalculo.contratos.find((c) => Number(c.id) === Number(contratoId))
+      if (!contrato) return { error: { message: 'No se encontró el contrato' } }
+      const { error: errorGuardado } = await guardarIndicesManuales(indicesDesdeCargaManual(contrato, override, colaCalculo.series))
+      if (errorGuardado) return { error: errorGuardado }
+      await cargarAumentos()
+      return { error: null }
+    },
+    [colaCalculo, cargarAumentos]
+  )
+
+  /** Formulario "Carga manual de índices" (CU-024): guarda y recalcula los aumentos que lo usan. */
+  const guardarIndice = useCallback(
+    async (entrada) => {
+      const resultado = await guardarIndiceManual(entrada)
+      if (!resultado.error) await cargarAumentos()
+      return resultado
+    },
+    [cargarAumentos]
+  )
+
+  const eliminarIndice = useCallback(
+    async (id) => {
+      const resultado = await eliminarIndiceManual(id)
+      if (!resultado.error) await cargarAumentos()
+      return resultado
+    },
+    [cargarAumentos]
+  )
+
+  /** Marca de revisado, observaciones y redondeo de un aumento pendiente (se guardan en la base). */
+  const guardarRevision = useCallback(async (propuesta, cambios) => {
+    const clave = claveRevision(propuesta.contrato_id, propuesta.fecha_hasta)
+    const { data, error: errorRevision } = await guardarRevisionAumento({
+      contratoId: propuesta.contrato_id,
+      fechaAplicacion: propuesta.fecha_hasta,
+      ...cambios,
+    })
+    if (errorRevision) {
+      setError(`No se pudo guardar la revisión: ${errorRevision.message}`)
+      return { error: errorRevision }
+    }
+    setRevisiones((prev) => new Map(prev).set(clave, data))
+    return { data, error: null }
+  }, [])
 
   /** Vuelve a consultar Argly para un contrato al abrir el detalle del cálculo. */
   const refrescarIndicesContrato = useCallback(
@@ -134,9 +220,10 @@ export function useAumentos() {
         recalcularPropuestasConOverrides({
           contratos: colaCalculo.contratos,
           series,
-          acordadosPorClave: colaCalculo.acordadosPorClave,
+          registradosPorClave: colaCalculo.registradosPorClave,
           overrides,
           hoy,
+          indicesManuales: colaCalculo.indicesManuales,
         })
       )
     },
@@ -216,6 +303,11 @@ export function useAumentos() {
     confirmarSeleccionados,
     aplicarIndicesManuales,
     refrescarIndicesContrato,
+    indicesManuales: colaCalculo.indicesManuales,
+    guardarIndice,
+    eliminarIndice,
+    revisiones,
+    guardarRevision,
     limpiarError,
   }
 }

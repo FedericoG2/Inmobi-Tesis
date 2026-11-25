@@ -20,21 +20,14 @@ export function useInquilinos() {
   const [submitError, setSubmitError] = useState(null)
   const [actionError, setActionError] = useState(null)
 
-  const refetch = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-
-    const { data, error: fetchError } = await listarInquilinos()
-
-    if (fetchError) {
-      setError(fetchError.message)
-      setInquilinos([])
-    } else {
-      setInquilinos(data ?? [])
-    }
-
+  const aplicarListado = useCallback(({ data, error: fetchError }) => {
+    setError(fetchError ? fetchError.message : null)
+    setInquilinos(fetchError ? [] : data ?? [])
     setLoading(false)
   }, [])
+
+  // Recarga sin vaciar la lista: después de cada cambio se ve el dato nuevo sin parpadeo.
+  const refetch = useCallback(async () => aplicarListado(await listarInquilinos()), [aplicarListado])
 
   const crear = useCallback(
     async (datos) => {
@@ -114,8 +107,14 @@ export function useInquilinos() {
   }, [])
 
   useEffect(() => {
-    refetch()
-  }, [refetch])
+    let vigente = true
+    listarInquilinos().then((resultado) => {
+      if (vigente) aplicarListado(resultado)
+    })
+    return () => {
+      vigente = false
+    }
+  }, [aplicarListado])
 
   return {
     inquilinos,

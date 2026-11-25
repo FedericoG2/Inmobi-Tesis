@@ -48,7 +48,7 @@ export default function ActividadFeed({ eventos, rutaDe, noLeidoDesde, compact =
           </>
         )
 
-        const clase = cn('flex items-start gap-3 px-4 py-3', nuevo && 'bg-brand-50/40')
+        const clase = cn('flex items-start gap-3 px-4 py-3', nuevo && 'bg-slate-50')
 
         return (
           <li key={evento.id}>

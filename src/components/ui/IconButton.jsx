@@ -2,10 +2,10 @@ import { cn } from '../../utils/ui'
 
 const TONES = {
   neutral: 'text-slate-500 hover:bg-slate-100 hover:text-slate-900',
-  brand: 'text-slate-500 hover:bg-brand-50 hover:text-brand-700',
-  danger: 'text-slate-500 hover:bg-red-50 hover:text-red-600',
-  attention: 'text-amber-600 hover:bg-amber-50 hover:text-amber-700',
-  success: 'bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/20 hover:bg-emerald-100',
+  brand: 'text-slate-500 hover:bg-slate-100 hover:text-slate-900',
+  danger: 'text-slate-500 hover:bg-slate-100 hover:text-red-700',
+  attention: 'text-amber-700 hover:bg-slate-100 hover:text-amber-800',
+  success: 'bg-white text-emerald-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50',
 }
 
 /**

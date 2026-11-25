@@ -18,9 +18,9 @@ import {
 const EASE = [0.16, 1, 0.3, 1]
 
 const TONOS = {
-  ok: 'bg-emerald-400/10 text-emerald-300 ring-emerald-400/20',
-  atencion: 'bg-amber-400/10 text-amber-300 ring-amber-400/20',
-  marca: 'bg-brand-300/10 text-brand-200 ring-brand-300/20',
+  ok: 'bg-white/5 text-slate-200 ring-white/10',
+  atencion: 'bg-white/5 text-slate-200 ring-white/10',
+  marca: 'bg-white/5 text-slate-200 ring-white/10',
   neutro: 'bg-white/5 text-slate-300 ring-white/10',
 }
 
@@ -92,7 +92,7 @@ function ActividadEnVivo() {
 
       <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
         <p className="text-[13px] font-medium text-white">Actividad reciente</p>
-        <span className="flex items-center gap-2 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-emerald-300">
+        <span className="flex items-center gap-2 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-slate-300">
           <PuntoEnVivo />
           En vivo
         </span>
@@ -209,7 +209,7 @@ function AumentoCalculandose() {
       <p className="mt-1 text-xs text-brand-200/80">Thames 845, PB · 1/11</p>
       <div className="mt-3 flex items-baseline justify-between gap-2">
         <Motion.span className="font-mono text-xl font-medium tabular-nums tracking-tight text-white">{texto}</Motion.span>
-        <Motion.span className="font-mono text-xs tabular-nums text-emerald-300">{porcentaje}</Motion.span>
+        <Motion.span className="font-mono text-xs tabular-nums text-slate-200">{porcentaje}</Motion.span>
       </div>
       <p className="mt-0.5 font-mono text-[11px] tabular-nums text-brand-200/50 line-through">{pesos.format(desde)}</p>
       <div className="mt-3">
@@ -239,7 +239,6 @@ export default function PanelMarcaLogin() {
         className="pointer-events-none absolute inset-0 h-full w-full [mask-image:radial-gradient(ellipse_at_70%_55%,black_15%,transparent_70%)]"
       />
       <Motion.div className="pointer-events-none absolute inset-0" style={{ background: foco }} aria-hidden />
-      <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-brand-500/40 blur-3xl" aria-hidden />
 
       <p className="relative z-10 text-xl font-semibold tracking-tight text-white">Inmobi</p>
 

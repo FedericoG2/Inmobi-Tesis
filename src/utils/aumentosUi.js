@@ -318,12 +318,12 @@ export const BADGE_INDICADOR = {
 }
 
 export const TONO_SITUACION = {
-  emerald: 'bg-emerald-50 text-emerald-800 ring-emerald-600/15',
-  amber: 'bg-amber-50 text-amber-900 ring-amber-600/20',
-  red: 'bg-red-50 text-red-800 ring-red-600/15',
-  indigo: 'bg-brand-50 text-brand-800 ring-brand-600/15',
-  sky: 'bg-brand-50 text-brand-800 ring-brand-600/15',
-  slate: 'bg-slate-50 text-slate-700 ring-slate-500/15',
+  emerald: 'bg-white text-emerald-800 ring-slate-300',
+  amber: 'bg-white text-amber-800 ring-slate-300',
+  red: 'bg-white text-red-700 ring-slate-300',
+  indigo: 'bg-white text-brand-800 ring-slate-300',
+  sky: 'bg-white text-brand-800 ring-slate-300',
+  slate: 'bg-slate-50 text-slate-700 ring-slate-300',
 }
 
 export function badgeIndicador(tipo) {

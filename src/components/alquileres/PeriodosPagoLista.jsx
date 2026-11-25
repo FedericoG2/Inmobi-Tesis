@@ -89,7 +89,7 @@ export default function PeriodosPagoLista({
           return (
             <li
               key={periodo.id}
-              className={`px-4 py-3.5 lg:px-5 ${periodo.id === destacadoId ? 'bg-brand-50/50' : ''}`}
+              className={`px-4 py-3.5 lg:px-5 ${periodo.id === destacadoId ? 'bg-slate-50' : ''}`}
               aria-current={periodo.id === destacadoId ? 'true' : undefined}
             >
               <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">

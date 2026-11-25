@@ -7,7 +7,7 @@ export const brandLogoMdClass =
 export const brandNavItemClass =
   'group flex items-center rounded-lg text-sm font-medium transition-colors'
 
-export const brandNavActiveClass = 'bg-brand-50 text-brand-700'
+export const brandNavActiveClass = 'bg-slate-100 text-slate-900'
 
 export const brandNavIdleClass = 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
 

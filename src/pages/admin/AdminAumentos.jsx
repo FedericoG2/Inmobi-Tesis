@@ -645,11 +645,11 @@ export default function AdminAumentos() {
 
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-200/80 px-4 py-3 lg:px-5">
           <div
-            className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-brand-50 px-3 ring-1 ring-inset ring-brand-600/15"
+            className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-white px-3 ring-1 ring-inset ring-slate-300"
             aria-label={`Período operativo: ${periodoOperativo.etiqueta}`}
           >
-            <span className="text-xs text-brand-700/80">Período</span>
-            <span className="whitespace-nowrap text-sm font-semibold text-brand-800">
+            <span className="text-xs text-slate-500">Período</span>
+            <span className="whitespace-nowrap text-sm font-semibold text-slate-900">
               {periodoOperativo.etiqueta}
             </span>
           </div>
@@ -678,7 +678,7 @@ export default function AdminAumentos() {
                     className={cn(
                       'rounded-full px-1.5 text-[11px] tabular-nums',
                       value === 'rezagados' && count > 0
-                        ? 'bg-red-50 font-medium text-red-700'
+                        ? 'font-semibold text-red-700'
                         : activo
                           ? 'bg-slate-100 text-slate-700'
                           : 'text-slate-400'

@@ -38,9 +38,9 @@ export const PRIORIDADES_RECLAMO = ['Baja', 'Media', 'Alta', 'Urgente']
 /** Estilo del segmento activo del selector de prioridad (mismos tonos que BADGE_PRIORIDAD). */
 export const PRIORIDAD_SEGMENTO_ACTIVO = {
   Baja: 'bg-white text-slate-900 shadow-card ring-1 ring-slate-200/80',
-  Media: 'bg-brand-600 text-white shadow-card',
-  Alta: 'bg-amber-500 text-white shadow-card',
-  Urgente: 'bg-red-600 text-white shadow-card',
+  Media: 'bg-white text-slate-900 shadow-card ring-1 ring-slate-200/80',
+  Alta: 'bg-white text-amber-800 shadow-card ring-1 ring-slate-200/80',
+  Urgente: 'bg-white text-red-700 shadow-card ring-1 ring-slate-200/80',
 }
 
 export const BADGE_PRIORIDAD = {

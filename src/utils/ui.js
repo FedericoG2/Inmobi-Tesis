@@ -81,7 +81,7 @@ export function optionCardClass(activo) {
   return cn(
     'flex items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-sm font-medium transition',
     activo
-      ? 'border-brand-500 bg-brand-50 text-brand-800 ring-1 ring-brand-500'
+      ? 'border-slate-900 bg-white text-slate-900 ring-1 ring-slate-900'
       : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
   )
 }
@@ -116,15 +116,16 @@ export function buttonClass({ variant = 'primary', size = 'md', block = false, c
 /* ── Badges ──────────────────────────────────────────────── */
 
 export const badgeBase =
-  'inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset'
+  'inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset'
 
+// Fondo blanco y borde gris en todos los tonos: el estado se lee en el color del texto.
 export const badgeTones = {
-  brand: 'bg-brand-50 text-brand-700 ring-brand-600/15',
-  neutral: 'bg-slate-100 text-slate-700 ring-slate-500/15',
-  muted: 'bg-white text-slate-500 ring-slate-300/70',
-  success: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
-  warning: 'bg-amber-50 text-amber-800 ring-amber-600/20',
-  danger: 'bg-red-50 text-red-700 ring-red-600/15',
+  brand: 'bg-white text-brand-800 ring-slate-300',
+  neutral: 'bg-slate-50 text-slate-700 ring-slate-300',
+  muted: 'bg-white text-slate-500 ring-slate-200',
+  success: 'bg-white text-emerald-800 ring-slate-300',
+  warning: 'bg-white text-amber-800 ring-slate-300',
+  danger: 'bg-white text-red-700 ring-slate-300',
 }
 
 export function badgeClass(tone = 'neutral', className = '') {
@@ -143,12 +144,14 @@ export const dotTones = {
 
 /* ── Íconos en recuadro ──────────────────────────────────── */
 
+// Un solo estilo para todos los íconos en recuadro: el tono se mantiene en la API por compatibilidad.
+const iconTileNeutro = 'bg-white text-slate-500 ring-slate-200'
 export const iconTileTones = {
-  brand: 'bg-brand-50 text-brand-600 ring-brand-600/10',
-  neutral: 'bg-slate-100 text-slate-600 ring-slate-500/10',
-  success: 'bg-emerald-50 text-emerald-600 ring-emerald-600/15',
-  warning: 'bg-amber-50 text-amber-600 ring-amber-600/15',
-  danger: 'bg-red-50 text-red-600 ring-red-600/15',
+  brand: iconTileNeutro,
+  neutral: iconTileNeutro,
+  success: iconTileNeutro,
+  warning: iconTileNeutro,
+  danger: iconTileNeutro,
 }
 
 export function iconTileClass(tone = 'brand', size = 'md', shape = 'square') {
@@ -159,16 +162,21 @@ export function iconTileClass(tone = 'brand', size = 'md', shape = 'square') {
 
 /* ── Avisos ──────────────────────────────────────────────── */
 
+// Fondo blanco con una línea de color a la izquierda que indica el tipo de aviso.
 export const calloutTones = {
-  info: 'border-brand-200/70 bg-brand-50/60 text-brand-900',
-  neutral: 'border-slate-200 bg-slate-50 text-slate-700',
-  success: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  warning: 'border-amber-200 bg-amber-50 text-amber-900',
-  danger: 'border-red-200 bg-red-50 text-red-700',
+  info: 'border-l-brand-700 text-slate-700',
+  neutral: 'border-l-slate-400 text-slate-700',
+  success: 'border-l-emerald-700 text-slate-700',
+  warning: 'border-l-amber-600 text-slate-800',
+  danger: 'border-l-red-700 text-slate-800',
 }
 
 export function calloutClass(tone = 'info', className = '') {
-  return cn('rounded-lg border px-3.5 py-3 text-sm leading-relaxed', calloutTones[tone] ?? calloutTones.info, className)
+  return cn(
+    'rounded-md border border-l-[3px] border-slate-200 bg-white px-3.5 py-3 text-sm leading-relaxed',
+    calloutTones[tone] ?? calloutTones.info,
+    className
+  )
 }
 
 /* ── Estados de carga / vacío ────────────────────────────── */

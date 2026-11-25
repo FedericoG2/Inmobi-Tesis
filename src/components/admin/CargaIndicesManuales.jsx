@@ -105,7 +105,7 @@ export default function CargaIndicesManuales({ indices, onGuardar, onEliminar, d
           {indices.map((indice) => (
             <li
               key={indice.id}
-              className="inline-flex items-center gap-1 rounded-full bg-amber-50 py-0.5 pl-2.5 pr-1 text-xs font-medium text-amber-800 ring-1 ring-inset ring-amber-600/20"
+              className="inline-flex items-center gap-1 rounded-md bg-white py-0.5 pl-2 pr-1 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-300"
             >
               {etiquetaIndice(indice)}
               <button
@@ -114,7 +114,7 @@ export default function CargaIndicesManuales({ indices, onGuardar, onEliminar, d
                 disabled={disabled || eliminandoId === indice.id}
                 aria-label={`Quitar ${etiquetaIndice(indice)}`}
                 title="Quitar"
-                className="inline-flex h-5 w-5 items-center justify-center rounded-full text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                className="inline-flex h-5 w-5 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
               >
                 <IconX className="h-3 w-3" strokeWidth={2} />
               </button>

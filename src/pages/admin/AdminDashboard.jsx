@@ -3,6 +3,7 @@ import DashboardActividadPanel from '../../components/admin/DashboardActividadPa
 import DashboardQuickActions from '../../components/admin/DashboardQuickActions'
 import IpcBarChart from '../../components/admin/IpcBarChart'
 import StatCard from '../../components/admin/StatCard'
+import { EncabezadoPagina } from '../../contexts/EncabezadoContext'
 import { useActividad } from '../../hooks/useActividad'
 import { useDashboard } from '../../hooks/useDashboard'
 import { tiempoRelativo } from '../../utils/actividadUi'
@@ -11,8 +12,6 @@ import {
   badgeClass,
   calloutClass,
   loadingStateClass,
-  pageSubtitle,
-  pageTitle,
   sectionHint,
   sectionTitle,
   surfaceCard,
@@ -71,6 +70,7 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <div className={loadingStateClass}>
+        <EncabezadoPagina titulo="Dashboard" />
         <p>Cargando resumen operativo…</p>
       </div>
     )
@@ -78,7 +78,10 @@ export default function AdminDashboard() {
 
   if (error) {
     return (
-      <div className={calloutClass('danger')}>{error}</div>
+      <div className={calloutClass('danger')}>
+        <EncabezadoPagina titulo="Dashboard" />
+        {error}
+      </div>
     )
   }
 
@@ -87,18 +90,13 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="min-w-0">
-          <p className="text-sm text-slate-500 first-letter:uppercase">{fechaHoyLegible()}</p>
-          <h1 className={`${pageTitle} mt-0.5`}>Dashboard</h1>
-          <p className={pageSubtitle}>
-            Resumen operativo · {alertasPendientes} alerta{alertasPendientes === 1 ? '' : 's'} activa
-            {alertasPendientes === 1 ? '' : 's'}
-            {actualizado ? ` · actualizado ${tiempoRelativo(actualizado)}` : ''}
-          </p>
-        </div>
-        <DashboardQuickActions />
-      </div>
+      <EncabezadoPagina
+        titulo="Dashboard"
+        subtitulo={`${capitalizar(fechaHoyLegible())} · ${alertasPendientes} alerta${alertasPendientes === 1 ? '' : 's'} activa${
+          alertasPendientes === 1 ? '' : 's'
+        }${actualizado ? ` · actualizado ${tiempoRelativo(actualizado)}` : ''}`}
+      />
+      <DashboardQuickActions />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5 max-sm:[&>*:last-child:nth-child(odd)]:col-span-2">
         <StatCard

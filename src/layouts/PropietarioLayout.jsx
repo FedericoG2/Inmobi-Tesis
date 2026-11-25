@@ -3,6 +3,7 @@ import { PortalPropietarioProvider, usePortalPropietario } from '../contexts/Por
 import PortalBottomNav from '../components/portal/PortalBottomNav'
 import PortalContratoSelector from '../components/portal/PortalContratoSelector'
 import PortalHeader from '../components/portal/PortalHeader'
+import { EncabezadoProvider } from '../contexts/EncabezadoContext'
 import PortalSidebar from '../components/portal/PortalSidebar'
 import { propietarioNavItems } from '../components/propietario/propietarioNavItems'
 
@@ -34,8 +35,8 @@ function PropietarioLayoutContent() {
       <div className="flex min-h-screen flex-col lg:ml-64">
         <PortalHeader selector={selector} />
 
-        <main className="w-full flex-1 px-4 pb-28 pt-6 sm:px-6 lg:px-8 lg:pb-10">
-          <div className="mx-auto w-full max-w-6xl">
+        <main className="w-full flex-1 px-4 pb-28 pt-5 sm:px-6 lg:pb-8">
+          <div className="mx-auto w-full max-w-7xl">
             <Outlet />
           </div>
         </main>
@@ -49,7 +50,9 @@ function PropietarioLayoutContent() {
 export default function PropietarioLayout() {
   return (
     <PortalPropietarioProvider>
-      <PropietarioLayoutContent />
+      <EncabezadoProvider>
+        <PropietarioLayoutContent />
+      </EncabezadoProvider>
     </PortalPropietarioProvider>
   )
 }

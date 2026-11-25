@@ -20,6 +20,7 @@ import AdminNuevoButton from '../../components/admin/AdminNuevoButton'
 import FilterSelect from '../../components/admin/FilterSelect'
 import { useInquilinos } from '../../hooks/useInquilinos'
 import { usePaginacion } from '../../hooks/usePaginacion'
+import { useFilasPorPagina } from '../../hooks/useFilasPorPagina'
 import { useToast } from '../../contexts/ToastContext'
 import { formatearDniCuit, formatearTelefono } from '../../utils/normalizarContacto'
 import {
@@ -39,7 +40,6 @@ const dependenciasIniciales = {
   contratos_historicos_iniciados: 0,
   reclamos: 0,
 }
-const FILAS_POR_PAGINA = 4
 
 const MENSAJE_RECLAMOS_ASOCIADOS =
   'No se puede eliminar el inquilino porque tiene reclamos asociados. Se conserva como historial.'
@@ -49,6 +49,7 @@ function buildMensajeConfirmacionDelete(inquilino) {
 }
 
 export default function AdminInquilinos() {
+  const [refTabla, filasPorPagina] = useFilasPorPagina()
   const toast = useToast()
   const [modalOpen, setModalOpen] = useState(false)
   const [inquilinoEditando, setInquilinoEditando] = useState(null)
@@ -102,7 +103,7 @@ export default function AdminInquilinos() {
     totalPaginas,
     visibles: inquilinosPagina,
     irAPagina: setPaginaActual,
-  } = usePaginacion(inquilinosFiltrados, FILAS_POR_PAGINA, [filtroTexto, filtroTipo])
+  } = usePaginacion(inquilinosFiltrados, filasPorPagina, [filtroTexto, filtroTipo])
 
   const cerrarModal = () => {
     if (!submitting) {
@@ -220,7 +221,7 @@ export default function AdminInquilinos() {
 
   return (
     <>
-      <AdminListLayout
+      <AdminListLayout refTabla={refTabla}
         title="Inquilinos"
         subtitle="Personas y empresas que alquilan, con su acceso al portal."
         actions={<AdminNuevoButton label="Nuevo inquilino" onClick={abrirModalCrear} />}
@@ -343,7 +344,7 @@ export default function AdminInquilinos() {
             pagina={paginaActual}
             totalPaginas={totalPaginas}
             totalItems={inquilinosFiltrados.length}
-            itemsPorPagina={FILAS_POR_PAGINA}
+            itemsPorPagina={filasPorPagina}
             onPaginaChange={setPaginaActual}
           />
         )}

@@ -12,19 +12,20 @@ export default function AdminListLayout({
   alerts,
   summary,
   children,
+  refTabla,
 }) {
   const accionesHeader =
     actions ?? (actionLabel && onAction ? <AdminNuevoButton label={actionLabel} onClick={onAction} /> : null)
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <AdminModuleHeader title={title} subtitle={subtitle} titleAction={titleAction} actions={accionesHeader} />
 
       {alerts && <div>{alerts}</div>}
 
       {summary && <div>{summary}</div>}
 
-      <div className={`${surfaceCard} overflow-hidden`}>{children}</div>
+      <div ref={refTabla} className={`${surfaceCard} overflow-hidden`}>{children}</div>
     </div>
   )
 }

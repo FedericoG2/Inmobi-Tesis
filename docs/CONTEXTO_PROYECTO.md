@@ -59,7 +59,8 @@ Las cuentas se administran con la Edge Function `gestionar-cuentas` (alta, rol, 
 
 | Ruta | Página |
 |---|---|
-| `/login` | `pages/auth/LoginPage.jsx` |
+| `/login` | `pages/auth/LoginPage.jsx` (inicio de sesión y pedido del enlace de recuperación) |
+| `/restablecer-contrasena` | `pages/auth/RestablecerPasswordPage.jsx` (contraseña nueva; solo con el enlace del email) |
 | `/cuentas` | `pages/cuentas/AdminCuentas.jsx` |
 | `/admin/dashboard` | `AdminDashboard.jsx` (indicadores, listas de atención, IPC del año) |
 | `/admin/propietarios` · `propiedades` · `inquilinos` · `contratos` · `alquileres` · `aumentos` · `reclamos` | una página por módulo en `pages/admin/` |

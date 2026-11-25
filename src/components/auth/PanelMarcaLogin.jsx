@@ -257,8 +257,9 @@ export default function PanelMarcaLogin() {
             Cada cambio, registrado y a la vista.
           </h1>
           <p className="mt-4 text-[15px] leading-relaxed text-brand-200 [@media(max-height:840px)]:hidden">
-            Contratos, aumentos por IPC e ICL y reclamos de mantenimiento. El sistema muestra en el momento qué pasó y
-            en qué estado quedó.
+            Gestiona el ciclo completo del alquiler: alta y cierre de contratos, cobro mensual con comprobantes y
+            confirmación de pagos, actualización de montos por IPC e ICL y seguimiento de reclamos. Cada operación queda
+            registrada con su usuario, fecha y estado resultante.
           </p>
         </Motion.div>
 

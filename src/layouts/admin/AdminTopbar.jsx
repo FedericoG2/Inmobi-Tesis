@@ -2,8 +2,8 @@ import { useMemo, useState, useRef, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useAdminLayout } from '../../contexts/AdminLayoutContext'
 import { supabase } from '../../supabaseClient'
-import InmobiLogoMark from '../../components/brand/InmobiLogoMark'
-import { brandAvatarClass, brandLogoSmClass } from '../../utils/brandUi'
+import { RanuraAcciones, RanuraTitulo } from '../../contexts/EncabezadoContext'
+import { brandAvatarClass } from '../../utils/brandUi'
 import { buttonClass, surfacePopover } from '../../utils/ui'
 import { IconLogout, IconSidebar } from '../../components/icons/Icons'
 import NotificacionesBell from '../../components/ui/NotificacionesBell'
@@ -60,8 +60,8 @@ export default function AdminTopbar() {
   }
 
   return (
-    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-slate-200/80 bg-white/85 px-3 backdrop-blur-md sm:px-6">
-      <div className="flex min-w-0 items-center gap-2">
+    <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-slate-200/80 bg-white/85 px-3 backdrop-blur-md sm:px-6">
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
         <button
           type="button"
           onClick={abrirMenuMovil}
@@ -82,15 +82,12 @@ export default function AdminTopbar() {
             <IconSidebar className="h-5 w-5" />
           </button>
         </div>
-        <span className="flex min-w-0 items-center gap-2 lg:hidden">
-          <span className={brandLogoSmClass} aria-hidden>
-            <InmobiLogoMark className="h-4 w-4" />
-          </span>
-          <span className="truncate text-sm font-semibold tracking-tight text-slate-900">Inmobi</span>
-        </span>
+        <div className="hidden h-6 w-px bg-slate-200 sm:block" aria-hidden />
+        <RanuraTitulo className="flex-1" />
       </div>
 
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+        <RanuraAcciones className="mr-1 sm:mr-2" />
         {!isAdminSistema && (
           <>
             <NotificacionesBell rutaDe={rutaAdminActividad} subtitulo="Actividad del sistema en tiempo real" />

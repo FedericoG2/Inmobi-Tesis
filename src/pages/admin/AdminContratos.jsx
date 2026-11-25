@@ -25,6 +25,7 @@ import InquilinoDetalleModal from '../../components/admin/InquilinoDetalleModal'
 import PropiedadDetalleModal from '../../components/admin/PropiedadDetalleModal'
 import { useContratos } from '../../hooks/useContratos'
 import { usePaginacion } from '../../hooks/usePaginacion'
+import { useFilasPorPagina } from '../../hooks/useFilasPorPagina'
 import { useToast } from '../../contexts/ToastContext'
 import { useInquilinos } from '../../hooks/useInquilinos'
 import { usePropiedades } from '../../hooks/usePropiedades'
@@ -36,7 +37,6 @@ import { calloutClass, cn, inputClass, segmentedInlineClass, segmentedItemClass 
 
 const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
 
-const FILAS_POR_PAGINA = 4
 
 const VENCE_PRONTO_DIAS = 60
 
@@ -94,6 +94,7 @@ const formatFecha = (fecha) => {
 }
 
 export default function AdminContratos() {
+  const [refTabla, filasPorPagina] = useFilasPorPagina()
   const toast = useToast()
   const [modalOpen, setModalOpen] = useState(false)
   const [filtroEstado, setFiltroEstado] = useState('activos')
@@ -195,7 +196,7 @@ export default function AdminContratos() {
     totalPaginas,
     visibles: contratosPagina,
     irAPagina: setPaginaActual,
-  } = usePaginacion(contratosFiltrados, FILAS_POR_PAGINA, [filtroEstado, filtroTipoAjuste, busquedaInquilino])
+  } = usePaginacion(contratosFiltrados, filasPorPagina, [filtroEstado, filtroTipoAjuste, busquedaInquilino])
 
   const hayFiltrosExtra =
     filtroTipoAjuste !== 'todos' || busquedaInquilino.trim().length > 0
@@ -345,7 +346,7 @@ export default function AdminContratos() {
 
   return (
     <>
-      <AdminListLayout
+      <AdminListLayout refTabla={refTabla}
         title="Contratos"
         subtitle="Cartera de alquileres: vigencia, ajustes y ciclo de vida de cada contrato."
         actions={<AdminNuevoButton label="Nuevo contrato" onClick={abrirModal} />}
@@ -548,7 +549,7 @@ export default function AdminContratos() {
           pagina={paginaActual}
           totalPaginas={totalPaginas}
           totalItems={contratosFiltrados.length}
-          itemsPorPagina={FILAS_POR_PAGINA}
+          itemsPorPagina={filasPorPagina}
           onPaginaChange={setPaginaActual}
         />
       </AdminListLayout>

@@ -56,7 +56,7 @@ export default function CargaIndicesManuales({ indices, onGuardar, onEliminar, d
           Cuando Argly no publica el mes o el día, cargalo acá. Si el índice oficial ya existe, se sigue usando ese.
         </p>
       </div>
-      <form onSubmit={guardar} className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-[8rem_11rem_9rem_auto] sm:items-end">
+      <form onSubmit={guardar} className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-[8rem_11rem_9rem_auto] sm:items-end sm:justify-start">
         <div>
           <label htmlFor="indice-tipo" className={cn(labelClass, 'text-xs')}>
             Índice

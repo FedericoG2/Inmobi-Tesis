@@ -27,6 +27,7 @@ import ReclamoRowActions from '../../components/admin/ReclamoRowActions'
 import StatCard from '../../components/admin/StatCard'
 import { useInquilinos } from '../../hooks/useInquilinos'
 import { usePaginacion } from '../../hooks/usePaginacion'
+import { useFilasPorPagina } from '../../hooks/useFilasPorPagina'
 import { useContratos } from '../../hooks/useContratos'
 import { usePropiedades } from '../../hooks/usePropiedades'
 import { useReclamos } from '../../hooks/useReclamos'
@@ -42,7 +43,6 @@ const COL_FECHA = 'w-[7.5rem]'
 const COL_PRIORIDAD = 'w-[6.75rem]'
 const COL_ESTADO = 'w-[8.75rem]'
 
-const FILAS_POR_PAGINA = 4
 
 // Opciones consistentes con el formulario
 const CATEGORIAS = [
@@ -56,6 +56,7 @@ const CATEGORIAS = [
 ]
 
 export default function AdminReclamos() {
+  const [refTabla, filasPorPagina] = useFilasPorPagina()
   const toast = useToast()
   const [modalOpen, setModalOpen] = useState(false)
   const [reclamoEditando, setReclamoEditando] = useState(null)
@@ -230,11 +231,11 @@ export default function AdminReclamos() {
     totalPaginas,
     visibles: reclamosPagina,
     irAPagina: setPaginaActual,
-  } = usePaginacion(reclamosFiltrados, FILAS_POR_PAGINA, [filtroTexto, filtroEstado, filtroPrioridad, filtroCategoria])
+  } = usePaginacion(reclamosFiltrados, filasPorPagina, [filtroTexto, filtroEstado, filtroPrioridad, filtroCategoria])
 
   return (
     <>
-      <AdminListLayout
+      <AdminListLayout refTabla={refTabla}
         title="Reclamos"
         subtitle="Pedidos de mantenimiento por inquilino y propiedad, desde la carga hasta su resolución."
         actions={<AdminNuevoButton label="Nuevo reclamo" onClick={abrirModalCrear} />}
@@ -422,7 +423,7 @@ export default function AdminReclamos() {
           pagina={paginaActual}
           totalPaginas={totalPaginas}
           totalItems={reclamosFiltrados.length}
-          itemsPorPagina={FILAS_POR_PAGINA}
+          itemsPorPagina={filasPorPagina}
           onPaginaChange={setPaginaActual}
         />
       </AdminListLayout>

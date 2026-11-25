@@ -20,6 +20,7 @@ import AdminNuevoButton from '../../components/admin/AdminNuevoButton'
 import FilterSelect from '../../components/admin/FilterSelect'
 import { usePropiedades } from '../../hooks/usePropiedades'
 import { usePaginacion } from '../../hooks/usePaginacion'
+import { useFilasPorPagina } from '../../hooks/useFilasPorPagina'
 import { useToast } from '../../contexts/ToastContext'
 import { usePropietarios } from '../../hooks/usePropietarios'
 import { etiquetaPropietario } from '../../utils/etiquetaPropietario'
@@ -37,7 +38,6 @@ import { calloutClass } from '../../utils/ui'
 
 const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
 const dependenciasIniciales = { contratos_activos: 0, contratos_historicos: 0, reclamos: 0 }
-const FILAS_POR_PAGINA = 4
 
 const celdaDestacada = 'text-sm font-medium text-slate-900'
 
@@ -74,6 +74,7 @@ function buildMensajeConfirmacionDelete(propiedad) {
 }
 
 export default function AdminPropiedades() {
+  const [refTabla, filasPorPagina] = useFilasPorPagina()
   const toast = useToast()
   const [modalOpen, setModalOpen] = useState(false)
   const [propiedadEditando, setPropiedadEditando] = useState(null)
@@ -132,7 +133,7 @@ export default function AdminPropiedades() {
     totalPaginas,
     visibles: propiedadesPagina,
     irAPagina: setPaginaActual,
-  } = usePaginacion(propiedadesFiltradas, FILAS_POR_PAGINA, [filtroTexto, filtroTipo, filtroEstado])
+  } = usePaginacion(propiedadesFiltradas, filasPorPagina, [filtroTexto, filtroTipo, filtroEstado])
 
   const cerrarModal = () => {
     if (!submitting) {
@@ -280,7 +281,7 @@ export default function AdminPropiedades() {
 
   return (
     <>
-      <AdminListLayout
+      <AdminListLayout refTabla={refTabla}
         title="Propiedades"
         subtitle="Cartera de inmuebles administrados y su estado de ocupación."
         actions={<AdminNuevoButton label="Nueva propiedad" onClick={abrirModalCrear} />}
@@ -421,7 +422,7 @@ export default function AdminPropiedades() {
             pagina={paginaActual}
             totalPaginas={totalPaginas}
             totalItems={propiedadesFiltradas.length}
-            itemsPorPagina={FILAS_POR_PAGINA}
+            itemsPorPagina={filasPorPagina}
             onPaginaChange={setPaginaActual}
           />
         )}

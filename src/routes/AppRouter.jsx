@@ -7,7 +7,9 @@ import InquilinoRoute from '../guards/InquilinoRoute'
 import PropietarioRoute from '../guards/PropietarioRoute'
 import ProtectedRoute from '../guards/ProtectedRoute'
 import LoginPage from '../pages/auth/LoginPage'
+import { RUTA_RESTABLECER } from '../services/recuperacionService'
 
+const RestablecerPasswordPage = lazy(() => import('../pages/auth/RestablecerPasswordPage'))
 const AdminLayout = lazy(() => import('../layouts/admin/AdminLayout'))
 const InquilinoLayout = lazy(() => import('../layouts/InquilinoLayout'))
 const PropietarioLayout = lazy(() => import('../layouts/PropietarioLayout'))
@@ -59,6 +61,7 @@ export default function AppRouter() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path={RUTA_RESTABLECER} element={<RestablecerPasswordPage />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<RootRedirect />} />

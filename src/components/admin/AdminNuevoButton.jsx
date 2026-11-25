@@ -9,8 +9,10 @@ export default function AdminNuevoButton({ label, onClick, className = '', varia
       onClick={onClick}
       disabled={disabled}
       className={className}
+      aria-label={label}
+      title={label}
     >
-      {label}
+      <span className="max-sm:sr-only">{label}</span>
     </Button>
   )
 }

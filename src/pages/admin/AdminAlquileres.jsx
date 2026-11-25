@@ -21,6 +21,7 @@ import IconButton from '../../components/ui/IconButton'
 import { IconChevronLeft, IconChevronRight, IconEye, IconSearch } from '../../components/icons/Icons'
 import { useAlquileresDelMes } from '../../hooks/useAlquileres'
 import { usePaginacion } from '../../hooks/usePaginacion'
+import { useFilasPorPagina } from '../../hooks/useFilasPorPagina'
 import {
   aumentoPendienteDelPeriodo,
   nombrePeriodo,
@@ -33,7 +34,6 @@ import {
 import { etiquetaEstadoContrato, hoyIsoLocal } from '../../utils/contratoVigencia'
 import { calloutClass, cn, inputClass } from '../../utils/ui'
 
-const FILAS_POR_PAGINA = 6
 
 const COL_ESTADO = 'w-[8rem]'
 const COL_PERIODO = 'w-[10rem]'
@@ -71,6 +71,7 @@ function moverMes(mes, delta) {
  * confirmar el pago o deshacer la confirmación.
  */
 export default function AdminAlquileres() {
+  const [refTabla, filasPorPagina] = useFilasPorPagina()
   const hoy = hoyIsoLocal()
   const [mes, setMes] = useState(() => primerDiaMes(hoy))
   const [busqueda, setBusqueda] = useState('')
@@ -119,7 +120,7 @@ export default function AdminAlquileres() {
     })
   }, [filas, busqueda, filtroEstado])
 
-  const { pagina, totalPaginas, visibles, irAPagina } = usePaginacion(filtradas, FILAS_POR_PAGINA, [mes, busqueda, filtroEstado])
+  const { pagina, totalPaginas, visibles, irAPagina } = usePaginacion(filtradas, filasPorPagina, [mes, busqueda, filtroEstado])
 
   const mensajeVacio = loading
     ? 'Cargando alquileres…'
@@ -129,7 +130,7 @@ export default function AdminAlquileres() {
 
   return (
     <>
-      <AdminListLayout
+      <AdminListLayout refTabla={refTabla}
         title="Alquileres"
         subtitle="Un mes por vez: cada contrato vigente tiene un período por mes, desde el mes en que empieza. Elegí un mes posterior para registrar un pago adelantado."
         alerts={error ? <div className={calloutClass('danger')}>Error al cargar los alquileres: {error}</div> : null}
@@ -270,7 +271,7 @@ export default function AdminAlquileres() {
           pagina={pagina}
           totalPaginas={totalPaginas}
           totalItems={filtradas.length}
-          itemsPorPagina={FILAS_POR_PAGINA}
+          itemsPorPagina={filasPorPagina}
           onPaginaChange={irAPagina}
         />
       </AdminListLayout>

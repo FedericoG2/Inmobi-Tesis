@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import { AdminLayoutProvider, useAdminLayout } from '../../contexts/AdminLayoutContext'
+import { EncabezadoProvider } from '../../contexts/EncabezadoContext'
 import AdminSidebar from './AdminSidebar'
 import AdminTopbar from './AdminTopbar'
 
@@ -15,8 +16,8 @@ function AdminLayoutContent() {
         }`}
       >
         <AdminTopbar />
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mx-auto w-full max-w-[1400px]">
+        <main className="flex-1 px-4 py-5 sm:px-6">
+          <div className="mx-auto w-full max-w-[1920px]">
             <Outlet />
           </div>
         </main>
@@ -28,7 +29,9 @@ function AdminLayoutContent() {
 export default function AdminLayout() {
   return (
     <AdminLayoutProvider>
-      <AdminLayoutContent />
+      <EncabezadoProvider>
+        <AdminLayoutContent />
+      </EncabezadoProvider>
     </AdminLayoutProvider>
   )
 }

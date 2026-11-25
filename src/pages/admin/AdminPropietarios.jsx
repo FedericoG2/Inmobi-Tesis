@@ -20,6 +20,7 @@ import AdminNuevoButton from '../../components/admin/AdminNuevoButton'
 import FilterSelect from '../../components/admin/FilterSelect'
 import { usePropietarios } from '../../hooks/usePropietarios'
 import { usePaginacion } from '../../hooks/usePaginacion'
+import { useFilasPorPagina } from '../../hooks/useFilasPorPagina'
 import { useToast } from '../../contexts/ToastContext'
 import { formatearDniCuit, formatearTelefono } from '../../utils/normalizarContacto'
 import {
@@ -33,9 +34,9 @@ import { IconSearch } from '../../components/icons/Icons'
 import { calloutClass } from '../../utils/ui'
 
 const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
-const FILAS_POR_PAGINA = 4
 
 export default function AdminPropietarios() {
+  const [refTabla, filasPorPagina] = useFilasPorPagina()
   const toast = useToast()
   const [modalOpen, setModalOpen] = useState(false)
   const [propietarioEditando, setPropietarioEditando] = useState(null)
@@ -90,7 +91,7 @@ export default function AdminPropietarios() {
     totalPaginas,
     visibles: propietariosPagina,
     irAPagina: setPaginaActual,
-  } = usePaginacion(propietariosFiltrados, FILAS_POR_PAGINA, [filtroTexto, filtroTipo])
+  } = usePaginacion(propietariosFiltrados, filasPorPagina, [filtroTexto, filtroTipo])
 
   const cerrarModal = () => {
     if (!submitting) {
@@ -188,7 +189,7 @@ export default function AdminPropietarios() {
 
   return (
     <>
-      <AdminListLayout
+      <AdminListLayout refTabla={refTabla}
         title="Propietarios"
         subtitle="Personas y empresas dueñas de las propiedades administradas."
         actions={<AdminNuevoButton label="Nuevo propietario" onClick={abrirModalCrear} />}
@@ -324,7 +325,7 @@ export default function AdminPropietarios() {
             pagina={paginaActual}
             totalPaginas={totalPaginas}
             totalItems={propietariosFiltrados.length}
-            itemsPorPagina={FILAS_POR_PAGINA}
+            itemsPorPagina={filasPorPagina}
             onPaginaChange={setPaginaActual}
           />
         )}

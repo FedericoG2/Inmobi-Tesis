@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
-import { MotionConfig, motion as Motion } from 'motion/react'
 import { isSupabaseConfigured, supabase } from '../../supabaseClient'
 import { useAuth } from '../../contexts/AuthContext'
 import Button, { Spinner } from '../../components/ui/Button'
-import PanelMarcaLogin from '../../components/auth/PanelMarcaLogin'
-import { IconAlertCircle, IconEnvelope, IconEye, IconEyeSlash, IconLock } from '../../components/icons/Icons'
+import LayoutAcceso from '../../components/auth/LayoutAcceso'
+import { IconAlertCircle, IconCheck, IconEnvelope, IconEye, IconEyeSlash, IconLock } from '../../components/icons/Icons'
+import { mensajeErrorRecuperacion, pedirEnlaceRecuperacion } from '../../services/recuperacionService'
 import { calloutClass, cn, inputClass, labelClass, surfaceCard } from '../../utils/ui'
 
 function mensajeErrorLogin(error) {
@@ -34,6 +34,10 @@ export default function LoginPage() {
   const [verPassword, setVerPassword] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // 'login' o 'recuperar' (pedir el enlace para crear una contraseña nueva)
+  const [modo, setModo] = useState('login')
+  const [enlaceEnviado, setEnlaceEnviado] = useState(false)
+  const [aviso, setAviso] = useState(location.state?.aviso ?? '')
 
   const from = location.state?.from?.pathname
 
@@ -72,6 +76,7 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setAviso('')
     setSubmitting(true)
 
     if (!supabase) {
@@ -88,101 +93,163 @@ export default function LoginPage() {
     setSubmitting(false)
   }
 
-  return (
-    <MotionConfig reducedMotion="user">
-      <div className="flex min-h-screen bg-white">
-        <PanelMarcaLogin />
+  const pedirEnlace = async (e) => {
+    e.preventDefault()
+    setError('')
+    if (!supabase) {
+      setError('Supabase no configurado. Revisá el archivo .env')
+      return
+    }
+    setSubmitting(true)
+    const { error: errorEnvio } = await pedirEnlaceRecuperacion(email)
+    setSubmitting(false)
+    if (errorEnvio) {
+      setError(mensajeErrorRecuperacion(errorEnvio))
+      return
+    }
+    setEnlaceEnviado(true)
+  }
 
-        <div className="relative flex w-full items-center justify-center overflow-hidden px-6 py-12 lg:w-[54%]">
-          <div
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(var(--color-slate-300)_1px,transparent_1px)] [background-size:20px_20px] opacity-60 [mask-image:radial-gradient(ellipse_at_top,black,transparent_65%)]"
-            aria-hidden
-          />
-          <Motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            className="relative w-full max-w-sm"
-          >
-            <p className="mb-10 text-xl font-semibold tracking-tight text-slate-900 lg:hidden">Inmobi</p>
+  const cambiarModo = (nuevo) => {
+    setModo(nuevo)
+    setError('')
+    setAviso('')
+    setEnlaceEnviado(false)
+    setPassword('')
+  }
 
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Iniciar sesión</h2>
-            <p className="mt-1.5 text-sm text-slate-500">Ingresá con tus credenciales para continuar.</p>
-
-            {!isSupabaseConfigured && (
-              <div className={calloutClass('warning', 'mt-6')}>
-                Falta el archivo <strong>.env</strong> con <code>VITE_SUPABASE_URL</code> y{' '}
-                <code>VITE_SUPABASE_ANON_KEY</code>.
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-              <div>
-                <label htmlFor="email" className={labelClass}>
-                  Email
-                </label>
-                <div className="relative">
-                  <IconEnvelope className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input
-                    id="email"
-                    type="email"
-                    required
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className={cn(inputClass, 'h-11 pl-10')}
-                    placeholder="nombre@email.com"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="password" className={labelClass}>
-                  Contraseña
-                </label>
-                <div className="relative">
-                  <IconLock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input
-                    id="password"
-                    type={verPassword ? 'text' : 'password'}
-                    required
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className={cn(inputClass, 'h-11 pl-10 pr-11')}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setVerPassword((v) => !v)}
-                    aria-label={verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                    className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
-                  >
-                    {verPassword ? <IconEyeSlash className="h-4 w-4" /> : <IconEye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {error && (
-                <div className={cn(calloutClass('danger'), 'flex items-start gap-2')}>
-                  <IconAlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                  {error}
-                </div>
-              )}
-
-              <Button type="submit" size="lg" block loading={submitting} className="h-11">
-                {submitting ? 'Ingresando…' : 'Iniciar sesión'}
-              </Button>
-            </form>
-
-            <p className="mt-6 flex items-center justify-center gap-1.5 font-mono text-[11px] text-slate-400">
-              <IconLock className="h-3 w-3" />
-              Conexión cifrada
-            </p>
-
-            <p className="mt-10 text-center text-xs text-slate-400 lg:hidden">© 2026 Zitelli &amp; Asociados</p>
-          </Motion.div>
-        </div>
+  const campoEmail = (
+    <div>
+      <label htmlFor="email" className={labelClass}>
+        Email
+      </label>
+      <div className="relative">
+        <IconEnvelope className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <input
+          id="email"
+          type="email"
+          required
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className={cn(inputClass, 'h-11 pl-10')}
+          placeholder="nombre@email.com"
+        />
       </div>
-    </MotionConfig>
+    </div>
+  )
+
+  const mensajeError = error && (
+    <div className={cn(calloutClass('danger'), 'flex items-start gap-2')}>
+      <IconAlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+      {error}
+    </div>
+  )
+
+  if (modo === 'recuperar') {
+    return (
+      <LayoutAcceso>
+        <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Recuperar contraseña</h2>
+        <p className="mt-1.5 text-sm text-slate-500">
+          Ingresá el email de tu cuenta y te enviaremos un enlace para crear una contraseña nueva.
+        </p>
+
+        {enlaceEnviado ? (
+          <div className="mt-8 space-y-5">
+            <div className={cn(calloutClass('success'), 'flex items-start gap-2')} role="status">
+              <IconCheck className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                Si <strong>{email.trim()}</strong> corresponde a una cuenta, en unos minutos vas a recibir el enlace. Vence en
+                una hora. Revisá también la carpeta de correo no deseado.
+              </span>
+            </div>
+            <Button size="lg" block variant="secondary" className="h-11" onClick={() => cambiarModo('login')}>
+              Volver a iniciar sesión
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={pedirEnlace} className="mt-8 space-y-5">
+            {campoEmail}
+            {mensajeError}
+            <Button type="submit" size="lg" block loading={submitting} className="h-11">
+              {submitting ? 'Enviando…' : 'Enviar enlace'}
+            </Button>
+            <button
+              type="button"
+              onClick={() => cambiarModo('login')}
+              className="block w-full text-center text-sm font-medium text-brand-700 hover:text-brand-800"
+            >
+              Volver a iniciar sesión
+            </button>
+          </form>
+        )}
+      </LayoutAcceso>
+    )
+  }
+
+  return (
+    <LayoutAcceso>
+      <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Iniciar sesión</h2>
+      <p className="mt-1.5 text-sm text-slate-500">Ingresá con tus credenciales para continuar.</p>
+
+      {!isSupabaseConfigured && (
+        <div className={calloutClass('warning', 'mt-6')}>
+          Falta el archivo <strong>.env</strong> con <code>VITE_SUPABASE_URL</code> y{' '}
+          <code>VITE_SUPABASE_ANON_KEY</code>.
+        </div>
+      )}
+
+      {aviso && (
+        <div className={cn(calloutClass('success', 'mt-6'), 'flex items-start gap-2')} role="status">
+          <IconCheck className="mt-0.5 h-4 w-4 shrink-0" />
+          {aviso}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+        {campoEmail}
+
+        <div>
+          <div className="flex items-baseline justify-between gap-3">
+            <label htmlFor="password" className={labelClass}>
+              Contraseña
+            </label>
+            <button
+              type="button"
+              onClick={() => cambiarModo('recuperar')}
+              className="text-xs font-medium text-brand-700 hover:text-brand-800"
+            >
+              ¿Olvidaste tu contraseña?
+            </button>
+          </div>
+          <div className="relative">
+            <IconLock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              id="password"
+              type={verPassword ? 'text' : 'password'}
+              required
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={cn(inputClass, 'h-11 pl-10 pr-11')}
+            />
+            <button
+              type="button"
+              onClick={() => setVerPassword((v) => !v)}
+              aria-label={verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+            >
+              {verPassword ? <IconEyeSlash className="h-4 w-4" /> : <IconEye className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+
+        {mensajeError}
+
+        <Button type="submit" size="lg" block loading={submitting} className="h-11">
+          {submitting ? 'Ingresando…' : 'Iniciar sesión'}
+        </Button>
+      </form>
+    </LayoutAcceso>
   )
 }

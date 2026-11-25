@@ -6,22 +6,13 @@ import {
   inputClass,
   labelClass,
   loadingStateClass,
-  pageSubtitle,
-  pageTitle,
   sectionTitle,
   surfaceCard,
 } from './ui'
 
 /** Estilos del portal del inquilino: derivan de utils/ui.js para compartir el lenguaje del panel admin. */
 
-export const portalPageShell = 'space-y-5 lg:space-y-6'
-
-export const portalPageTitle = pageTitle
-
-export const portalPageSubtitle = pageSubtitle
-
-export const portalPageHeader =
-  'flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'
+export const portalPageShell = 'space-y-5'
 
 export const portalCardClass = surfaceCard
 

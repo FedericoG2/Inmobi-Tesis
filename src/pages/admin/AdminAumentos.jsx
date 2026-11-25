@@ -26,6 +26,7 @@ import {
 } from '../../components/admin/AdminDataTable'
 import { useAumentos } from '../../hooks/useAumentos'
 import { usePaginacion } from '../../hooks/usePaginacion'
+import { useFilasPorPagina } from '../../hooks/useFilasPorPagina'
 import { useToast } from '../../contexts/ToastContext'
 import { claveRevision, deshacerAumento } from '../../services/aumentosService'
 import { listarInquilinos } from '../../services/inquilinosService'
@@ -60,7 +61,6 @@ import {
   segmentedItemClass,
 } from '../../utils/ui'
 
-const FILAS_POR_PAGINA = 4
 
 function clavePropuestaAumento(p) {
   if (!p) return ''
@@ -111,6 +111,7 @@ const formatMonto = (monto) => {
 }
 
 export default function AdminAumentos() {
+  const [refTabla, filasPorPagina] = useFilasPorPagina()
   const toast = useToast()
   const [filtro, setFiltro] = useState('pendientes')
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -351,7 +352,7 @@ export default function AdminAumentos() {
     totalPaginas,
     visibles: listadoPagina,
     irAPagina: setPaginaActual,
-  } = usePaginacion(listadoFiltrado, FILAS_POR_PAGINA, [filtro])
+  } = usePaginacion(listadoFiltrado, filasPorPagina, [filtro])
 
   const listosParaConfirmar = useMemo(
     () => propuestasConUi.filter((p) => p.ui.puedeConfirmar),
@@ -553,7 +554,7 @@ export default function AdminAumentos() {
 
   return (
     <>
-      <AdminListLayout
+      <AdminListLayout refTabla={refTabla}
         title="Aumentos"
         subtitle={`Aumentos de ${capitalizar(periodoOperativo.nombre)}: entran a la bandeja el día ${DIA_INICIO_BANDEJA} y se confirman hasta el día ${DIA_CORTE_OPERATIVO} del mes siguiente.`}
         titleAction={
@@ -861,7 +862,7 @@ export default function AdminAumentos() {
           pagina={paginaActual}
           totalPaginas={totalPaginas}
           totalItems={listadoFiltrado.length}
-          itemsPorPagina={FILAS_POR_PAGINA}
+          itemsPorPagina={filasPorPagina}
           onPaginaChange={setPaginaActual}
         />
       </AdminListLayout>

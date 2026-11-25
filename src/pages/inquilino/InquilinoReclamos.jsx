@@ -183,8 +183,8 @@ export default function InquilinoReclamos() {
   }
 
   const nuevoReclamoBtn = (
-    <Button icon={IconPlus} onClick={abrirFormCrear} disabled={!contratoVigente} className="w-full sm:w-auto">
-      Nuevo reclamo
+    <Button icon={IconPlus} onClick={abrirFormCrear} disabled={!contratoVigente} aria-label="Nuevo reclamo" title="Nuevo reclamo">
+      <span className="max-sm:sr-only">Nuevo reclamo</span>
     </Button>
   )
 

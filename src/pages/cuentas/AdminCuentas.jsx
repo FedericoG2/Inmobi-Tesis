@@ -136,7 +136,7 @@ export default function AdminCuentas() {
   return (
     <AdminListLayout
       title="Cuentas"
-      subtitle="Usuarios que ingresan al sistema: alta, rol, bloqueo y restablecimiento de contraseña."
+      subtitle="Usuarios que ingresan al sistema: alta, consulta, modificación de email y rol, bloqueo y restablecimiento de contraseña."
       actionLabel="Nueva cuenta"
       onAction={() => setModal({ tipo: 'crear' })}
       alerts={error ? <div className={calloutClass('danger')}>{error}</div> : null}

@@ -18,7 +18,7 @@ function iniciales(nombre) {
 export default function PortalSidebar({ items, subtitulo, nombre, rolLabel }) {
   return (
     <aside className="fixed left-0 top-0 z-30 hidden h-screen w-64 flex-col border-r border-slate-200/80 bg-white lg:flex">
-      <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-slate-200/80 px-5">
+      <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-slate-200/80 px-5">
         <span className={brandLogoSmClass} aria-hidden>
           <InmobiLogoMark className="h-4 w-4" />
         </span>

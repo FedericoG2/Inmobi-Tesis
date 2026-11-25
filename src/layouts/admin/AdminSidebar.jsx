@@ -78,7 +78,7 @@ export default function AdminSidebar() {
         aria-label="Menú lateral"
       >
         <div
-          className={`flex h-14 shrink-0 items-center border-b border-slate-200/80 ${
+          className={`flex h-16 shrink-0 items-center border-b border-slate-200/80 ${
             compacto ? 'justify-center px-2' : 'gap-2.5 pl-5 pr-3'
           }`}
         >

@@ -450,7 +450,7 @@ export default function AdminContratos() {
                       className={cn(
                         'rounded-full px-1.5 text-[11px] tabular-nums',
                         esVencidos && count > 0
-                          ? 'bg-red-50 font-medium text-red-700'
+                          ? 'font-semibold text-red-700'
                           : activo
                             ? 'bg-slate-100 text-slate-700'
                             : 'text-slate-400'

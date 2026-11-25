@@ -21,12 +21,10 @@ const TONO_POR_TEMA = {
   slate: 'neutral',
 }
 
-const VALOR_POR_TONO = {
-  brand: 'text-slate-900',
-  neutral: 'text-slate-900',
-  success: 'text-emerald-700',
-  warning: 'text-amber-700',
-  danger: 'text-red-600',
+// El número va siempre en el mismo color; si pide atención, la aclaración de abajo lo indica.
+const ACLARACION_POR_TONO = {
+  warning: 'text-amber-800',
+  danger: 'text-red-700',
 }
 
 const ICONS = {
@@ -83,12 +81,12 @@ export default function StatCard({
           className={cn(
             'font-semibold tabular-nums leading-none tracking-tight',
             compact ? 'text-2xl' : 'text-3xl',
-            VALOR_POR_TONO[tono]
+            'text-slate-900'
           )}
         >
           {value}
         </p>
-        {hint ? <p className="mt-1.5 line-clamp-2 text-xs text-slate-500">{hint}</p> : null}
+        {hint ? <p className={cn('mt-1.5 line-clamp-2 text-xs', ACLARACION_POR_TONO[tono] ?? 'text-slate-500')}>{hint}</p> : null}
       </div>
     </Wrapper>
   )

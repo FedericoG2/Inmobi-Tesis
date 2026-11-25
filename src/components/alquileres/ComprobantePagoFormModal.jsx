@@ -80,7 +80,7 @@ export default function ComprobantePagoFormModal({ periodo, onClose, onGuardar, 
               onClick={() => inputRef.current?.click()}
               className={cn(
                 'flex w-full items-center gap-3 rounded-lg border border-dashed px-4 py-3 text-left text-sm transition',
-                errorArchivo ? 'border-red-300 bg-red-50/40' : 'border-slate-300 hover:border-brand-400 hover:bg-brand-50/30'
+                errorArchivo ? 'border-red-400 bg-white' : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50'
               )}
             >
               <IconPaperclip className="h-5 w-5 shrink-0 text-slate-400" />

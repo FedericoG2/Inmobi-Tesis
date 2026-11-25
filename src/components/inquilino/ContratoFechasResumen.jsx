@@ -6,7 +6,7 @@ function FechaChip({ label, value, destacado = false }) {
     <span
       className={cn(
         'inline-flex items-center gap-2.5 rounded-lg px-3 py-2 ring-1 ring-inset',
-        destacado ? 'bg-brand-50 ring-brand-600/15' : 'bg-slate-50 ring-slate-200/80'
+        destacado ? 'bg-white ring-slate-300' : 'bg-slate-50 ring-slate-200/80'
       )}
     >
       <IconCalendar className={cn('h-4 w-4', destacado ? 'text-brand-600' : 'text-slate-400')} />

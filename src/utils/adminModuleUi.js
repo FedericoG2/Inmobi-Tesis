@@ -18,7 +18,7 @@ export const BADGE_PROPIETARIO_TIPO = {
     label: 'Persona física',
     tone: 'brand',
     className: badgeClass('brand'),
-    avatarClass: 'rounded-full bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-600/10',
+    avatarClass: 'rounded-full bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200',
   },
   Jurídica: {
     label: 'Persona jurídica',

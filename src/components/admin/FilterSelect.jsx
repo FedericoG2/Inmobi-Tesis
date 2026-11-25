@@ -1,7 +1,7 @@
 import { IconChevronDown, IconX } from '../icons/Icons'
 import { cn, selectClass } from '../../utils/ui'
 
-const selectActivoClass = '!border-brand-300 bg-brand-50/40 font-medium text-brand-800'
+const selectActivoClass = '!border-slate-500 bg-white font-medium text-slate-900'
 
 export default function FilterSelect({
   id,
@@ -35,7 +35,7 @@ export default function FilterSelect({
           onClick={onClear}
           aria-label="Quitar filtro"
           title="Quitar filtro"
-          className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-brand-600 transition hover:bg-brand-100"
+          className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
         >
           <IconX className="h-3.5 w-3.5" strokeWidth={2} />
         </button>

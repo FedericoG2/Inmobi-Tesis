@@ -289,7 +289,7 @@ function PasoIpc({ detalle }) {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {ipcDetalle.map((m) => (
-              <tr key={`${m.anio}-${m.mes}`} className={m.publicado ? '' : 'bg-amber-50/60'}>
+              <tr key={`${m.anio}-${m.mes}`} className={m.publicado ? '' : 'bg-slate-50'}>
                 <td className="px-3 py-1.5 text-slate-600">{formatPeriodoIpc(m.anio, m.mes)}</td>
                 <td className="px-3 py-1.5 text-right font-mono text-xs tabular-nums text-slate-900">
                   {m.publicado ? (
@@ -509,7 +509,7 @@ export default function AumentoDetalleModal({
                     {formatMonto(detalle.montoActual)}
                   </p>
                 </div>
-                <div className="rounded-xl border border-brand-200 bg-brand-50/50 px-4 py-3">
+                <div className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-3">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs text-brand-700">Monto ajustado</p>
                     {ui.puedeConfirmar && (
@@ -637,7 +637,7 @@ export default function AumentoDetalleModal({
                 className={cn(
                   'flex h-9 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm font-medium transition',
                   revisado
-                    ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                    ? 'border-slate-900 bg-white text-slate-900 ring-1 ring-slate-900'
                     : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
                 )}
               >

@@ -91,7 +91,7 @@ export default function NotificacionesBell({ rutaDe, subtitulo = 'Últimos movim
       >
         <IconBell className="h-5 w-5" />
         {sinLeer > 0 && (
-          <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-semibold leading-none text-white ring-2 ring-white">
+          <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-slate-900 px-1 text-[11px] font-semibold leading-none text-white ring-2 ring-white">
             {sinLeer > 9 ? '9+' : sinLeer}
           </span>
         )}

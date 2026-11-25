@@ -70,10 +70,10 @@ export default function InquilinoPickerModal({
                     onClick={() => onSelect(i)}
                     className={cn(
                       'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition',
-                      esSeleccionado ? 'bg-brand-50' : 'hover:bg-slate-100'
+                      esSeleccionado ? 'bg-slate-100' : 'hover:bg-slate-50'
                     )}
                   >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-700 ring-1 ring-inset ring-brand-600/10">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-700 ring-1 ring-inset ring-brand-600/10">
                       {(i.nombre_completo ?? '?')
                         .split(' ')
                         .filter(Boolean)

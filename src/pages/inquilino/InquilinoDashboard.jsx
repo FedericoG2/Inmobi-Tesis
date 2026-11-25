@@ -122,10 +122,6 @@ export default function InquilinoDashboard() {
       ) : (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 lg:gap-6">
           <div className="relative overflow-hidden rounded-xl bg-brand-700 shadow-card lg:col-span-5">
-            <div
-              className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-brand-500/40 blur-2xl"
-              aria-hidden
-            />
             <div className="relative flex h-full flex-col justify-between gap-6 p-5">
               <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/10 text-white ring-1 ring-inset ring-white/15">
                 <IconBuilding className="h-5 w-5" />

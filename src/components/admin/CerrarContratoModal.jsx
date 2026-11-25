@@ -8,7 +8,7 @@ const opcionClass = (activa) =>
   cn(
     'flex flex-col gap-0.5 rounded-lg border px-3 py-2.5 text-left text-sm font-medium transition',
     activa
-      ? 'border-brand-500 bg-brand-50 text-brand-800 ring-1 ring-brand-500'
+      ? 'border-slate-900 bg-white text-slate-900 ring-1 ring-slate-900'
       : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
   )
 

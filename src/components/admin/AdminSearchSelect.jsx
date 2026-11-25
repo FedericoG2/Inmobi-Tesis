@@ -149,7 +149,7 @@ export default function AdminSearchSelect({
                         option.disabled
                           ? 'cursor-not-allowed text-slate-400'
                           : activa
-                            ? 'bg-brand-50 font-medium text-brand-800'
+                            ? 'bg-slate-100 font-medium text-slate-900'
                             : 'text-slate-700 hover:bg-slate-100'
                       )}
                     >

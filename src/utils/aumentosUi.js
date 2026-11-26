@@ -175,6 +175,15 @@ export function ultimoDiaPeriodoOperativoIso(hoy = hoyIsoLocal()) {
   return `${yy}-${mm}-${dd}`
 }
 
+/**
+ * La carga manual de índices solo se ofrece cuando Argly no trae los datos: si no respondió,
+ * si a algún aumento le falta un índice o si alguno ya se calculó con un valor cargado a mano.
+ */
+export function requiereCargaManual(propuestas, indicesNoDisponibles = false) {
+  if (indicesNoDisponibles) return true
+  return (propuestas ?? []).some((p) => p.estado === 'falta_indice' || p.fuente === 'manual')
+}
+
 /** Días desde hoy hasta el fin del período operativo (para traer propuestas completas). */
 export function diasHastaFinPeriodoOperativo(hoy = hoyIsoLocal()) {
   return diasHastaFecha(ultimoDiaPeriodoOperativoIso(hoy), hoy)

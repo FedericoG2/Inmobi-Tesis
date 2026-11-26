@@ -48,6 +48,7 @@ import {
   formatPeriodoMesAnio,
   hoyIsoLocal,
   interpretarPropuestaAumento,
+  requiereCargaManual,
   periodoOperativoInfo,
   propuestaDesdeAumentoRegistrado,
 } from '../../utils/aumentosUi'
@@ -365,6 +366,7 @@ export default function AdminAumentos() {
   )
 
   const indicesNoDisponibles = !loading && !indicesResumen.icl && !indicesResumen.ipc
+  const mostrarCargaManual = !loading && requiereCargaManual(propuestas, indicesNoDisponibles)
 
   const mensajeVacio = useMemo(() => {
     if (loading) return 'Calculando aumentos…'
@@ -632,16 +634,18 @@ export default function AdminAumentos() {
           </div>
         }
       >
-        <CargaIndicesManuales
-          indices={indicesManuales}
-          onGuardar={async (entrada) => {
-            const resultado = await guardarIndice(entrada)
-            if (!resultado.error) toast.success('Índice guardado', 'Se recalcularon los aumentos que dependen de ese valor.')
-            return resultado
-          }}
-          onEliminar={eliminarIndice}
-          disabled={loading || confirmando}
-        />
+        {mostrarCargaManual && (
+          <CargaIndicesManuales
+            indices={indicesManuales}
+            onGuardar={async (entrada) => {
+              const resultado = await guardarIndice(entrada)
+              if (!resultado.error) toast.success('Índice guardado', 'Se recalcularon los aumentos que dependen de ese valor.')
+              return resultado
+            }}
+            onEliminar={eliminarIndice}
+            disabled={loading || confirmando}
+          />
+        )}
 
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-200/80 px-4 py-3 lg:px-5">
           <div

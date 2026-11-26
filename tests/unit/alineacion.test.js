@@ -2,6 +2,7 @@
 import { describe, expect, test } from 'vitest'
 import { accionesPeriodo, aumentoPendienteDelPeriodo, rangoPeriodo } from '../../src/utils/alquileresUi'
 import { calcularPropuestaAumento, overrideDesdeIndicesManuales } from '../../src/utils/calcularAumento'
+import { requiereCargaManual } from '../../src/utils/aumentosUi'
 import { validarIndiceManual } from '../../src/services/indicesManualesService'
 import { cambiosAuditoria, resumenAuditoria, tituloAuditoria } from '../../src/utils/auditoriaUi'
 
@@ -112,5 +113,14 @@ describe('Auditoría en pantalla', () => {
     }
     expect(tituloAuditoria(registro)).toBe('Período abril 2026 · Alta')
     expect(resumenAuditoria(registro)).toMatch(/^Estado: Pendiente · Monto: \$\s108\.000$/)
+  })
+})
+
+describe('Carga manual de índices: solo cuando la API no trae datos', () => {
+  test('se ofrece si Argly no respondió, si falta un índice o si ya se usó uno manual', () => {
+    expect(requiereCargaManual([{ estado: 'ok', fuente: 'argly' }], false)).toBe(false)
+    expect(requiereCargaManual([], true)).toBe(true)
+    expect(requiereCargaManual([{ estado: 'falta_indice' }], false)).toBe(true)
+    expect(requiereCargaManual([{ estado: 'ok', fuente: 'manual' }], false)).toBe(true)
   })
 })

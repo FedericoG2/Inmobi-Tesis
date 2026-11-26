@@ -21,6 +21,7 @@ import {
   contratoComprometePropiedad,
   DURACION_CONTRATO_OPCIONES,
   fechasSeSolapan,
+  hoyIsoLocal,
 } from '../../../utils/contratoVigencia'
 import { formatearMontoInput, parsearMontoInput } from '../../../utils/formatoMonto'
 import { formatPeriodoMesAnio } from '../../../utils/aumentosUi'
@@ -35,6 +36,7 @@ import { IconCheck, IconChevronLeft, IconChevronRight } from '../../icons/Icons'
 import {
   calloutClass,
   cn,
+  eyebrow,
   fieldHintClass,
   inputClass as inputBaseClass,
   labelClass,
@@ -156,11 +158,23 @@ function StepperProgreso({ secciones, activa }) {
 function BloqueProximosAumentos({ preview, fechaInicio, fechaFin }) {
   return (
     <div>
-      <p className={labelClass}>Próximos aumentos</p>
+      <p className={labelClass}>Calendario estimado de aumentos</p>
       <div className={`${surfaceMuted} px-4 py-3`}>
         <PanelProximosAumentos preview={preview} fechaInicio={fechaInicio} fechaFin={fechaFin} />
       </div>
     </div>
+  )
+}
+
+// Solo en la pantalla: la base admite fechas pasadas para preparar escenarios y pruebas.
+const MENSAJE_FECHA_PASADA = 'La fecha de inicio no puede ser anterior a hoy.'
+
+function BloqueFormulario({ titulo, children }) {
+  return (
+    <section className={`${surfaceMuted} p-4`}>
+      <h3 className={`${eyebrow} mb-3`}>{titulo}</h3>
+      {children}
+    </section>
   )
 }
 
@@ -193,6 +207,7 @@ export default function ContratoFormModal({
   const [detallePropiedadOpen, setDetallePropiedadOpen] = useState(false)
   const [archivoLegal, setArchivoLegal] = useState(null)
   const [errorArchivoLegal, setErrorArchivoLegal] = useState(null)
+  const hoy = hoyIsoLocal()
 
 
   const periodicidadMeses = periodicidadMesesPorKey(form.periodicidad_key)
@@ -291,26 +306,22 @@ export default function ContratoFormModal({
     if (indice === 0) {
       if (!form.inquilino_id || !form.propiedad_id) return 'Seleccioná inquilino y propiedad.'
       if (propiedadNoDisponible) return MENSAJE_PROPIEDAD_NO_DISPONIBLE
-      return null
-    }
-    if (indice === 1) {
-      if (!form.fecha_inicio) return 'Completá la fecha de inicio de vigencia.'
+      if (!form.fecha_inicio) return 'Completá la fecha de inicio.'
+      if (form.fecha_inicio < hoy) return MENSAJE_FECHA_PASADA
       if (!form.duracion_anios) return 'Seleccioná la duración del contrato.'
       if (!form.fecha_fin) return 'Completá las fechas de vigencia.'
       if (!fechasValidas(form.fecha_inicio, form.fecha_fin)) {
         return 'La fecha de fin debe ser posterior a la de inicio.'
       }
       if (solapaConContratoExistente) return MENSAJE_SOLAPAMIENTO_CONTRATO
+      return null
+    }
+    if (indice === 1) {
       if (!form.monto_alquiler || Number(form.monto_alquiler) <= 0) {
         return 'Ingresá un monto de alquiler válido.'
       }
-      if (form.dia_vencimiento) {
-        const dia = Number(form.dia_vencimiento)
-        if (dia < 1 || dia > 28) return 'El día de vencimiento debe estar entre 1 y 28.'
-      }
-      return null
-    }
-    if (indice === 2) {
+      const dia = Number(form.dia_vencimiento)
+      if (!Number.isInteger(dia) || dia < 1 || dia > 28) return 'El día de pago tiene que estar entre 1 y 28.'
       if (!fechaProximoAumento) return 'No se pudo calcular el próximo aumento. Revisá las fechas.'
       if (form.fecha_fin && fechaProximoAumento > form.fecha_fin) {
         return 'El primer ajuste cae fuera de la vigencia del contrato. Revisá la periodicidad o la duración.'
@@ -348,7 +359,7 @@ export default function ContratoFormModal({
       return
     }
 
-    for (let i = 0; i <= 2; i += 1) {
+    for (let i = 0; i <= 1; i += 1) {
       const err = validarPaso(i)
       if (err) {
         setErrorPaso(err)
@@ -369,7 +380,7 @@ export default function ContratoFormModal({
   }
 
   const esUltimaSeccion = seccionActiva === SECCIONES_CONTRATO.length - 1
-  const esSeccionAjustes = seccionActiva === 2
+  const esSeccionAjustes = seccionActiva === 1
   const esSeccionResumen = esUltimaSeccion
   const tamanoFijoWizard = !esSeccionResumen
   const mostrarPanelLateral = esSeccionAjustes
@@ -402,7 +413,9 @@ export default function ContratoFormModal({
               } ${esSeccionAjustes ? 'lg:pr-4' : ''}`}
             >
               {seccionActiva === 0 && (
-                <ContenidoPasoWizard className="max-w-md lg:max-w-md">
+                <ContenidoPasoWizard className="lg:max-w-2xl">
+                  <BloqueFormulario titulo="Partes del contrato">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     {inquilinosLoading ? (
                       <p className="text-sm text-slate-500">Cargando inquilinos…</p>
@@ -478,178 +491,152 @@ export default function ContratoFormModal({
                       </>
                     )}
                   </div>
+                    </div>
+                  </BloqueFormulario>
+
+                  <BloqueFormulario titulo="Vigencia">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div>
+                        <label htmlFor="fecha_inicio" className={labelClass}>
+                          Fecha de inicio
+                        </label>
+                        <input
+                          id="fecha_inicio"
+                          type="date"
+                          required
+                          min={hoy}
+                          value={form.fecha_inicio}
+                          onChange={handleFechaInicio}
+                          className={inputClassSinSpinner}
+                          disabled={formDeshabilitado}
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="duracion_anios" className={labelClass}>
+                          Duración
+                        </label>
+                        {!form.fecha_inicio ? (
+                          <div
+                            id="duracion_anios"
+                            className={`${inputClass} cursor-not-allowed bg-slate-50 text-slate-400`}
+                            aria-disabled="true"
+                          >
+                            Elegí primero la fecha de inicio
+                          </div>
+                        ) : (
+                          <select
+                            id="duracion_anios"
+                            value={form.duracion_anios}
+                            onChange={handleDuracion}
+                            className={`${inputClass} text-slate-900`}
+                            disabled={formDeshabilitado}
+                          >
+                            <option value="" disabled hidden>
+                              Seleccionar duración
+                            </option>
+                            {DURACION_CONTRATO_OPCIONES.map((o) => (
+                              <option key={o.key} value={o.key}>
+                                {o.label}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    </div>
+                    {form.fecha_inicio && form.fecha_inicio < hoy && (
+                      <p className={calloutClass('warning', 'mt-3')}>{MENSAJE_FECHA_PASADA}</p>
+                    )}
+                    {form.fecha_inicio && form.duracion_anios && form.fecha_fin && (
+                      <p className={fieldHintClass}>
+                        Vigencia: {formatFecha(form.fecha_inicio)} al {formatFecha(form.fecha_fin)}.
+                        {form.fecha_inicio > hoy && ' Empieza más adelante: el contrato queda Programado y la propiedad Reservada.'}
+                      </p>
+                    )}
+                    {solapaConContratoExistente && (
+                      <p className={calloutClass('warning', 'mt-3')}>{MENSAJE_SOLAPAMIENTO_CONTRATO}</p>
+                    )}
+                  </BloqueFormulario>
                 </ContenidoPasoWizard>
               )}
 
               {seccionActiva === 1 && (
                 <ContenidoPasoWizard>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div>
-                      <label htmlFor="fecha_inicio" className={labelClass}>
-                        Fecha inicio de vigencia
-                      </label>
-                      <input
-                        id="fecha_inicio"
-                        type="date"
-                        required
-                        value={form.fecha_inicio}
-                        onChange={handleFechaInicio}
-                        className={inputClassSinSpinner}
-                        disabled={formDeshabilitado}
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="duracion_anios" className={labelClass}>
-                        Duración del contrato
-                      </label>
-                      {!form.fecha_inicio ? (
-                        <div
-                          id="duracion_anios"
-                          className={`${inputClass} cursor-not-allowed bg-slate-50 text-slate-400`}
-                          aria-disabled="true"
-                        >
-                          Seleccionar duración
-                        </div>
-                      ) : (
-                        <select
-                          id="duracion_anios"
-                          value={form.duracion_anios}
-                          onChange={handleDuracion}
-                          className={`${inputClass} text-slate-900`}
+                  <BloqueFormulario titulo="Valor y ajuste">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div>
+                        <label htmlFor="monto_alquiler" className={labelClass}>
+                          Monto inicial
+                        </label>
+                        <input
+                          id="monto_alquiler"
+                          type="text"
+                          inputMode="numeric"
+                          required
+                          value={form.monto_alquiler_display}
+                          onChange={handleMonto}
+                          className={inputClass}
+                          placeholder="$ 350.000"
                           disabled={formDeshabilitado}
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="dia_vencimiento" className={labelClass}>
+                          Día de pago del alquiler
+                        </label>
+                        <input
+                          id="dia_vencimiento"
+                          type="text"
+                          inputMode="numeric"
+                          required
+                          value={form.dia_vencimiento}
+                          onChange={handleChange('dia_vencimiento')}
+                          className={inputClass}
+                          placeholder="10"
+                          disabled={formDeshabilitado}
+                        />
+                        <p className={fieldHintClass}>Del 1 al 28.</p>
+                      </div>
+                      <div>
+                        <label htmlFor="tipo_ajuste" className={labelClass}>
+                          Tipo de ajuste
+                        </label>
+                        <select
+                          id="tipo_ajuste"
+                          value={form.tipo_ajuste}
+                          onChange={handleChange('tipo_ajuste')}
+                          className={inputClass}
                         >
-                          <option value="" disabled hidden>
-                            Seleccionar duración
-                          </option>
-                          {DURACION_CONTRATO_OPCIONES.map((o) => (
+                          {TIPO_AJUSTE_OPCIONES.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label htmlFor="periodicidad_key" className={labelClass}>
+                          Periodicidad de ajuste
+                        </label>
+                        <select
+                          id="periodicidad_key"
+                          value={form.periodicidad_key}
+                          onChange={handleChange('periodicidad_key')}
+                          className={inputClass}
+                        >
+                          {PERIODICIDAD_OPCIONES.map((o) => (
                             <option key={o.key} value={o.key}>
                               {o.label}
                             </option>
                           ))}
                         </select>
-                      )}
+                        {fechaProximoAumento && (
+                          <p className={fieldHintClass}>
+                            Primer ajuste: {formatPeriodoMesAnio(fechaProximoAumento)}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-
-                  {form.fecha_inicio && form.duracion_anios && form.fecha_fin && (
-                    <div>
-                      <label htmlFor="fecha_fin" className={labelClass}>
-                        Fecha fin (calculada)
-                      </label>
-                      <input
-                        id="fecha_fin"
-                        type="date"
-                        readOnly
-                        value={form.fecha_fin}
-                        className={`${inputClassSinSpinner} cursor-not-allowed bg-slate-50 text-slate-700`}
-                        disabled={formDeshabilitado}
-                        tabIndex={-1}
-                      />
-                    </div>
-                  )}
-
-                  {solapaConContratoExistente && (
-                    <p className={calloutClass('warning')}>
-                      {MENSAJE_SOLAPAMIENTO_CONTRATO}
-                    </p>
-                  )}
-
-                  <div>
-                    <label htmlFor="monto_alquiler" className={labelClass}>
-                      Monto de alquiler
-                    </label>
-                    <input
-                      id="monto_alquiler"
-                      type="text"
-                      inputMode="numeric"
-                      required
-                      value={form.monto_alquiler_display}
-                      onChange={handleMonto}
-                      className={inputClass}
-                      placeholder="$ 350.000"
-                      disabled={formDeshabilitado}
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="dia_vencimiento" className={labelClass}>
-                      Día de vencimiento (opcional)
-                    </label>
-                    <input
-                      id="dia_vencimiento"
-                      type="text"
-                      inputMode="numeric"
-                      value={form.dia_vencimiento}
-                      onChange={handleChange('dia_vencimiento')}
-                      className={inputClass}
-                      placeholder="10"
-                      disabled={formDeshabilitado}
-                    />
-                  </div>
-                </ContenidoPasoWizard>
-              )}
-
-              {seccionActiva === 2 && (
-                <ContenidoPasoWizard>
-                  <p className={calloutClass('info')}>
-                    La periodicidad y el tipo de ajuste definen todos los aumentos futuros del contrato. Revisá
-                    el calendario antes de continuar.
-                  </p>
-
-                  <div>
-                    <label htmlFor="periodicidad_key" className={labelClass}>
-                      Periodicidad del ajuste
-                    </label>
-                    <select
-                      id="periodicidad_key"
-                      value={form.periodicidad_key}
-                      onChange={handleChange('periodicidad_key')}
-                      className={inputClass}
-                    >
-                      {PERIODICIDAD_OPCIONES.map((o) => (
-                        <option key={o.key} value={o.key}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
-                    {fechaProximoAumento && (
-                      <p className={fieldHintClass}>
-                        Primer ajuste estimado: {formatPeriodoMesAnio(fechaProximoAumento)}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label htmlFor="tipo_ajuste" className={labelClass}>
-                      Tipo de ajuste
-                    </label>
-                    <select
-                      id="tipo_ajuste"
-                      value={form.tipo_ajuste}
-                      onChange={handleChange('tipo_ajuste')}
-                      className={inputClass}
-                    >
-                      {TIPO_AJUSTE_OPCIONES.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label htmlFor="observaciones" className={labelClass}>
-                      Observaciones (opcional)
-                    </label>
-                    <textarea
-                      id="observaciones"
-                      rows={2}
-                      value={form.observaciones}
-                      onChange={handleChange('observaciones')}
-                      className={cn(textareaClass, 'min-h-0 resize-none')}
-                      placeholder="Cláusulas o notas del contrato"
-                    />
-                  </div>
+                  </BloqueFormulario>
 
                   <div className="lg:hidden">
                     <BloqueProximosAumentos
@@ -661,23 +648,36 @@ export default function ContratoFormModal({
                 </ContenidoPasoWizard>
               )}
 
-              {seccionActiva === 3 && (
+              {seccionActiva === 2 && (
                 <ContenidoPasoWizard className="max-w-2xl lg:max-w-2xl">
                   <ContratoDocumentoAltaPicker
-                  archivo={archivoLegal}
-                  onArchivoChange={setArchivoLegal}
-                  visibleParaInquilino={form.documento_visible_inquilino}
-                  onVisibleChange={(value) =>
-                    setForm((prev) => ({ ...prev, documento_visible_inquilino: value }))
-                  }
-                  error={errorArchivoLegal}
-                  onErrorChange={setErrorArchivoLegal}
-                  disabled={submitting}
-                />
+                    archivo={archivoLegal}
+                    onArchivoChange={setArchivoLegal}
+                    visibleParaInquilino={form.documento_visible_inquilino}
+                    onVisibleChange={(value) =>
+                      setForm((prev) => ({ ...prev, documento_visible_inquilino: value }))
+                    }
+                    error={errorArchivoLegal}
+                    onErrorChange={setErrorArchivoLegal}
+                    disabled={submitting}
+                  />
+                  <div>
+                    <label htmlFor="observaciones" className={labelClass}>
+                      Observaciones (opcional)
+                    </label>
+                    <textarea
+                      id="observaciones"
+                      rows={3}
+                      value={form.observaciones}
+                      onChange={handleChange('observaciones')}
+                      className={cn(textareaClass, 'min-h-0 resize-none')}
+                      placeholder="Cláusulas o notas del contrato"
+                    />
+                  </div>
                 </ContenidoPasoWizard>
               )}
 
-              {seccionActiva === 4 && (
+              {seccionActiva === 3 && (
                 <dl className="divide-y divide-slate-100 rounded-xl border border-slate-200 px-4">
                   <CampoResumen label="Inquilino" value={inquilinoSeleccionado?.nombre_completo ?? '—'} />
                   <CampoResumen label="Propiedad" value={propiedadSeleccionada?.direccion ?? '—'} />
@@ -696,7 +696,7 @@ export default function ContratoFormModal({
                     value={formatMonto(Number(form.monto_alquiler))}
                   />
                   <CampoResumen
-                    label="Día de vencimiento"
+                    label="Día de pago"
                     value={form.dia_vencimiento ? `Día ${form.dia_vencimiento}` : '—'}
                   />
                   <CampoResumen label="Periodicidad del ajuste" value={periodicidadLabel} />
@@ -720,7 +720,7 @@ export default function ContratoFormModal({
                   />
                 </dl>
               )}
-              {seccionActiva === 4 && (
+              {seccionActiva === 3 && (
                 <div className="mt-5">
                   <BloqueProximosAumentos
                     preview={preview}

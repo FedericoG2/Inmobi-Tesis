@@ -145,8 +145,31 @@ async function obtenerSeriesArglyDirecto({ icl, ipc } = {}) {
   }
 }
 
+// Los índices se publican una vez por mes: una consulta igual se reusa durante 15 minutos, así
+// volver a Aumentos o abrir otra ficha no espera de nuevo a Argly.
+const CACHE_MS = 15 * 60 * 1000
+const cacheSeries = new Map()
+
+/** Series ICL/IPC desde Argly, con caché en memoria por rango consultado. */
+export function obtenerSeriesArgly(rangos = {}) {
+  const clave = JSON.stringify(rangos)
+  const guardada = cacheSeries.get(clave)
+  if (guardada && Date.now() - guardada.momento < CACHE_MS) return guardada.promesa
+
+  const promesa = consultarSeriesArgly(rangos).then((resultado) => {
+    const vacia = !(resultado.data?.icl?.length || resultado.data?.ipc?.length)
+    if (resultado.error || vacia) cacheSeries.delete(clave)
+    return resultado
+  }, (error) => {
+    cacheSeries.delete(clave)
+    throw error
+  })
+  cacheSeries.set(clave, { momento: Date.now(), promesa })
+  return promesa
+}
+
 /** Series ICL/IPC desde Argly. Primero el navegador; si falla CORS/red, la Edge Function. */
-export async function obtenerSeriesArgly(rangos = {}) {
+async function consultarSeriesArgly(rangos = {}) {
   try {
     const directo = await obtenerSeriesArglyDirecto(rangos)
     if ((directo.data?.icl?.length ?? 0) > 0 || (directo.data?.ipc?.length ?? 0) > 0) {

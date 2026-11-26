@@ -1,11 +1,31 @@
+import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { AdminLayoutProvider, useAdminLayout } from '../../contexts/AdminLayoutContext'
 import { EncabezadoProvider } from '../../contexts/EncabezadoContext'
 import AdminSidebar from './AdminSidebar'
 import AdminTopbar from './AdminTopbar'
 
+// Módulos del Encargado: se descargan por detrás después de entrar, así pasar de uno a otro no
+// espera a bajar el código de la pantalla.
+const precargarModulos = () =>
+  Promise.allSettled([
+    import('../../pages/admin/AdminDashboard'),
+    import('../../pages/admin/AdminPropietarios'),
+    import('../../pages/admin/AdminPropiedades'),
+    import('../../pages/admin/AdminInquilinos'),
+    import('../../pages/admin/AdminContratos'),
+    import('../../pages/admin/AdminAlquileres'),
+    import('../../pages/admin/AdminAumentos'),
+    import('../../pages/admin/AdminReclamos'),
+  ])
+
 function AdminLayoutContent() {
   const { sidebarCollapsed } = useAdminLayout()
+
+  useEffect(() => {
+    const id = setTimeout(precargarModulos, 1500)
+    return () => clearTimeout(id)
+  }, [])
 
   return (
     <div className="min-h-screen bg-slate-50">

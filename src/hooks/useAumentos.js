@@ -28,6 +28,9 @@ function formatearErroresConfirmacion(errores) {
  * Contratos con aumento en la bandeja (ya calculados, con los índices oficiales y los cargados a
  * mano), los confirmados del período que se trabaja y las revisiones guardadas.
  */
+// Última bandeja consultada: al volver a Aumentos se muestra enseguida y se actualiza por detrás.
+let ultimaBandeja = null
+
 async function consultarBandeja({ diasProximos, overrides = {} } = {}) {
   const clavePeriodo = periodoOperativoInfo(hoyIsoLocal()).clave
   const confirmadosPromesa = listarAumentosConfirmadosEnPeriodo({ claveMes: clavePeriodo })
@@ -42,7 +45,15 @@ async function consultarBandeja({ diasProximos, overrides = {} } = {}) {
     confirmadosPromesa,
     listarRevisionesAumento(),
   ])
-  return { calculo, confirmados, revisiones }
+  const resultado = { calculo, confirmados, revisiones }
+  const esLaBandejaDelPeriodo = diasProximos == null && Object.keys(overrides).length === 0
+  if (esLaBandejaDelPeriodo && !calculo.error) ultimaBandeja = { ...resultado, clavePeriodo }
+  return resultado
+}
+
+/** La bandeja guardada, si es del período que se trabaja hoy. */
+function bandejaGuardada() {
+  return ultimaBandeja?.clavePeriodo === periodoOperativoInfo(hoyIsoLocal()).clave ? ultimaBandeja : null
 }
 
 /**
@@ -137,6 +148,10 @@ export function useAumentos() {
 
   useEffect(() => {
     let vigente = true
+    const guardada = bandejaGuardada()
+    if (guardada) {
+      Promise.resolve().then(() => vigente && aplicarBandeja({ ...guardada, keepOverrides: false }))
+    }
     consultarBandeja().then((resultado) => {
       if (vigente) aplicarBandeja({ ...resultado, keepOverrides: false })
     })

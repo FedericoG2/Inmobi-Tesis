@@ -4,6 +4,7 @@ import {
   accionesPeriodo,
   estadoComprobante,
   estadoPagoAlquiler,
+  fechaLimitePago,
   nombrePeriodo,
   resumenPagos,
   situacionPeriodo,
@@ -26,14 +27,20 @@ describe('situación de un período', () => {
     expect(situacionPeriodo(periodo({ estado: 'Pagado', comprobantes_pago: [comprobante] }), HOY)).toBe('pagado')
   })
 
-  test('con comprobante y sin confirmar queda en revisión, aunque esté vencido', () => {
+  test('con comprobante y sin confirmar queda en revisión', () => {
     expect(situacionPeriodo(periodo({ comprobantes_pago: [comprobante] }), HOY)).toBe('en_revision')
   })
 
-  test('sin comprobante: vencido después del vencimiento, pendiente antes', () => {
-    expect(situacionPeriodo(periodo(), HOY)).toBe('vencido')
-    expect(situacionPeriodo(periodo({ fecha_vencimiento: '2026-04-15' }), HOY)).toBe('pendiente')
+  test('sin comprobante queda Pendiente: no hay estado Vencido', () => {
+    expect(situacionPeriodo(periodo(), HOY)).toBe('pendiente')
     expect(situacionPeriodo(periodo({ fecha_vencimiento: null }), HOY)).toBe('pendiente')
+  })
+
+  test('el alquiler de un mes se paga hasta el día de pago del mes siguiente', () => {
+    expect(fechaLimitePago(periodo({ fecha_vencimiento: '2026-11-10' }))).toBe('2026-12-10')
+    expect(fechaLimitePago(periodo({ fecha_vencimiento: '2026-12-10' }))).toBe('2027-01-10')
+    expect(fechaLimitePago(periodo({ fecha_vencimiento: '2026-01-28' }))).toBe('2026-02-28')
+    expect(fechaLimitePago(periodo({ fecha_vencimiento: null }))).toBeNull()
   })
 })
 
@@ -45,22 +52,20 @@ describe('resumen y estado de pago del alquiler', () => {
     periodo({ id: 4, periodo: '2026-04-01', comprobantes_pago: [comprobante], monto: 108000 }),
   ]
 
-  test('cuenta pagados, pendientes, en revisión, vencidos y el saldo pendiente', () => {
-    expect(resumenPagos(periodos, HOY)).toEqual({
+  test('cuenta pagados, pendientes, en revisión y el saldo pendiente', () => {
+    expect(resumenPagos(periodos)).toEqual({
       total: 4,
       pagados: 2,
       pendientes: 2,
       enRevision: 1,
-      vencidos: 1,
       montoPendiente: 208000,
     })
   })
 
-  test('los comprobantes por revisar tienen prioridad, después la deuda y lo pendiente', () => {
-    expect(estadoPagoAlquiler(resumenPagos(periodos, HOY))).toBe('revisar')
-    expect(estadoPagoAlquiler(resumenPagos(periodos.slice(0, 3), HOY))).toBe('deuda')
-    expect(estadoPagoAlquiler(resumenPagos([periodo({ fecha_vencimiento: '2026-04-20' })], HOY))).toBe('pendiente')
-    expect(estadoPagoAlquiler(resumenPagos(periodos.slice(0, 2), HOY))).toBe('al_dia')
+  test('los comprobantes por revisar tienen prioridad, después lo pendiente', () => {
+    expect(estadoPagoAlquiler(resumenPagos(periodos))).toBe('revisar')
+    expect(estadoPagoAlquiler(resumenPagos(periodos.slice(0, 3)))).toBe('pendiente')
+    expect(estadoPagoAlquiler(resumenPagos(periodos.slice(0, 2)))).toBe('al_dia')
   })
 })
 
@@ -94,5 +99,13 @@ describe('comprobantes y acciones por rol', () => {
   test('nombre del período en castellano', () => {
     expect(nombrePeriodo('2026-04-01')).toBe('Abril 2026')
     expect(nombrePeriodo(null)).toBe('—')
+  })
+})
+
+describe('textos de Aumentos', () => {
+  test('el período de un aumento no usa la palabra "venció": la situación la da el estado', async () => {
+    const { etiquetaPeriodoAumento } = await import('../../src/utils/aumentosUi')
+    expect(etiquetaPeriodoAumento('2026-11-01')).toBe('Aumento de Noviembre')
+    expect(etiquetaPeriodoAumento('2026-11-01', '2026-11-26')).not.toMatch(/venci/i)
   })
 })

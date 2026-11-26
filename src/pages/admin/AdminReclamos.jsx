@@ -94,12 +94,12 @@ export default function AdminReclamos() {
 
   const kpis = useMemo(() => {
     const lista = reclamos || []
-    const noResuelto = (r) => r.estado !== 'Resuelto'
+    const contar = (estado) => lista.filter((r) => r.estado === estado).length
     return {
-      pendientes: lista.filter((r) => r.estado === 'Pendiente').length,
-      enAtencion: lista.filter((r) => r.estado === 'En Proceso' || r.estado === 'Revision').length,
-      urgentes: lista.filter((r) => r.prioridad === 'Urgente' && noResuelto(r)).length,
-      resueltos: lista.filter((r) => r.estado === 'Resuelto').length,
+      pendientes: contar('Pendiente'),
+      enProceso: contar('En Proceso'),
+      enRevision: contar('Revision'),
+      resueltos: contar('Resuelto'),
     }
   }, [reclamos])
 
@@ -253,25 +253,28 @@ export default function AdminReclamos() {
               compact
               label="Pendientes"
               value={loading ? '…' : kpis.pendientes}
-              hint="Recién cargados, sin gestionar"
+              hint="Recién cargados"
               icon="clipboard"
               theme={!loading && kpis.pendientes > 0 ? 'amber' : 'slate'}
+              onClick={() => setFiltroEstado('Pendiente')}
             />
             <StatCard
               compact
-              label="En atención"
-              value={loading ? '…' : kpis.enAtencion}
-              hint="En proceso o en revisión"
+              label="En proceso"
+              value={loading ? '…' : kpis.enProceso}
+              hint="Trabajándose"
               icon="wrench"
               theme="slate"
+              onClick={() => setFiltroEstado('En Proceso')}
             />
             <StatCard
               compact
-              label="Urgentes"
-              value={loading ? '…' : kpis.urgentes}
-              hint="Prioridad urgente sin resolver"
-              icon="alert"
-              theme={!loading && kpis.urgentes > 0 ? 'red' : 'slate'}
+              label="En revisión"
+              value={loading ? '…' : kpis.enRevision}
+              hint="Por verificar"
+              icon="eye"
+              theme="slate"
+              onClick={() => setFiltroEstado('Revision')}
             />
             <StatCard
               compact
@@ -280,6 +283,7 @@ export default function AdminReclamos() {
               hint="Ya cerrados"
               icon="check"
               theme="emerald"
+              onClick={() => setFiltroEstado('Resuelto')}
             />
           </div>
         }

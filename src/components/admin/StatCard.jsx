@@ -5,6 +5,7 @@ import {
   IconChart,
   IconCheckCircle,
   IconClipboard,
+  IconEye,
   IconTrendingUp,
   IconWrench,
 } from '../icons/Icons'
@@ -35,6 +36,7 @@ const ICONS = {
   calendar: IconCalendar,
   alert: IconAlert,
   check: IconCheckCircle,
+  eye: IconEye,
   trending: IconTrendingUp,
 }
 

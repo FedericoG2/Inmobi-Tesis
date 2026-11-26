@@ -1,11 +1,10 @@
 export { PERIODICIDAD_OPCIONES, TIPO_AJUSTE_OPCIONES, TIPO_AJUSTE_LABELS } from './contratoAumentosPreview'
 
 export const SECCIONES_CONTRATO = [
-  { id: 'partes', label: 'Partes', stepLabel: 'Partes' },
-  { id: 'vigencia', label: 'Vigencia y monto', stepLabel: 'Vigencia' },
-  { id: 'ajustes', label: 'Ajustes', stepLabel: 'Ajustes' },
-  { id: 'documentacion', label: 'Documentación', stepLabel: 'Docs' },
-  { id: 'resumen', label: 'Resumen', stepLabel: 'Resumen' },
+  { id: 'partes', label: 'Partes y vigencia' },
+  { id: 'valor', label: 'Valor y ajuste' },
+  { id: 'documentacion', label: 'Documentación' },
+  { id: 'resumen', label: 'Resumen' },
 ]
 
 export const formContratoInicial = {
@@ -16,7 +15,7 @@ export const formContratoInicial = {
   fecha_fin: '',
   monto_alquiler: '',
   monto_alquiler_display: '',
-  dia_vencimiento: '',
+  dia_vencimiento: '10',
   periodicidad_key: 'anual',
   tipo_ajuste: 'ipc',
   observaciones: '',

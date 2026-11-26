@@ -23,30 +23,42 @@ export const cantidadComprobantes = (periodo) => periodo?.comprobantes_pago?.len
  * Situación de un período para mostrar:
  *   pagado      → el Encargado confirmó el pago.
  *   en_revision → pendiente con al menos un comprobante: falta que el Encargado lo confirme.
- *   vencido     → pendiente, sin comprobante y con el vencimiento ya pasado.
- *   pendiente   → pendiente, todavía en plazo.
+ *   pendiente   → todavía sin comprobante.
+ * El alquiler de un mes se paga hasta el día de pago del mes siguiente (el de noviembre, hasta el
+ * 10 de diciembre), así que un período sin confirmar figura como Pendiente.
  */
-export function situacionPeriodo(periodo, hoyIso) {
+export function situacionPeriodo(periodo) {
   if (!periodo) return 'pendiente'
   if (periodo.estado === 'Pagado') return 'pagado'
   if (cantidadComprobantes(periodo) > 0) return 'en_revision'
-  if (periodo.fecha_vencimiento && hoyIso && periodo.fecha_vencimiento < hoyIso) return 'vencido'
   return 'pendiente'
 }
 
 export const SITUACION_PERIODO = {
   pagado: { label: 'Pagado', tone: 'success' },
   en_revision: { label: 'Comprobante en revisión', tone: 'brand' },
-  vencido: { label: 'Vencido', tone: 'danger' },
   pendiente: { label: 'Pendiente', tone: 'warning' },
 }
 
+/**
+ * Último día para pagar el alquiler de un período: el día de pago del mes siguiente
+ * ("2026-11-10" → "2026-12-10"). Sin día de pago, null.
+ */
+export function fechaLimitePago(periodo) {
+  const base = periodo?.fecha_vencimiento
+  if (!base) return null
+  const [anio, mes, dia] = base.slice(0, 10).split('-').map(Number)
+  const ultimoDiaMesSiguiente = new Date(anio, mes + 1, 0).getDate()
+  const fecha = new Date(anio, mes, Math.min(dia, ultimoDiaMesSiguiente))
+  return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`
+}
+
 /** Totales de un contrato a partir de sus períodos. */
-export function resumenPagos(periodos = [], hoyIso) {
-  const resumen = { total: 0, pagados: 0, pendientes: 0, enRevision: 0, vencidos: 0, montoPendiente: 0 }
+export function resumenPagos(periodos = []) {
+  const resumen = { total: 0, pagados: 0, pendientes: 0, enRevision: 0, montoPendiente: 0 }
   for (const p of periodos) {
     resumen.total += 1
-    const situacion = situacionPeriodo(p, hoyIso)
+    const situacion = situacionPeriodo(p)
     if (situacion === 'pagado') {
       resumen.pagados += 1
       continue
@@ -54,7 +66,6 @@ export function resumenPagos(periodos = [], hoyIso) {
     resumen.pendientes += 1
     resumen.montoPendiente += Number(p.monto) || 0
     if (situacion === 'en_revision') resumen.enRevision += 1
-    if (situacion === 'vencido') resumen.vencidos += 1
   }
   return resumen
 }
@@ -62,20 +73,17 @@ export function resumenPagos(periodos = [], hoyIso) {
 /**
  * Estado de pago del alquiler (para el listado y su filtro):
  *   revisar   → hay comprobantes esperando que el Encargado confirme el pago.
- *   deuda     → hay períodos vencidos sin comprobante.
  *   pendiente → hay períodos pendientes todavía en plazo.
  *   al_dia    → todos los períodos están pagados.
  */
 export function estadoPagoAlquiler(resumen) {
   if (resumen.enRevision > 0) return 'revisar'
-  if (resumen.vencidos > 0) return 'deuda'
   if (resumen.pendientes > 0) return 'pendiente'
   return 'al_dia'
 }
 
 export const ESTADO_PAGO_ALQUILER = {
   revisar: { label: 'Comprobante por revisar', tone: 'brand' },
-  deuda: { label: 'Con períodos vencidos', tone: 'danger' },
   pendiente: { label: 'Pago del mes pendiente', tone: 'warning' },
   al_dia: { label: 'Al día', tone: 'success' },
 }
@@ -111,7 +119,6 @@ export function accionesPeriodo(periodo, { rol, contratoActivo, aumentoPendiente
 export const SITUACION_CORTA = {
   pagado: 'Pagado',
   en_revision: 'En revisión',
-  vencido: 'Vencido',
   pendiente: 'Pendiente',
 }
 
@@ -139,5 +146,5 @@ export function rangoPeriodo(periodo, contrato) {
 }
 
 /** Orden del listado mensual: primero lo que requiere atención. */
-const ORDEN_SITUACION = { vencido: 0, en_revision: 1, pendiente: 2, pagado: 3 }
+const ORDEN_SITUACION = { en_revision: 0, pendiente: 1, pagado: 2 }
 export const ordenSituacion = (situacion) => ORDEN_SITUACION[situacion] ?? 9

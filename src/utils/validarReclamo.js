@@ -18,22 +18,20 @@ export const ESTADO_LABEL = {
 }
 
 /**
- * Estados a los que se puede pasar desde `estadoActual`.
- * "Pendiente" es el estado inicial: desde él se puede ir a cualquiera. Una vez
- * que el reclamo lo abandona, puede moverse entre En Proceso, Revisión y Resuelto,
- * pero ya no puede volver a "Pendiente". Reabrir un Resuelto lo deja En Proceso.
+ * Estados a los que se puede pasar desde `estadoActual` (incluido el mismo). El camino es
+ * Pendiente → En Proceso → Revisión → Resuelto, un paso por vez, y un Resuelto solo se reabre
+ * a En Proceso.
  */
 export function estadosPermitidos(estadoActual) {
   if (!FLUJO_ESTADOS.includes(estadoActual)) return FLUJO_ESTADOS
-  if (estadoActual === 'Pendiente') return FLUJO_ESTADOS
   if (estadoActual === 'Resuelto') return ['Resuelto', 'En Proceso']
-  return FLUJO_ESTADOS.filter((e) => e !== 'Pendiente')
+  const siguiente = FLUJO_ESTADOS[FLUJO_ESTADOS.indexOf(estadoActual) + 1]
+  return [estadoActual, siguiente]
 }
 
 /**
- * true si pasar de `estadoActual` a `estadoNuevo` es una transición válida.
- * Se permite avanzar o retroceder, salvo volver a "Pendiente"; un Resuelto solo
- * se reabre a "En Proceso".
+ * true si pasar de `estadoActual` a `estadoNuevo` es una transición válida: el estado siguiente
+ * del camino, o En Proceso para reabrir un Resuelto.
  */
 export function esTransicionEstadoValida(estadoActual, estadoNuevo) {
   const actual = FLUJO_ESTADOS.indexOf(estadoActual)

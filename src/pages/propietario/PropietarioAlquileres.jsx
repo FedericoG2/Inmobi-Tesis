@@ -114,7 +114,7 @@ export default function PropietarioAlquileres() {
           ) : pagos.error ? (
             <div className={calloutClass('danger')}>No se pudieron cargar los pagos: {pagos.error.message}</div>
           ) : (
-            <PeriodosPagoLista periodos={periodos} hoyIso={hoy} vacio="Todavía no hay períodos de alquiler." />
+            <PeriodosPagoLista periodos={periodos} vacio="Todavía no hay períodos de alquiler." />
           )}
         </section>
 

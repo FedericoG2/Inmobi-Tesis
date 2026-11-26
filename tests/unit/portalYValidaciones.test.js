@@ -88,7 +88,11 @@ describe('Validaciones', () => {
 
 describe('Estados de reclamos', () => {
   test('RF-076 · no se vuelve a Pendiente y un Resuelto solo pasa a En Proceso', () => {
-    expect(esTransicionEstadoValida('Pendiente', 'Resuelto')).toBe(true)
+    expect(esTransicionEstadoValida('Pendiente', 'En Proceso')).toBe(true)
+    expect(esTransicionEstadoValida('En Proceso', 'Revision')).toBe(true)
+    expect(esTransicionEstadoValida('Revision', 'Resuelto')).toBe(true)
+    expect(esTransicionEstadoValida('Pendiente', 'Resuelto')).toBe(false)
+    expect(esTransicionEstadoValida('Revision', 'En Proceso')).toBe(false)
     expect(esTransicionEstadoValida('En Proceso', 'Pendiente')).toBe(false)
     expect(esTransicionEstadoValida('Resuelto', 'En Proceso')).toBe(true)
     expect(esTransicionEstadoValida('Resuelto', 'Revision')).toBe(false)

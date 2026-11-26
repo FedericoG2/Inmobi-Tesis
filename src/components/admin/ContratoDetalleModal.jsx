@@ -1,6 +1,9 @@
 import { useConsulta } from '../../hooks/useConsulta'
 import AuditoriaContrato from './AuditoriaContrato'
 import ContratoDocumentosPanel from './ContratoDocumentosPanel'
+import PeriodosPagoLista from '../alquileres/PeriodosPagoLista'
+import { listarPeriodosContrato } from '../../services/alquileresService'
+import { resumenPagos } from '../../utils/alquileresUi'
 import { calcularAumentosPendientes, listarHistorialAumentos } from '../../services/aumentosService'
 import { obtenerContratoDetalle } from '../../services/contratosService'
 import {
@@ -15,6 +18,7 @@ import {
   duracionContratoLabel,
   esContratoPlazoVencido,
   etiquetaFinalizarContrato,
+  hoyIsoLocal,
   puedeFinalizarContrato,
 } from '../../utils/contratoVigencia'
 import { badgeIndicador, formatFechaAumento, formatPeriodoMesAnio } from '../../utils/aumentosUi'
@@ -31,7 +35,7 @@ import {
 import Modal, { ModalBody, ModalFooter, ModalHeader } from '../ui/Modal'
 import Button from '../ui/Button'
 import Badge from '../ui/Badge'
-import { calloutClass, eyebrow, surfaceMuted } from '../../utils/ui'
+import { calloutClass, eyebrow, loadingStateClass, surfaceMuted } from '../../utils/ui'
 import DetalleFila from '../ui/DetailField'
 
 function formatFecha(fecha) {
@@ -136,6 +140,13 @@ export default function ContratoDetalleModal({
   const clave = open && contratoId ? contratoId : null
   const detalle = useConsulta(clave, () => obtenerContratoDetalle(contratoId))
   const historialConsulta = useConsulta(clave, () => listarHistorialAumentos(contratoId))
+  const pagosConsulta = useConsulta(clave, () => listarPeriodosContrato(contratoId))
+  // Hasta el mes en curso; un mes posterior aparece solo si ya tiene un pago adelantado.
+  const mesActual = `${hoyIsoLocal().slice(0, 7)}-01`
+  const periodos = (pagosConsulta.data ?? []).filter(
+    (p) => p.periodo <= mesActual || p.estado === 'Pagado' || (p.comprobantes_pago?.length ?? 0) > 0
+  )
+  const resumen = resumenPagos(periodos)
 
   const contrato = detalle.data
   const cargando = detalle.cargando
@@ -305,6 +316,31 @@ export default function ContratoDetalleModal({
                     icon={IconChart}
                   />
                 </div>
+              </section>
+
+              <section>
+                <SeccionTitulo>Historial de pagos</SeccionTitulo>
+                {pagosConsulta.cargandoPrimeraVez ? (
+                  <p className={loadingStateClass}>Cargando pagos…</p>
+                ) : pagosConsulta.error ? (
+                  <p className={calloutClass('danger')}>
+                    No se pudieron cargar los pagos: {pagosConsulta.error.message}
+                  </p>
+                ) : (
+                  <>
+                    {resumen.total > 0 && (
+                      <p className="mb-2 text-xs text-slate-500">
+                        {resumen.pagados} de {resumen.total} {resumen.total === 1 ? 'mes pagado' : 'meses pagados'}
+                        {resumen.pendientes > 0 && <> · Saldo pendiente {formatMonto(resumen.montoPendiente)}</>}
+                        . Los pagos se registran y confirman en Alquileres.
+                      </p>
+                    )}
+                    <PeriodosPagoLista
+                      periodos={periodos}
+                      vacio="Todavía no hay períodos de alquiler: se generan desde el mes en que empieza el contrato."
+                    />
+                  </>
+                )}
               </section>
 
               <section>

@@ -189,17 +189,15 @@ export function diasHastaFinPeriodoOperativo(hoy = hoyIsoLocal()) {
   return diasHastaFecha(ultimoDiaPeriodoOperativoIso(hoy), hoy)
 }
 
-/** Subtítulo para la columna de período: "Aumento en julio", etc. */
-export function etiquetaPeriodoAumento(fechaIso, hoy = hoyIsoLocal()) {
+/**
+ * Subtítulo para la columna de período: "Aumento de Noviembre". La situación del aumento
+ * (pendiente, confirmado o rezagado) la muestra la columna Estado.
+ */
+export function etiquetaPeriodoAumento(fechaIso) {
   if (!fechaIso) return ''
-  const dias = diasHastaFecha(fechaIso, hoy)
-  if (dias != null && dias < 0) {
-    const n = Math.abs(dias)
-    return `Venció hace ${n} ${n === 1 ? 'día' : 'días'}`
-  }
   const mes = Number(fechaIso.split('-')[1])
   if (!mes || !MESES_LARGOS[mes - 1]) return ''
-  return `Aumento en ${capitalizar(MESES_LARGOS[mes - 1])}`
+  return `Aumento de ${capitalizar(MESES_LARGOS[mes - 1])}`
 }
 
 /** Aviso del portal cuando el aumento del mes todavía no está confirmado. */

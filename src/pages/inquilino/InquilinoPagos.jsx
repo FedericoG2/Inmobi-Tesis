@@ -114,7 +114,6 @@ export default function InquilinoPagos() {
             ) : (
               <PeriodosPagoLista
                 periodos={periodos}
-                hoyIso={hoy}
                 renderAcciones={renderAcciones}
                 vacio="Todavía no hay períodos de alquiler para este contrato."
               />

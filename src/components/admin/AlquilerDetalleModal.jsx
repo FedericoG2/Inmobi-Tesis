@@ -176,7 +176,7 @@ export default function AlquilerDetalleModal({ alquiler, periodoDestacadoId = nu
             ) : consulta.error ? (
               <p className={calloutClass('danger')}>No se pudieron cargar los períodos: {consulta.error.message}</p>
             ) : (
-              <PeriodosPagoLista periodos={periodos} hoyIso={hoy} renderAcciones={renderAcciones} destacadoId={periodoDestacadoId} />
+              <PeriodosPagoLista periodos={periodos} renderAcciones={renderAcciones} destacadoId={periodoDestacadoId} />
             )}
           </section>
         </ModalBody>

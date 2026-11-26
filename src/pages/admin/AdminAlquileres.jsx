@@ -24,6 +24,7 @@ import { usePaginacion } from '../../hooks/usePaginacion'
 import { useFilasPorPagina } from '../../hooks/useFilasPorPagina'
 import {
   aumentoPendienteDelPeriodo,
+  fechaLimitePago,
   nombrePeriodo,
   ordenSituacion,
   rangoPeriodo,
@@ -101,8 +102,6 @@ export default function AdminAlquileres() {
     () => ({
       total: filas.length,
       pendientes: filas.filter((f) => f.estado === 'Pendiente').length,
-      porRevisar: filas.filter((f) => f.situacion === 'en_revision').length,
-      cobrado: filas.filter((f) => f.estado === 'Pagado').reduce((acc, f) => acc + (Number(f.monto) || 0), 0),
     }),
     [filas]
   )
@@ -111,7 +110,7 @@ export default function AdminAlquileres() {
     const termino = normalizar(busqueda.trim())
     return filas.filter((f) => {
       if (filtroEstado === 'pendiente' && f.estado !== 'Pendiente') return false
-      if (['en_revision', 'vencido', 'pagado'].includes(filtroEstado) && f.situacion !== filtroEstado) return false
+      if (['en_revision', 'pagado'].includes(filtroEstado) && f.situacion !== filtroEstado) return false
       if (!termino) return true
       const c = f.contratos
       return [`#${c?.id}`, c?.inquilinos?.nombre_completo, c?.propiedades?.direccion, c?.propiedades?.propietarios?.nombre_completo].some(
@@ -135,19 +134,9 @@ export default function AdminAlquileres() {
         subtitle="Un mes por vez: cada contrato vigente tiene un período por mes, desde el mes en que empieza. Elegí un mes posterior para registrar un pago adelantado."
         alerts={error ? <div className={calloutClass('danger')}>Error al cargar los alquileres: {error}</div> : null}
         summary={
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3">
             <StatCard compact label={`Alquileres de ${nombrePeriodo(mes).split(' ')[0].toLowerCase()}`} value={loading ? '…' : indicadores.total} icon="clipboard" theme="slate" />
             <StatCard compact label="Pendientes de pago" value={loading ? '…' : indicadores.pendientes} icon="calendar" theme="slate" />
-            <StatCard
-              compact
-              label="Comprobantes por revisar"
-              value={loading ? '…' : indicadores.porRevisar}
-              icon="alert"
-              theme={!loading && indicadores.porRevisar > 0 ? 'indigo' : 'slate'}
-              hint="Pagos para confirmar"
-              onClick={() => setFiltroEstado('en_revision')}
-            />
-            <StatCard compact label="Cobrado en el mes" value={loading ? '…' : formatMonto(indicadores.cobrado)} icon="check" theme="slate" />
           </div>
         }
       >
@@ -193,7 +182,6 @@ export default function AdminAlquileres() {
           >
             <option value="todos">Todos los estados</option>
             <option value="pendiente">Pendientes (todos)</option>
-            <option value="vencido">Vencidos</option>
             <option value="en_revision">Comprobante en revisión</option>
             <option value="pagado">Pagados</option>
           </FilterSelect>
@@ -206,7 +194,7 @@ export default function AdminAlquileres() {
               <AdminTableHeaderCell className={COL_PERIODO} data-tarjeta="titulo">
                 Período
               </AdminTableHeaderCell>
-              <AdminTableHeaderCell className={COL_VENCE}>Vencimiento</AdminTableHeaderCell>
+              <AdminTableHeaderCell className={COL_VENCE}>Pagar hasta</AdminTableHeaderCell>
               <AdminTableHeaderCell className={COL_INQUILINO}>Inquilino</AdminTableHeaderCell>
               <AdminTableHeaderCell className="min-w-0">Inmueble</AdminTableHeaderCell>
               <AdminTableHeaderCell className={COL_MONTO}>Monto</AdminTableHeaderCell>
@@ -238,7 +226,7 @@ export default function AdminAlquileres() {
                         </span>
                       )}
                     </AdminTableCell>
-                    <AdminTableCell className={`${COL_VENCE} tabular-nums`}>{formatFecha(f.fecha_vencimiento)}</AdminTableCell>
+                    <AdminTableCell className={`${COL_VENCE} tabular-nums`}>{formatFecha(fechaLimitePago(f))}</AdminTableCell>
                     <AdminTableCell className={`${COL_INQUILINO} text-slate-900`}>
                       <span className="line-clamp-2" title={c?.inquilinos?.nombre_completo ?? undefined}>
                         {c?.inquilinos?.nombre_completo ?? '—'}

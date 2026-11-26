@@ -2,7 +2,7 @@ import { useState } from 'react'
 import Badge from '../ui/Badge'
 import { IconDocument, IconDownload } from '../icons/Icons'
 import { obtenerUrlComprobantePago } from '../../services/alquileresService'
-import { estadoComprobante, nombrePeriodo, SITUACION_PERIODO, situacionPeriodo } from '../../utils/alquileresUi'
+import { estadoComprobante, fechaLimitePago, nombrePeriodo, SITUACION_PERIODO, situacionPeriodo } from '../../utils/alquileresUi'
 import { calloutClass, emptyStateClass } from '../../utils/ui'
 
 const formatMonto = (monto) =>
@@ -56,7 +56,6 @@ function ComprobanteItem({ comprobante, periodo, onVer, abriendo }) {
  */
 export default function PeriodosPagoLista({
   periodos,
-  hoyIso,
   renderAcciones,
   destacadoId = null,
   vacio = 'Todavía no hay períodos de alquiler.',
@@ -83,7 +82,8 @@ export default function PeriodosPagoLista({
       {errorArchivo && <p className={calloutClass('danger')}>{errorArchivo}</p>}
       <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200/80 bg-white">
         {periodos.map((periodo) => {
-          const situacion = SITUACION_PERIODO[situacionPeriodo(periodo, hoyIso)]
+          const situacion = SITUACION_PERIODO[situacionPeriodo(periodo)]
+          const limite = fechaLimitePago(periodo)
           const comprobantes = periodo.comprobantes_pago ?? []
           const acciones = renderAcciones?.(periodo)
           return (
@@ -102,7 +102,7 @@ export default function PeriodosPagoLista({
                   </div>
                   <p className="mt-0.5 text-xs text-slate-500">
                     <span className="tabular-nums">{formatMonto(periodo.monto)}</span>
-                    {periodo.fecha_vencimiento && <> · Vence el {formatFecha(periodo.fecha_vencimiento)}</>}
+                    {limite && periodo.estado !== 'Pagado' && <> · Se paga hasta el {formatFecha(limite)}</>}
                     {periodo.estado === 'Pagado' && periodo.fecha_confirmacion && (
                       <> · Pago confirmado el {formatFecha(periodo.fecha_confirmacion)}</>
                     )}

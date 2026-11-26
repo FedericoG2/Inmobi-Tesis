@@ -30,15 +30,13 @@ import { useToast } from '../../contexts/ToastContext'
 import { useInquilinos } from '../../hooks/useInquilinos'
 import { usePropiedades } from '../../hooks/usePropiedades'
 import { TIPO_AJUSTE_OPCIONES } from '../../utils/contratoAumentosPreview'
-import { badgeEstadoContratoUi, esContratoPlazoVencido, hoyIsoLocal } from '../../utils/contratoVigencia'
+import { badgeEstadoContratoUi, hoyIsoLocal } from '../../utils/contratoVigencia'
 import { formatPeriodoMesAnio } from '../../utils/aumentosUi'
 import { IconSearch } from '../../components/icons/Icons'
 import { calloutClass, cn, inputClass, segmentedInlineClass, segmentedItemClass } from '../../utils/ui'
 
 const alertaInicial = { open: false, titulo: 'Atención', mensaje: '' }
 
-
-const VENCE_PRONTO_DIAS = 60
 
 const COL_INQUILINO = 'w-[11rem]'
 const COL_MONTO = 'w-[8.5rem]'
@@ -50,8 +48,7 @@ const COL_ACCIONES = 'w-[7rem]'
 const FILTRO_ESTADO = [
   { value: 'activos', label: 'Activos' },
   { value: 'programados', label: 'Programados' },
-  { value: 'inactivos', label: 'Cerrados' },
-  { value: 'vencidos', label: 'Vencidos' },
+  { value: 'inactivos', label: 'Finalizados' },
   { value: 'todos', label: 'Todos' },
 ]
 
@@ -69,23 +66,6 @@ function normalizarBusqueda(texto) {
 
 const formatMonto = (monto) =>
   new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(monto)
-
-const formatMontoCompacto = (monto) =>
-  new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    maximumFractionDigits: 0,
-  }).format(monto || 0)
-
-const sumarDiasIso = (iso, dias) => {
-  const [year, month, day] = iso.split('-').map(Number)
-  const fecha = new Date(year, month - 1, day)
-  fecha.setDate(fecha.getDate() + dias)
-  const y = fecha.getFullYear()
-  const m = String(fecha.getMonth() + 1).padStart(2, '0')
-  const d = String(fecha.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
-}
 
 const formatFecha = (fecha) => {
   if (!fecha) return '—'
@@ -135,32 +115,10 @@ export default function AdminContratos() {
       activos: contratos.filter((c) => c.estado === 'activo').length,
       programados: contratos.filter((c) => c.estado === 'programado').length,
       inactivos: contratos.filter((c) => c.estado === 'inactivo').length,
-      vencidos: contratos.filter((c) => esContratoPlazoVencido(c)).length,
       todos: contratos.length,
     }),
     [contratos]
   )
-
-  const resumen = useMemo(() => {
-    const hoy = hoyIsoLocal()
-    const limiteVencimiento = sumarDiasIso(hoy, VENCE_PRONTO_DIAS)
-    const activos = contratos.filter((c) => c.estado === 'activo')
-    const ingresoMensual = activos.reduce(
-      (acc, c) => acc + (Number(c.monto_alquiler) || 0),
-      0
-    )
-    const porVencer = activos.filter(
-      (c) => c.fecha_fin && c.fecha_fin >= hoy && c.fecha_fin <= limiteVencimiento
-    ).length
-    const vencidos = contratos.filter((c) => esContratoPlazoVencido(c)).length
-
-    return {
-      activos: activos.length,
-      ingresoMensual,
-      porVencer,
-      vencidos,
-    }
-  }, [contratos])
 
   const contratosFiltrados = useMemo(() => {
     let items = contratos
@@ -171,8 +129,6 @@ export default function AdminContratos() {
       items = items.filter((c) => c.estado === 'programado')
     } else if (filtroEstado === 'inactivos') {
       items = items.filter((c) => c.estado === 'inactivo')
-    } else if (filtroEstado === 'vencidos') {
-      items = items.filter((c) => esContratoPlazoVencido(c))
     }
 
     if (filtroTipoAjuste !== 'todos') {
@@ -210,7 +166,6 @@ export default function AdminContratos() {
     if (filtroEstado === 'activos') return 'No hay contratos activos'
     if (filtroEstado === 'programados') return 'No hay contratos programados'
     if (filtroEstado === 'inactivos') return 'No hay contratos finalizados, rescindidos ni cancelados'
-    if (filtroEstado === 'vencidos') return 'No hay contratos vencidos'
     return 'No hay contratos para mostrar'
   }, [loading, contratos.length, contratosFiltrados.length, filtroEstado, hayFiltrosExtra])
 
@@ -356,35 +311,30 @@ export default function AdminContratos() {
           ) : null
         }
         summary={
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-3 gap-3">
             <StatCard
               compact
-              label="Ingreso mensual"
-              value={loading ? '…' : formatMontoCompacto(resumen.ingresoMensual)}
-              icon="chart"
-              theme="slate"
-            />
-            <StatCard
-              compact
-              label="Contratos activos"
-              value={loading ? '…' : resumen.activos}
+              label="Activos"
+              value={loading ? '…' : conteosEstado.activos}
               icon="clipboard"
               theme="slate"
+              onClick={() => setFiltroEstado('activos')}
             />
             <StatCard
               compact
-              label="Por vencer pronto"
-              value={loading ? '…' : resumen.porVencer}
+              label="Programados"
+              value={loading ? '…' : conteosEstado.programados}
               icon="calendar"
               theme="slate"
-              hint={`Próx. ${VENCE_PRONTO_DIAS} días`}
+              onClick={() => setFiltroEstado('programados')}
             />
             <StatCard
               compact
-              label="Vencidos"
-              value={loading ? '…' : resumen.vencidos}
-              icon="alert"
-              theme={!loading && resumen.vencidos > 0 ? 'red' : 'slate'}
+              label="Finalizados"
+              value={loading ? '…' : conteosEstado.inactivos}
+              icon="check"
+              theme="slate"
+              onClick={() => setFiltroEstado('inactivos')}
             />
           </div>
         }
@@ -433,7 +383,6 @@ export default function AdminContratos() {
               {FILTRO_ESTADO.map(({ value, label }) => {
                 const activo = filtroEstado === value
                 const count = loading ? '…' : conteosEstado[value]
-                const esVencidos = value === 'vencidos'
                 return (
                   <button
                     key={value}
@@ -449,9 +398,7 @@ export default function AdminContratos() {
                     <span
                       className={cn(
                         'rounded-full px-1.5 text-[11px] tabular-nums',
-                        esVencidos && count > 0
-                          ? 'font-semibold text-red-700'
-                          : activo
+                        activo
                             ? 'bg-slate-100 text-slate-700'
                             : 'text-slate-400'
                       )}

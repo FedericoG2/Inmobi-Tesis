@@ -21,6 +21,7 @@ export default function ReclamoPortalDetalleModal({ open, reclamo, perfilInquili
 
   const reclamoId = reclamo?.id
   const esPendiente = reclamo?.estado === 'Pendiente'
+  const puedeAdjuntar = Boolean(reclamo) && reclamo.estado !== 'Resuelto'
   const clave = open && reclamoId ? reclamoId : null
 
   const historial = useConsulta(clave, () => listarEventosReclamo(reclamoId))
@@ -108,7 +109,7 @@ export default function ReclamoPortalDetalleModal({ open, reclamo, perfilInquili
             <h4 className={eyebrow}>
               Imágenes ({adjuntos.length}/{MAX_IMAGENES_RECLAMO})
             </h4>
-            {esPendiente && cupoRestante > 0 && (
+            {puedeAdjuntar && cupoRestante > 0 && (
               <label
                 className={cn(
                   buttonClass({ variant: 'secondary', size: 'sm' }),
@@ -136,7 +137,7 @@ export default function ReclamoPortalDetalleModal({ open, reclamo, perfilInquili
             <div className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 py-6 text-slate-400">
               <IconImage className="h-6 w-6" />
               <p className="text-sm">
-                {esPendiente ? `Podés sumar hasta ${MAX_IMAGENES_RECLAMO} fotos del problema.` : 'Este reclamo no tiene imágenes.'}
+                {puedeAdjuntar ? `Podés sumar hasta ${MAX_IMAGENES_RECLAMO} fotos del problema.` : 'Este reclamo no tiene imágenes.'}
               </p>
             </div>
           ) : (

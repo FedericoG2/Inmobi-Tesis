@@ -1,6 +1,8 @@
 import { formatMontoInquilino } from '../../utils/proyeccionAumentoInquilino'
 import { portalCardClass } from '../../utils/portalInquilinoUi'
 import Badge from '../ui/Badge'
+import { MontoTrazable, TrazaAumento } from '../calculo/TrazaCalculo'
+import { explicarAumento } from '../../utils/trazabilidadCalculo'
 
 export default function HistorialMontosInquilino({ filas, className = '' }) {
   if (!filas?.length) {
@@ -33,9 +35,24 @@ export default function HistorialMontosInquilino({ filas, className = '' }) {
               {fila.esMesActual && <Badge tone="success">Actual</Badge>}
               {fila.huboAumento && <Badge tone="brand">Aumento</Badge>}
             </div>
-            <p className="shrink-0 text-base font-semibold tabular-nums text-slate-900">
+            <MontoTrazable
+              className="shrink-0 text-base font-semibold tabular-nums text-slate-900"
+              etiqueta={`Ver de dónde sale el alquiler de ${fila.mesLabel}`}
+              contenido={
+                fila.aumento
+                  ? () => (
+                      <TrazaAumento
+                        explicacion={explicarAumento(fila.aumento.detalle_calculo, {
+                          montoFinal: fila.aumento.monto_nuevo,
+                          notas: fila.aumento.notas,
+                        })}
+                      />
+                    )
+                  : () => <p>Rige el monto inicial del contrato: todavía no hubo aumentos hasta este mes.</p>
+              }
+            >
               {formatMontoInquilino(fila.monto)}
-            </p>
+            </MontoTrazable>
           </li>
         ))}
       </ol>

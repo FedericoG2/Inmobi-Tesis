@@ -88,6 +88,7 @@ export function armarHistorialMontosContrato(contrato, hoy = hoyIsoLocal()) {
     const monto = montoVigenteAlCierreMes(contrato, year, month, aumentos)
     const esMesActual = claveMes(year, month) === hoyClave
     const huboAumento = montoAnterior != null && monto !== montoAnterior
+    const aumento = aumentos.filter((a) => parseClaveMes(a.fecha_aplicacion) <= claveMes(year, month)).at(-1) ?? null
     const fila = {
       id: `${year}-${String(month).padStart(2, '0')}`,
       year,
@@ -97,6 +98,7 @@ export function armarHistorialMontosContrato(contrato, hoy = hoyIsoLocal()) {
       montoAnterior: huboAumento ? montoAnterior : null,
       esMesActual,
       huboAumento,
+      aumento,
     }
     montoAnterior = monto
     return fila

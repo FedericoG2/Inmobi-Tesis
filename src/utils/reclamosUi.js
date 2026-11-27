@@ -8,7 +8,6 @@ import {
   IconFire,
   IconHome,
   IconKey,
-  IconNoSymbol,
   IconPaintBrush,
   IconTag,
   IconWrench,
@@ -55,7 +54,6 @@ export const ESTADOS_RECLAMO = [
   { id: 'En Proceso', label: 'En Proceso', icon: IconWrench, tone: 'brand' },
   { id: 'Revision', label: 'Revisión', icon: IconEye, tone: 'brand' },
   { id: 'Resuelto', label: 'Resuelto', icon: IconCheckCircle, tone: 'success' },
-  { id: 'Rechazado', label: 'Rechazado', icon: IconNoSymbol, tone: 'muted' },
 ]
 
 const CATEGORIA_INFO = Object.fromEntries(CATEGORIAS_RECLAMO.map((c) => [c.id, c]))

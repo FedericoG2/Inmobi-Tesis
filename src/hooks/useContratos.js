@@ -66,7 +66,7 @@ export function useContratos() {
           contratoId: data.id,
           propiedadId: datos.propiedad_id,
           archivo: datos.archivo_legal,
-          visibleParaInquilino: datos.documento_visible_inquilino ?? true,
+          visibleParaInquilino: true,
         })
 
         if (docError) {

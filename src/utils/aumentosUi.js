@@ -596,6 +596,7 @@ export function propuestaDesdeAumentoRegistrado(row) {
     es_aproximado: Boolean(detalle.es_aproximado),
     modo: row.modo ?? 'calculado',
     notas: row.notas ?? null,
+    detalle_calculo: row.detalle_calculo ?? null,
     ya_aplicado: true,
     confirmable: false,
     estado: 'aplicado',

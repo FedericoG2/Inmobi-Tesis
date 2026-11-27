@@ -98,5 +98,12 @@ export async function prepararBase() {
       tx.query(`SELECT * FROM gestionar_reclamo($1, $2::reclamo_estado, $3)`, [reclamoId, estado, comentario])
     )
 
-  return { db, filas, una, escenario, crearContrato, estadoPropiedad, confirmar, crearReclamo, gestionar }
+  /** Lleva un reclamo Pendiente hasta Resuelto por el camino del diagrama. */
+  async function resolver(reclamoId) {
+    await gestionar(reclamoId, 'En Proceso')
+    await gestionar(reclamoId, 'Revision')
+    return gestionar(reclamoId, 'Resuelto')
+  }
+
+  return { db, filas, una, escenario, crearContrato, estadoPropiedad, confirmar, crearReclamo, gestionar, resolver }
 }

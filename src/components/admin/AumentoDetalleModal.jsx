@@ -635,17 +635,18 @@ export default function AumentoDetalleModal({
             {ui.puedeConfirmar && onConfirmar && onToggleRevisado && (
               <label
                 className={cn(
-                  'flex h-9 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm font-medium transition',
+                  'flex h-9 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition',
                   revisado
                     ? 'border-slate-900 bg-white text-slate-900 ring-1 ring-slate-900'
-                    : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                    : 'cursor-pointer border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
                 )}
+                title={revisado ? 'El aumento queda Revisado hasta confirmarlo' : undefined}
               >
                 <input
                   type="checkbox"
                   checked={revisado}
-                  onChange={() => onToggleRevisado(datosRevision())}
-                  disabled={confirmando}
+                  onChange={() => !revisado && onToggleRevisado(datosRevision())}
+                  disabled={confirmando || revisado}
                   className="h-4 w-4 rounded border-slate-300"
                 />
                 Cálculo revisado

@@ -31,9 +31,18 @@ describe('situación de un período', () => {
     expect(situacionPeriodo(periodo({ comprobantes_pago: [comprobante] }), HOY)).toBe('en_revision')
   })
 
-  test('sin comprobante queda Pendiente: no hay estado Vencido', () => {
+  test('sin comprobante: Pendiente dentro del plazo, Impago cuando pasó la fecha de pago', () => {
+    // Abril se paga hasta el 10 de mayo: el 12 de abril sigue Pendiente.
     expect(situacionPeriodo(periodo(), HOY)).toBe('pendiente')
-    expect(situacionPeriodo(periodo({ fecha_vencimiento: null }), HOY)).toBe('pendiente')
+    expect(situacionPeriodo(periodo(), '2026-05-10')).toBe('pendiente')
+    expect(situacionPeriodo(periodo(), '2026-05-11')).toBe('impago')
+    // Un mes futuro (pago adelantado) también es Pendiente.
+    expect(situacionPeriodo(periodo({ periodo: '2026-06-01', fecha_vencimiento: '2026-06-10' }), HOY)).toBe('pendiente')
+    expect(situacionPeriodo(periodo({ fecha_vencimiento: null }), '2027-01-01')).toBe('pendiente')
+  })
+
+  test('con comprobante no es Impago aunque haya pasado la fecha: el pago se hizo y falta confirmarlo', () => {
+    expect(situacionPeriodo(periodo({ comprobantes_pago: [comprobante] }), '2026-06-01')).toBe('en_revision')
   })
 
   test('el alquiler de un mes se paga hasta el día de pago del mes siguiente', () => {
@@ -52,26 +61,29 @@ describe('resumen y estado de pago del alquiler', () => {
     periodo({ id: 4, periodo: '2026-04-01', comprobantes_pago: [comprobante], monto: 108000 }),
   ]
 
-  test('cuenta pagados, pendientes, en revisión y el saldo pendiente', () => {
-    expect(resumenPagos(periodos)).toEqual({
+  test('cuenta pagados, pendientes, en revisión, impagos y el saldo pendiente', () => {
+    // Marzo vence el 10 de abril: el 12 de abril está impago.
+    expect(resumenPagos(periodos, HOY)).toEqual({
       total: 4,
       pagados: 2,
       pendientes: 2,
       enRevision: 1,
+      impagos: 1,
       montoPendiente: 208000,
     })
   })
 
-  test('los comprobantes por revisar tienen prioridad, después lo pendiente', () => {
-    expect(estadoPagoAlquiler(resumenPagos(periodos))).toBe('revisar')
-    expect(estadoPagoAlquiler(resumenPagos(periodos.slice(0, 3)))).toBe('pendiente')
-    expect(estadoPagoAlquiler(resumenPagos(periodos.slice(0, 2)))).toBe('al_dia')
+  test('los comprobantes por revisar tienen prioridad, después los impagos y lo pendiente', () => {
+    expect(estadoPagoAlquiler(resumenPagos(periodos, HOY))).toBe('revisar')
+    expect(estadoPagoAlquiler(resumenPagos(periodos.slice(0, 3), HOY))).toBe('deuda')
+    expect(estadoPagoAlquiler(resumenPagos(periodos.slice(0, 3), '2026-04-05'))).toBe('pendiente')
+    expect(estadoPagoAlquiler(resumenPagos(periodos.slice(0, 2), HOY))).toBe('al_dia')
   })
 })
 
 describe('comprobantes y acciones por rol', () => {
   test('el estado del comprobante sale del período: se confirma el pago, no el comprobante', () => {
-    expect(estadoComprobante(periodo()).label).toBe('En revisión')
+    expect(estadoComprobante(periodo()).label).toBe('Pago por confirmar')
     expect(estadoComprobante(periodo({ estado: 'Pagado' })).label).toBe('Pago confirmado')
   })
 

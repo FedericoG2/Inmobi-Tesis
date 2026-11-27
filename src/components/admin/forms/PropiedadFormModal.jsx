@@ -120,8 +120,10 @@ export default function PropiedadFormModal({
   )
 
   const sinPropietarios = !propietariosLoading && propietarios.length === 0
-  const estadoBloqueado = tieneContratoActivo && esEdicion
-  const estadosOpciones = estadoBloqueado ? [form.estado] : ESTADOS_PROPIEDAD_ALTA
+  // Una propiedad nueva se crea Disponible. Después se pasa a mano entre Disponible y Mantenimiento;
+  // Reservada y Alquilada las pone el contrato.
+  const estadoBloqueado = !esEdicion || tieneContratoActivo
+  const estadosOpciones = !esEdicion ? ['Disponible'] : tieneContratoActivo ? [form.estado] : ESTADOS_PROPIEDAD_ALTA
   const campoIdentidadClass = (tieneError) =>
     identidadBloqueada ? inputBloqueadoClass : tieneError ? inputErrorClass : inputClass
 
@@ -345,6 +347,9 @@ export default function PropiedadFormModal({
                     </option>
                   ))}
                 </select>
+                {!esEdicion && (
+                  <p className={fieldHintClass}>Una propiedad nueva se crea Disponible. Después se puede pasar a Mantenimiento.</p>
+                )}
               </div>
             </div>
 

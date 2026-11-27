@@ -69,7 +69,9 @@ export async function listarContratosActivosInquilino(inquilinoId) {
         monto_nuevo,
         porcentaje_aplicado,
         indice_tipo,
-        modo
+        modo,
+        notas,
+        detalle_calculo
       )
     `)
     .eq('inquilino_id', inquilinoId)

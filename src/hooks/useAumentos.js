@@ -51,6 +51,11 @@ async function consultarBandeja({ diasProximos, overrides = {} } = {}) {
   return resultado
 }
 
+/** Consulta la bandeja por detrás (al entrar al panel) si todavía no hay una del período. */
+export function precargarBandejaAumentos() {
+  return bandejaGuardada() ? Promise.resolve() : consultarBandeja().catch(() => {})
+}
+
 /** La bandeja guardada, si es del período que se trabaja hoy. */
 function bandejaGuardada() {
   return ultimaBandeja?.clavePeriodo === periodoOperativoInfo(hoyIsoLocal()).clave ? ultimaBandeja : null

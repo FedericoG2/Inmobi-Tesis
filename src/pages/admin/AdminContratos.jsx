@@ -6,6 +6,10 @@ import AdminNuevoButton from '../../components/admin/AdminNuevoButton'
 import CerrarContratoModal from '../../components/admin/CerrarContratoModal'
 import AdminTablePagination from '../../components/admin/AdminTablePagination'
 import StatCard from '../../components/admin/StatCard'
+import { MontoTrazable, TrazaMonto } from '../../components/calculo/TrazaCalculo'
+import { useConsulta } from '../../hooks/useConsulta'
+import { listarAumentosDeContratos } from '../../services/aumentosService'
+import { explicarMontoContrato } from '../../utils/trazabilidadCalculo'
 import {
   AdminTable,
   AdminTableBody,
@@ -153,6 +157,11 @@ export default function AdminContratos() {
     visibles: contratosPagina,
     irAPagina: setPaginaActual,
   } = usePaginacion(contratosFiltrados, filasPorPagina, [filtroEstado, filtroTipoAjuste, busquedaInquilino])
+
+  // Aumentos de los contratos de la página, para explicar cómo se llegó al monto actual.
+  const idsPagina = useMemo(() => contratosPagina.map((c) => c.id).sort((a, b) => a - b), [contratosPagina])
+  const aumentosConsulta = useConsulta(idsPagina.length ? idsPagina : null, () => listarAumentosDeContratos(idsPagina))
+  const aumentosDe = (contratoId) => (aumentosConsulta.data ?? []).filter((a) => a.contrato_id === contratoId)
 
   const hayFiltrosExtra =
     filtroTipoAjuste !== 'todos' || busquedaInquilino.trim().length > 0
@@ -453,7 +462,15 @@ export default function AdminContratos() {
                       {c.propiedades?.direccion ?? '—'}
                     </span>
                   </AdminTableCell>
-                  <AdminTableCell className={`${COL_MONTO} tabular-nums text-slate-900`}>{formatMonto(c.monto_alquiler)}</AdminTableCell>
+                  <AdminTableCell className={`${COL_MONTO} tabular-nums text-slate-900`}>
+                    <MontoTrazable
+                      contenido={
+                        aumentosConsulta.cargando ? null : () => <TrazaMonto explicacion={explicarMontoContrato(c, aumentosDe(c.id))} />
+                      }
+                    >
+                      {formatMonto(c.monto_alquiler)}
+                    </MontoTrazable>
+                  </AdminTableCell>
                   <AdminTableCell className={`${COL_AJUSTE} !text-center`}>
                     {c.tipo_ajuste ? (
                       <IndiceChip tipo={c.tipo_ajuste} />

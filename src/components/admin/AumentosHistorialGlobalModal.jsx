@@ -14,6 +14,8 @@ import Button from '../ui/Button'
 import Badge from '../ui/Badge'
 import IconButton from '../ui/IconButton'
 import FilterSelect from './FilterSelect'
+import { MontoTrazable, TrazaAumento } from '../calculo/TrazaCalculo'
+import { explicarAumento } from '../../utils/trazabilidadCalculo'
 import IndiceChip from './IndiceChip'
 import { calloutClass } from '../../utils/ui'
 
@@ -192,7 +194,16 @@ export default function AumentosHistorialGlobalModal({
                         <span className="text-xs tabular-nums text-slate-400 line-through">
                           {formatMonto(item.monto_anterior)}
                         </span>
-                        <span className="font-semibold tabular-nums text-slate-900">{formatMonto(item.monto_nuevo)}</span>
+                        <MontoTrazable
+                          className="font-semibold tabular-nums text-slate-900"
+                          contenido={() => (
+                            <TrazaAumento
+                              explicacion={explicarAumento(item.detalle_calculo, { montoFinal: item.monto_nuevo, notas: item.notas })}
+                            />
+                          )}
+                        >
+                          {formatMonto(item.monto_nuevo)}
+                        </MontoTrazable>
                         {pct && <span className="text-xs font-medium tabular-nums text-emerald-600">+{pct}</span>}
                         <span className="text-xs text-slate-400">{MODO_LABEL[item.modo] ?? item.modo}</span>
                       </div>

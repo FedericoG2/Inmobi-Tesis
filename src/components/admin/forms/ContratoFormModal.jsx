@@ -374,7 +374,6 @@ export default function ContratoFormModal({
       fecha_proximo_aumento: fechaProximoAumento,
       monto_inicial: Number(form.monto_alquiler),
       archivo_legal: archivoLegal,
-      documento_visible_inquilino: form.documento_visible_inquilino,
     })
     if (ok) onClose()
   }
@@ -653,10 +652,6 @@ export default function ContratoFormModal({
                   <ContratoDocumentoAltaPicker
                     archivo={archivoLegal}
                     onArchivoChange={setArchivoLegal}
-                    visibleParaInquilino={form.documento_visible_inquilino}
-                    onVisibleChange={(value) =>
-                      setForm((prev) => ({ ...prev, documento_visible_inquilino: value }))
-                    }
                     error={errorArchivoLegal}
                     onErrorChange={setErrorArchivoLegal}
                     disabled={submitting}
@@ -714,7 +709,7 @@ export default function ContratoFormModal({
                     label="Contrato legal adjunto"
                     value={
                       archivoLegal
-                        ? `${archivoLegal.name}${form.documento_visible_inquilino ? ' · Visible inquilino' : ' · Solo admin'}`
+                        ? `${archivoLegal.name} · Disponible en el portal del inquilino`
                         : 'Sin adjuntar (opcional)'
                     }
                   />

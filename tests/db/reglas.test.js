@@ -3,10 +3,10 @@ import { beforeAll, describe, expect, test } from 'vitest'
 import { comoUsuario, fijarHoy } from './cargarBase.js'
 import { ADMIN, ENCARGADO, HOY, INQUILINO, prepararBase } from './escenarios.js'
 
-let db, filas, una, escenario, crearContrato, estadoPropiedad, confirmar, crearReclamo, gestionar
+let db, filas, una, escenario, crearContrato, estadoPropiedad, confirmar, crearReclamo, gestionar, resolver
 
 beforeAll(async () => {
-  ;({ db, filas, una, escenario, crearContrato, estadoPropiedad, confirmar, crearReclamo, gestionar } =
+  ;({ db, filas, una, escenario, crearContrato, estadoPropiedad, confirmar, crearReclamo, gestionar, resolver } =
     await prepararBase())
 }, 60000)
 
@@ -217,7 +217,7 @@ describe('Reclamos', () => {
     const e = await escenario()
     const c = await crearContrato(e)
     const r = await crearReclamo(e, c.id)
-    await gestionar(r.id, 'Resuelto')
+    await resolver(r.id)
     await expect(gestionar(r.id, 'Pendiente')).rejects.toThrow(/no puede volver al estado Pendiente/)
     await expect(gestionar(r.id, 'Revision')).rejects.toThrow(/lo deja en estado En Proceso/)
     await gestionar(r.id, 'En Proceso')
@@ -228,7 +228,7 @@ describe('Reclamos', () => {
     const e = await escenario()
     const c = await crearContrato(e)
     const r = await crearReclamo(e, c.id)
-    await gestionar(r.id, 'Resuelto')
+    await resolver(r.id)
     await expect(db.query(`DELETE FROM reclamos WHERE id = $1`, [r.id])).rejects.toThrow(/resuelto no se puede eliminar/)
   })
 

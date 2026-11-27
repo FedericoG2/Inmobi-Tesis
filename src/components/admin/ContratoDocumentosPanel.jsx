@@ -6,7 +6,6 @@ import {
   obtenerUrlDescargaDocumento,
   subirDocumentoContrato,
   validarArchivoContratoLegal,
-  actualizarVisibilidadDocumento,
 } from '../../services/documentosService'
 import { IconDocument, IconDownload, IconTrash, IconUpload } from '../icons/Icons'
 import Button from '../ui/Button'
@@ -30,7 +29,6 @@ export default function ContratoDocumentosPanel({
   const [documentos, setDocumentos] = useState([])
   const [cargando, setCargando] = useState(Boolean(contratoId))
   const [subiendo, setSubiendo] = useState(false)
-  const [visibleParaInquilino, setVisibleParaInquilino] = useState(true)
   const [error, setError] = useState(null)
   const [mensaje, setMensaje] = useState(null)
 
@@ -68,7 +66,7 @@ export default function ContratoDocumentosPanel({
       contratoId,
       propiedadId,
       archivo,
-      visibleParaInquilino,
+      visibleParaInquilino: true,
     })
 
     setSubiendo(false)
@@ -80,7 +78,7 @@ export default function ContratoDocumentosPanel({
 
     setDocumentos((prev) => [data, ...prev])
     setMensaje('Contrato legal adjuntado correctamente.')
-    toast.success('Documento adjuntado', visibleParaInquilino ? 'El inquilino ya lo puede descargar desde su portal.' : 'Queda visible solo para la administración.')
+    toast.success('Documento adjuntado', 'El inquilino ya lo puede descargar desde su portal.')
   }
 
   const descargar = async (documento) => {
@@ -110,18 +108,6 @@ export default function ContratoDocumentosPanel({
     toast.success('Documento eliminado', documento.nombre)
   }
 
-  const toggleVisibilidad = async (documento) => {
-    setError(null)
-    const nuevoValor = !documento.visible_para_inquilino
-    const { data, error: err } = await actualizarVisibilidadDocumento(documento.id, nuevoValor)
-    if (err) {
-      setError(err.message ?? 'No se pudo actualizar la visibilidad')
-      return
-    }
-    setDocumentos((prev) => prev.map((d) => (d.id === documento.id ? data : d)))
-    toast.info(nuevoValor ? 'Documento compartido con el inquilino' : 'Documento oculto al inquilino', documento.nombre)
-  }
-
   return (
     <section>
       <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
@@ -135,16 +121,9 @@ export default function ContratoDocumentosPanel({
             <p className="text-sm text-slate-700">
               Adjuntá el contrato legal firmado. No reemplaza la ficha interna de seguimiento.
             </p>
-            <label className="mt-2 flex items-center gap-2 text-sm text-slate-600">
-              <input
-                type="checkbox"
-                checked={visibleParaInquilino}
-                onChange={(e) => setVisibleParaInquilino(e.target.checked)}
-                disabled={subiendo}
-                className="h-4 w-4 rounded border-slate-300"
-              />
-              Visible para el inquilino en su portal
-            </label>
+            <p className="mt-1 text-xs text-slate-500">
+              Queda disponible para el inquilino en su portal y para el propietario.
+            </p>
           </div>
 
           <div className="shrink-0">
@@ -196,21 +175,11 @@ export default function ContratoDocumentosPanel({
                       <p className="truncate text-sm font-medium text-slate-900">{documento.nombre}</p>
                       <p className="text-xs text-slate-500">
                         {etiquetaTipoArchivo(documento.nombre)} · {formatFecha(documento.fecha_subida)}
-                        {documento.visible_para_inquilino ? ' · Visible inquilino' : ' · Solo admin'}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                    <label className="flex items-center gap-1.5 text-xs text-slate-600">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(documento.visible_para_inquilino)}
-                        onChange={() => toggleVisibilidad(documento)}
-                        className="h-3.5 w-3.5 rounded border-slate-300"
-                      />
-                      Portal inquilino
-                    </label>
                     <Button variant="ghost" size="sm" icon={IconDownload} onClick={() => descargar(documento)}>
                       Descargar
                     </Button>

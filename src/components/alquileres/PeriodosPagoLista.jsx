@@ -3,7 +3,9 @@ import Badge from '../ui/Badge'
 import { IconDocument, IconDownload } from '../icons/Icons'
 import { obtenerUrlComprobantePago } from '../../services/alquileresService'
 import { estadoComprobante, fechaLimitePago, nombrePeriodo, SITUACION_PERIODO, situacionPeriodo } from '../../utils/alquileresUi'
+import { hoyIsoLocal } from '../../utils/contratoVigencia'
 import { calloutClass, emptyStateClass } from '../../utils/ui'
+import { MontoTrazable } from '../calculo/TrazaCalculo'
 
 const formatMonto = (monto) =>
   monto == null
@@ -57,10 +59,12 @@ function ComprobanteItem({ comprobante, periodo, onVer, abriendo }) {
 export default function PeriodosPagoLista({
   periodos,
   renderAcciones,
+  trazaMonto = null,
   destacadoId = null,
   vacio = 'Todavía no hay períodos de alquiler.',
 }) {
   const [abriendoId, setAbriendoId] = useState(null)
+  const hoy = hoyIsoLocal()
   const [errorArchivo, setErrorArchivo] = useState(null)
 
   const verComprobante = async (comprobante) => {
@@ -82,7 +86,7 @@ export default function PeriodosPagoLista({
       {errorArchivo && <p className={calloutClass('danger')}>{errorArchivo}</p>}
       <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200/80 bg-white">
         {periodos.map((periodo) => {
-          const situacion = SITUACION_PERIODO[situacionPeriodo(periodo)]
+          const situacion = SITUACION_PERIODO[situacionPeriodo(periodo, hoy)]
           const limite = fechaLimitePago(periodo)
           const comprobantes = periodo.comprobantes_pago ?? []
           const acciones = renderAcciones?.(periodo)
@@ -99,10 +103,13 @@ export default function PeriodosPagoLista({
                     <Badge tone={situacion.tone} dot>
                       {situacion.label}
                     </Badge>
+                    {situacion.nota && <span className="text-xs text-slate-500">{situacion.nota}</span>}
                   </div>
                   <p className="mt-0.5 text-xs text-slate-500">
-                    <span className="tabular-nums">{formatMonto(periodo.monto)}</span>
-                    {limite && periodo.estado !== 'Pagado' && <> · Se paga hasta el {formatFecha(limite)}</>}
+                    <MontoTrazable className="tabular-nums" contenido={trazaMonto?.(periodo) ?? null}>
+                      {formatMonto(periodo.monto)}
+                    </MontoTrazable>
+                    {limite && periodo.estado !== 'Pagado' && <> · Vence el {formatFecha(limite)}</>}
                     {periodo.estado === 'Pagado' && periodo.fecha_confirmacion && (
                       <> · Pago confirmado el {formatFecha(periodo.fecha_confirmacion)}</>
                     )}

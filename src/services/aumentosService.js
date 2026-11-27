@@ -461,6 +461,24 @@ export async function listarAumentosConfirmadosEnPeriodo({ claveMes }) {
  * Historial global de aumentos (todos los contratos) con datos de inquilino y
  * propiedad para la tabla filtrable por período. Solo admin (RLS).
  */
+/** Aumentos confirmados de varios contratos (con su cálculo), para explicar los montos de un listado. */
+export async function listarAumentosDeContratos(contratoIds = []) {
+  if (!supabase) {
+    return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }
+  }
+  const ids = [...new Set(contratoIds.filter((id) => id != null))]
+  if (ids.length === 0) return { data: [], error: null }
+
+  const { data, error } = await supabase
+    .from('aumentos')
+    .select('id, contrato_id, fecha_aplicacion, monto_anterior, monto_nuevo, porcentaje_aplicado, indice_tipo, notas, detalle_calculo')
+    .in('contrato_id', ids)
+    .order('fecha_aplicacion', { ascending: true })
+
+  if (error) return { data: null, error: { message: error.message } }
+  return { data: data ?? [], error: null }
+}
+
 export async function listarHistorialGlobalAumentos() {
   if (!supabase) {
     return { data: null, error: { message: 'Supabase no configurado. Revisá el archivo .env' } }

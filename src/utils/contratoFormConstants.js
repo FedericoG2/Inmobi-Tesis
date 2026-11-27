@@ -19,5 +19,4 @@ export const formContratoInicial = {
   periodicidad_key: 'anual',
   tipo_ajuste: 'ipc',
   observaciones: '',
-  documento_visible_inquilino: true,
 }

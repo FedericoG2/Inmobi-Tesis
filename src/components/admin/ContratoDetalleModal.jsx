@@ -3,7 +3,9 @@ import AuditoriaContrato from './AuditoriaContrato'
 import ContratoDocumentosPanel from './ContratoDocumentosPanel'
 import PeriodosPagoLista from '../alquileres/PeriodosPagoLista'
 import { listarPeriodosContrato } from '../../services/alquileresService'
-import { resumenPagos } from '../../utils/alquileresUi'
+import { aumentoPendienteDelPeriodo, resumenPagos } from '../../utils/alquileresUi'
+import { MontoTrazable, TrazaAumento, TrazaMonto } from '../calculo/TrazaCalculo'
+import { explicarAumento, explicarMontoContrato, explicarMontoPeriodo } from '../../utils/trazabilidadCalculo'
 import { calcularAumentosPendientes, listarHistorialAumentos } from '../../services/aumentosService'
 import { obtenerContratoDetalle } from '../../services/contratosService'
 import {
@@ -49,13 +51,27 @@ const formatMonto = (monto) => {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(Number(monto))
 }
 
-function textoMontoCronograma(fila) {
+const mismoMes = (a, b) => String(a ?? '').slice(0, 7) === String(b ?? '').slice(0, 7)
+
+function textoMontoCronograma(fila, historial, propuestaAumento) {
   if (fila.monto != null) {
+    const aplicado = fila.aplicado ? historial.find((a) => mismoMes(a.fecha_aplicacion, fila.fecha)) : null
+    const detalle = aplicado?.detalle_calculo ?? (fila.montoEsEstimado ? propuestaAumento?.detalle_calculo : null)
     return (
-      <>
+      <MontoTrazable
+        contenido={
+          detalle
+            ? () => (
+                <TrazaAumento
+                  explicacion={explicarAumento(detalle, { montoFinal: fila.monto, notas: aplicado?.notas ?? null })}
+                />
+              )
+            : null
+        }
+      >
         {fila.montoEsEstimado ? <span className="text-slate-500">~</span> : null}
         {formatMonto(fila.monto)}
-      </>
+      </MontoTrazable>
     )
   }
   if (!fila.aplicado) {
@@ -104,7 +120,15 @@ function HistorialAumentosContrato({ historial, cargando }) {
                   )}
                 </td>
                 <td className="px-3 py-2.5 tabular-nums text-slate-500">{formatMonto(a.monto_anterior)}</td>
-                <td className="px-3 py-2.5 font-medium tabular-nums text-slate-900">{formatMonto(a.monto_nuevo)}</td>
+                <td className="px-3 py-2.5 font-medium tabular-nums text-slate-900">
+                  <MontoTrazable
+                    contenido={() => (
+                      <TrazaAumento explicacion={explicarAumento(a.detalle_calculo, { montoFinal: a.monto_nuevo, notas: a.notas })} />
+                    )}
+                  >
+                    {formatMonto(a.monto_nuevo)}
+                  </MontoTrazable>
+                </td>
                 <td className="px-3 py-2.5 tabular-nums text-emerald-700">
                   {formatPct(a.porcentaje_aplicado) ? `+${formatPct(a.porcentaje_aplicado)}` : '—'}
                 </td>
@@ -146,7 +170,7 @@ export default function ContratoDetalleModal({
   const periodos = (pagosConsulta.data ?? []).filter(
     (p) => p.periodo <= mesActual || p.estado === 'Pagado' || (p.comprobantes_pago?.length ?? 0) > 0
   )
-  const resumen = resumenPagos(periodos)
+  const resumen = resumenPagos(periodos, hoyIsoLocal())
 
   const contrato = detalle.data
   const cargando = detalle.cargando
@@ -208,13 +232,13 @@ export default function ContratoDetalleModal({
           {!cargando && !error && contrato && (
             <div className="space-y-6">
               {esContratoPlazoVencido(contrato) && (
-                <div className={calloutClass('danger')}>
+                <div className={calloutClass('warning')}>
                   <p className="font-medium">
-                    El plazo contractual venció el {formatFecha(contrato.fecha_fin)}.
+                    El plazo del contrato terminó el {formatFecha(contrato.fecha_fin)}.
                   </p>
                   <p className="mt-1">
-                    El contrato sigue activo en el sistema. Finalizalo para liberar la propiedad y dejar de
-                    incluirlo en aumentos.
+                    Sigue Activo hasta que se finalice: la finalización es manual. Al finalizarlo, la propiedad
+                    vuelve a Disponible.
                   </p>
                 </div>
               )}
@@ -295,11 +319,14 @@ export default function ContratoDetalleModal({
                     value={etiquetaCantidadAumentos(cantidadAumentos)}
                     icon={IconChart}
                   />
-                  <DetalleFila
-                    label="Monto actual"
-                    value={formatMonto(contrato.monto_alquiler)}
-                    icon={IconCurrency}
-                  />
+                  <DetalleFila label="Monto actual" value={formatMonto(contrato.monto_alquiler)} icon={IconCurrency}>
+                    <MontoTrazable
+                      className="text-sm font-medium text-slate-900"
+                      contenido={() => <TrazaMonto explicacion={explicarMontoContrato(contrato, historial)} />}
+                    >
+                      {formatMonto(contrato.monto_alquiler)}
+                    </MontoTrazable>
+                  </DetalleFila>
                   <DetalleFila
                     label="Día de vencimiento"
                     value={contrato.dia_vencimiento ? `Día ${contrato.dia_vencimiento}` : '—'}
@@ -337,6 +364,13 @@ export default function ContratoDetalleModal({
                     )}
                     <PeriodosPagoLista
                       periodos={periodos}
+                      trazaMonto={(periodo) => () => (
+                        <TrazaMonto
+                          explicacion={explicarMontoPeriodo(periodo, contrato, historial, {
+                            aumentoPendiente: periodo.estado === 'Pendiente' ? aumentoPendienteDelPeriodo(periodo, contrato) : null,
+                          })}
+                        />
+                      )}
                       vacio="Todavía no hay períodos de alquiler: se generan desde el mes en que empieza el contrato."
                     />
                   </>
@@ -382,7 +416,7 @@ export default function ContratoDetalleModal({
                               )}
                             </td>
                             <td className="px-3 py-2.5 tabular-nums text-slate-900">
-                              {textoMontoCronograma(fila)}
+                              {textoMontoCronograma(fila, historial, propuestaAumento)}
                             </td>
                           </tr>
                         ))}

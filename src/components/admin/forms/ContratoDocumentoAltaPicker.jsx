@@ -7,8 +7,6 @@ import { calloutClass, iconTileClass, surfaceMuted } from '../../../utils/ui'
 export default function ContratoDocumentoAltaPicker({
   archivo,
   onArchivoChange,
-  visibleParaInquilino,
-  onVisibleChange,
   error,
   onErrorChange,
   disabled = false,
@@ -48,16 +46,7 @@ export default function ContratoDocumentoAltaPicker({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1">
             <p className="text-sm text-slate-700">PDF o Word · máximo 15 MB</p>
-            <label className="mt-2 flex items-center gap-2 text-sm text-slate-600">
-              <input
-                type="checkbox"
-                checked={visibleParaInquilino}
-                onChange={(e) => onVisibleChange(e.target.checked)}
-                disabled={disabled}
-                className="h-4 w-4 rounded border-slate-300"
-              />
-              Compartir con el inquilino en su portal
-            </label>
+            <p className="mt-1 text-xs text-slate-500">Queda disponible para el inquilino en su portal.</p>
           </div>
 
           <div className="shrink-0">

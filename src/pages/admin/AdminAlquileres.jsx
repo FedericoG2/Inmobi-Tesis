@@ -20,6 +20,10 @@ import Button from '../../components/ui/Button'
 import IconButton from '../../components/ui/IconButton'
 import { IconChevronLeft, IconChevronRight, IconEye, IconSearch } from '../../components/icons/Icons'
 import { useAlquileresDelMes } from '../../hooks/useAlquileres'
+import { useConsulta } from '../../hooks/useConsulta'
+import { listarAumentosDeContratos } from '../../services/aumentosService'
+import { MontoTrazable, TrazaMonto } from '../../components/calculo/TrazaCalculo'
+import { explicarMontoPeriodo } from '../../utils/trazabilidadCalculo'
 import { usePaginacion } from '../../hooks/usePaginacion'
 import { useFilasPorPagina } from '../../hooks/useFilasPorPagina'
 import {
@@ -102,6 +106,7 @@ export default function AdminAlquileres() {
     () => ({
       total: filas.length,
       pendientes: filas.filter((f) => f.estado === 'Pendiente').length,
+      impagos: filas.filter((f) => f.situacion === 'impago').length,
     }),
     [filas]
   )
@@ -110,7 +115,7 @@ export default function AdminAlquileres() {
     const termino = normalizar(busqueda.trim())
     return filas.filter((f) => {
       if (filtroEstado === 'pendiente' && f.estado !== 'Pendiente') return false
-      if (['en_revision', 'pagado'].includes(filtroEstado) && f.situacion !== filtroEstado) return false
+      if (['en_revision', 'impago', 'pagado'].includes(filtroEstado) && f.situacion !== filtroEstado) return false
       if (!termino) return true
       const c = f.contratos
       return [`#${c?.id}`, c?.inquilinos?.nombre_completo, c?.propiedades?.direccion, c?.propiedades?.propietarios?.nombre_completo].some(
@@ -120,6 +125,15 @@ export default function AdminAlquileres() {
   }, [filas, busqueda, filtroEstado])
 
   const { pagina, totalPaginas, visibles, irAPagina } = usePaginacion(filtradas, filasPorPagina, [mes, busqueda, filtroEstado])
+
+  // Aumentos de los contratos del mes, para explicar de dónde sale cada monto.
+  const idsContratos = useMemo(() => [...new Set(periodos.map((p) => p.contrato_id))].sort((a, b) => a - b), [periodos])
+  const aumentosConsulta = useConsulta(idsContratos.length ? idsContratos : null, () => listarAumentosDeContratos(idsContratos))
+  const aumentosPorContrato = useMemo(() => {
+    const mapa = new Map()
+    for (const a of aumentosConsulta.data ?? []) mapa.set(a.contrato_id, [...(mapa.get(a.contrato_id) ?? []), a])
+    return mapa
+  }, [aumentosConsulta.data])
 
   const mensajeVacio = loading
     ? 'Cargando alquileres…'
@@ -134,9 +148,18 @@ export default function AdminAlquileres() {
         subtitle="Un mes por vez: cada contrato vigente tiene un período por mes, desde el mes en que empieza. Elegí un mes posterior para registrar un pago adelantado."
         alerts={error ? <div className={calloutClass('danger')}>Error al cargar los alquileres: {error}</div> : null}
         summary={
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <StatCard compact label={`Alquileres de ${nombrePeriodo(mes).split(' ')[0].toLowerCase()}`} value={loading ? '…' : indicadores.total} icon="clipboard" theme="slate" />
             <StatCard compact label="Pendientes de pago" value={loading ? '…' : indicadores.pendientes} icon="calendar" theme="slate" />
+            <StatCard
+              compact
+              label="Impagos"
+              value={loading ? '…' : indicadores.impagos}
+              icon="alert"
+              theme={!loading && indicadores.impagos > 0 ? 'red' : 'slate'}
+              hint="Pasó la fecha de pago sin comprobante"
+              onClick={() => setFiltroEstado('impago')}
+            />
           </div>
         }
       >
@@ -181,8 +204,9 @@ export default function AdminAlquileres() {
             className="w-full shrink-0 lg:w-52"
           >
             <option value="todos">Todos los estados</option>
-            <option value="pendiente">Pendientes (todos)</option>
-            <option value="en_revision">Comprobante en revisión</option>
+            <option value="pendiente">Pendientes de pago (todos)</option>
+            <option value="impago">Impagos</option>
+            <option value="en_revision">Pendientes con comprobante</option>
             <option value="pagado">Pagados</option>
           </FilterSelect>
         </div>
@@ -194,7 +218,7 @@ export default function AdminAlquileres() {
               <AdminTableHeaderCell className={COL_PERIODO} data-tarjeta="titulo">
                 Período
               </AdminTableHeaderCell>
-              <AdminTableHeaderCell className={COL_VENCE}>Pagar hasta</AdminTableHeaderCell>
+              <AdminTableHeaderCell className={COL_VENCE}>Vencimiento</AdminTableHeaderCell>
               <AdminTableHeaderCell className={COL_INQUILINO}>Inquilino</AdminTableHeaderCell>
               <AdminTableHeaderCell className="min-w-0">Inmueble</AdminTableHeaderCell>
               <AdminTableHeaderCell className={COL_MONTO}>Monto</AdminTableHeaderCell>
@@ -217,6 +241,9 @@ export default function AdminAlquileres() {
                       <Badge tone={situacion.tone} dot>
                         {SITUACION_CORTA[f.situacion]}
                       </Badge>
+                      {f.situacion === 'en_revision' && (
+                        <span className="mt-0.5 block text-xs text-slate-500">Con comprobante</span>
+                      )}
                     </AdminTableCell>
                     <AdminTableCell className={`${COL_PERIODO} font-medium text-slate-900`}>
                       <span className="block">{nombrePeriodo(f.periodo)}</span>
@@ -241,7 +268,18 @@ export default function AdminAlquileres() {
                       </span>
                     </AdminTableCell>
                     <AdminTableCell className={`${COL_MONTO} tabular-nums text-slate-900`}>
-                      <span className="block">{formatMonto(f.monto)}</span>
+                      <MontoTrazable
+                        className="block"
+                        contenido={() => (
+                          <TrazaMonto
+                            explicacion={explicarMontoPeriodo(f, c, aumentosPorContrato.get(f.contrato_id) ?? [], {
+                              aumentoPendiente: f.estado === 'Pendiente' ? f.aumentoPendiente : null,
+                            })}
+                          />
+                        )}
+                      >
+                        {formatMonto(f.monto)}
+                      </MontoTrazable>
                       {f.aumentoPendiente && f.estado === 'Pendiente' && (
                         <span className="block text-xs font-medium text-amber-700">Falta aplicar el aumento</span>
                       )}

@@ -36,7 +36,7 @@ export async function listarContratosPropietario() {
         id, fecha_inicio, fecha_fin, monto_alquiler, monto_inicial, dia_vencimiento, tipo_ajuste,
         periodicidad_meses, fecha_ultimo_aumento, fecha_proximo_aumento, estado, propiedad_id,
         propiedades ( id, direccion, tipo ),
-        aumentos ( id, fecha_aplicacion, monto_anterior, monto_nuevo, porcentaje_aplicado, indice_tipo, modo ),
+        aumentos ( id, fecha_aplicacion, monto_anterior, monto_nuevo, porcentaje_aplicado, indice_tipo, modo, notas, detalle_calculo ),
         periodos_alquiler ( id, periodo, estado, monto, fecha_vencimiento )
       `)
       .in('estado', ['activo', 'inactivo'])

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminAlertModal from '../../components/admin/AdminAlertModal'
 import AdminConfirmModal from '../../components/admin/AdminConfirmModal'
 import AdminListLayout from '../../components/admin/AdminListLayout'
+import { MontoTrazable, TrazaAumento } from '../../components/calculo/TrazaCalculo'
+import { explicarAumento } from '../../utils/trazabilidadCalculo'
 import AdminTablePagination from '../../components/admin/AdminTablePagination'
 import StatCard from '../../components/admin/StatCard'
 import AumentoDetalleModal from '../../components/admin/AumentoDetalleModal'
@@ -159,14 +161,16 @@ export default function AdminAumentos() {
   )
   const estaRevisado = useCallback((p) => Boolean(revisionDe(p)?.revisado), [revisionDe])
 
-  const toggleRevisado = async (propuesta, datos = {}) => {
+  // Pendiente → Revisado: una vez revisado, el aumento sigue Revisado hasta confirmarlo.
+  const marcarRevisado = async (propuesta, datos = {}) => {
     const actual = revisionDe(propuesta)
+    if (actual?.revisado) return
     const { error: errorRevision } = await guardarRevision(propuesta, {
-      revisado: !actual?.revisado,
+      revisado: true,
       observaciones: datos.observaciones ?? actual?.observaciones ?? null,
       montoAjustado: datos.montoAjustado ?? actual?.monto_ajustado ?? null,
     })
-    if (!errorRevision && !actual?.revisado) toast.info('Aumento revisado', `${propuesta.inquilino_nombre ?? 'El aumento'} queda listo para confirmar.`)
+    if (!errorRevision) toast.info('Aumento revisado', `${propuesta.inquilino_nombre ?? 'El aumento'} queda listo para confirmar.`)
   }
 
   /** Aplica el redondeo y las observaciones guardadas en la revisión (confirmación masiva). */
@@ -818,10 +822,21 @@ export default function AdminAumentos() {
                         </div>
                       ) : (
                         <div className="flex flex-col items-end text-right">
-                          <span className="whitespace-nowrap tabular-nums font-semibold text-slate-900">
+                          <MontoTrazable
+                            className="whitespace-nowrap tabular-nums font-semibold text-slate-900"
+                            contenido={
+                              p.detalle_calculo
+                                ? () => (
+                                    <TrazaAumento
+                                      explicacion={explicarAumento(p.detalle_calculo, { montoFinal: ui.montoMostrar, notas: p.notas })}
+                                    />
+                                  )
+                                : null
+                            }
+                          >
                             {ui.montoEsAproximado ? '~' : ''}
                             {formatMonto(ui.montoMostrar)}
-                          </span>
+                          </MontoTrazable>
                           {p.variacion_pct != null && (
                             <span className="text-xs font-medium tabular-nums text-emerald-600">
                               (+{formatPorcentaje(p.variacion_pct)})
@@ -888,7 +903,7 @@ export default function AdminAumentos() {
         confirmando={confirmando}
         revisado={estaRevisado(propuestaDetalleActual)}
         revision={revisionDe(propuestaDetalleActual)}
-        onToggleRevisado={propuestaDetalleActual ? (datos) => toggleRevisado(propuestaDetalleActual, datos) : undefined}
+        onToggleRevisado={propuestaDetalleActual ? (datos) => marcarRevisado(propuestaDetalleActual, datos) : undefined}
         onGuardarRevision={propuestaDetalleActual ? (datos) => guardarRevision(propuestaDetalleActual, datos) : undefined}
         onSiguiente={irSiguienteARevisar}
         haySiguiente={haySiguienteARevisar}
@@ -934,6 +949,11 @@ export default function AdminAumentos() {
               montos se calculan al ingresar.
             </p>
             <p>
+              <span className="font-medium text-slate-800">Estados de un aumento:</span> Pendiente, Revisado (si
+              marcás el cálculo como revisado) y Confirmado. Un confirmado se puede deshacer dentro del plazo y vuelve a
+              Pendiente. Un pendiente que pasó el plazo de la bandeja se lista como rezagado.
+            </p>
+            <p>
               <span className="font-medium text-slate-800">Pendientes de confirmar:</span> vista principal del módulo.
               Muestra los aumentos del mes que se está trabajando que todavía no confirmaste. A medida que confirmás, el
               contador baja.
@@ -962,7 +982,7 @@ export default function AdminAumentos() {
           </div>
 
           <div>
-            <p className="font-medium text-slate-900">Estados del monto ajustado</p>
+            <p className="font-medium text-slate-900">Origen del monto calculado</p>
             <ul className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200">
               {LEYENDA_ESTADOS.map(({ titulo, texto, tono }) => (
                 <li key={titulo} className="flex gap-3 px-3 py-2.5">

@@ -4,10 +4,10 @@ import { beforeAll, describe, expect, test } from 'vitest'
 import { comoUsuario, fijarHoy } from './cargarBase.js'
 import { ENCARGADO, HOY, INQUILINO, PROPIETARIO, prepararBase } from './escenarios.js'
 
-let db, filas, una, escenario, crearContrato, confirmar, crearReclamo, gestionar
+let db, filas, una, escenario, crearContrato, confirmar, crearReclamo, gestionar, resolver
 
 beforeAll(async () => {
-  ;({ db, filas, una, escenario, crearContrato, confirmar, crearReclamo, gestionar } = await prepararBase())
+  ;({ db, filas, una, escenario, crearContrato, confirmar, crearReclamo, gestionar, resolver } = await prepararBase())
 }, 60000)
 
 const periodos = (contratoId) =>
@@ -304,7 +304,7 @@ describe('Reglas de modificación', () => {
     const e = await escenario()
     const c = await crearContrato(e)
     const r = await crearReclamo(e, c.id)
-    await gestionar(r.id, 'Resuelto')
+    await resolver(r.id)
     const editar = () =>
       comoUsuario(db, ENCARGADO, (tx) => tx.query(`UPDATE reclamos SET titulo = 'Otro título' WHERE id = $1`, [r.id]))
     await expect(editar()).rejects.toThrow(/resuelto no se modifica/)

@@ -22,21 +22,26 @@ export const cantidadComprobantes = (periodo) => periodo?.comprobantes_pago?.len
 /**
  * Situación de un período para mostrar:
  *   pagado      → el Encargado confirmó el pago.
- *   en_revision → pendiente con al menos un comprobante: falta que el Encargado lo confirme.
- *   pendiente   → todavía sin comprobante.
+ *   en_revision → Pendiente con al menos un comprobante: el inquilino pagó y falta confirmarlo.
+ *   impago      → pasó la fecha de pago y no hay comprobante: el pago no se hizo.
+ *   pendiente   → todavía está dentro del plazo de pago (o es un mes futuro).
  * El alquiler de un mes se paga hasta el día de pago del mes siguiente (el de noviembre, hasta el
- * 10 de diciembre), así que un período sin confirmar figura como Pendiente.
+ * 10 de diciembre). En la base el período sigue Pendiente hasta que se confirma el pago: Impago
+ * es la situación que se calcula con la fecha.
  */
-export function situacionPeriodo(periodo) {
+export function situacionPeriodo(periodo, hoyIso = null) {
   if (!periodo) return 'pendiente'
   if (periodo.estado === 'Pagado') return 'pagado'
   if (cantidadComprobantes(periodo) > 0) return 'en_revision'
+  const limite = fechaLimitePago(periodo)
+  if (limite && hoyIso && limite < hoyIso) return 'impago'
   return 'pendiente'
 }
 
 export const SITUACION_PERIODO = {
   pagado: { label: 'Pagado', tone: 'success' },
-  en_revision: { label: 'Comprobante en revisión', tone: 'brand' },
+  en_revision: { label: 'Pendiente', tone: 'warning', nota: 'Con comprobante: falta confirmar el pago' },
+  impago: { label: 'Impago', tone: 'danger', nota: 'Pasó la fecha de pago sin comprobante' },
   pendiente: { label: 'Pendiente', tone: 'warning' },
 }
 
@@ -54,11 +59,11 @@ export function fechaLimitePago(periodo) {
 }
 
 /** Totales de un contrato a partir de sus períodos. */
-export function resumenPagos(periodos = []) {
-  const resumen = { total: 0, pagados: 0, pendientes: 0, enRevision: 0, montoPendiente: 0 }
+export function resumenPagos(periodos = [], hoyIso = null) {
+  const resumen = { total: 0, pagados: 0, pendientes: 0, enRevision: 0, impagos: 0, montoPendiente: 0 }
   for (const p of periodos) {
     resumen.total += 1
-    const situacion = situacionPeriodo(p)
+    const situacion = situacionPeriodo(p, hoyIso)
     if (situacion === 'pagado') {
       resumen.pagados += 1
       continue
@@ -66,6 +71,7 @@ export function resumenPagos(periodos = []) {
     resumen.pendientes += 1
     resumen.montoPendiente += Number(p.monto) || 0
     if (situacion === 'en_revision') resumen.enRevision += 1
+    if (situacion === 'impago') resumen.impagos += 1
   }
   return resumen
 }
@@ -73,17 +79,20 @@ export function resumenPagos(periodos = []) {
 /**
  * Estado de pago del alquiler (para el listado y su filtro):
  *   revisar   → hay comprobantes esperando que el Encargado confirme el pago.
+ *   deuda     → hay períodos impagos (pasó la fecha de pago sin comprobante).
  *   pendiente → hay períodos pendientes todavía en plazo.
  *   al_dia    → todos los períodos están pagados.
  */
 export function estadoPagoAlquiler(resumen) {
   if (resumen.enRevision > 0) return 'revisar'
+  if (resumen.impagos > 0) return 'deuda'
   if (resumen.pendientes > 0) return 'pendiente'
   return 'al_dia'
 }
 
 export const ESTADO_PAGO_ALQUILER = {
-  revisar: { label: 'Comprobante por revisar', tone: 'brand' },
+  revisar: { label: 'Pendiente con comprobante', tone: 'warning' },
+  deuda: { label: 'Con alquileres impagos', tone: 'danger' },
   pendiente: { label: 'Pago del mes pendiente', tone: 'warning' },
   al_dia: { label: 'Al día', tone: 'success' },
 }
@@ -92,7 +101,7 @@ export const ESTADO_PAGO_ALQUILER = {
 export function estadoComprobante(periodo) {
   return periodo?.estado === 'Pagado'
     ? { label: 'Pago confirmado', tone: 'success' }
-    : { label: 'En revisión', tone: 'brand' }
+    : { label: 'Pago por confirmar', tone: 'warning' }
 }
 
 /**
@@ -118,7 +127,8 @@ export function accionesPeriodo(periodo, { rol, contratoActivo, aumentoPendiente
 /** Etiqueta corta de la situación, para las tablas. */
 export const SITUACION_CORTA = {
   pagado: 'Pagado',
-  en_revision: 'En revisión',
+  en_revision: 'Pendiente',
+  impago: 'Impago',
   pendiente: 'Pendiente',
 }
 
@@ -146,5 +156,5 @@ export function rangoPeriodo(periodo, contrato) {
 }
 
 /** Orden del listado mensual: primero lo que requiere atención. */
-const ORDEN_SITUACION = { en_revision: 0, pendiente: 1, pagado: 2 }
+const ORDEN_SITUACION = { impago: 0, en_revision: 1, pendiente: 2, pagado: 3 }
 export const ordenSituacion = (situacion) => ORDEN_SITUACION[situacion] ?? 9

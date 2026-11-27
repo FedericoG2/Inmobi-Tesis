@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { AdminLayoutProvider, useAdminLayout } from '../../contexts/AdminLayoutContext'
 import { EncabezadoProvider } from '../../contexts/EncabezadoContext'
+import { precargarBandejaAumentos } from '../../hooks/useAumentos'
 import AdminSidebar from './AdminSidebar'
 import AdminTopbar from './AdminTopbar'
 
@@ -23,7 +24,10 @@ function AdminLayoutContent() {
   const { sidebarCollapsed } = useAdminLayout()
 
   useEffect(() => {
-    const id = setTimeout(precargarModulos, 1500)
+    const id = setTimeout(() => {
+      precargarModulos()
+      precargarBandejaAumentos()
+    }, 1500)
     return () => clearTimeout(id)
   }, [])
 

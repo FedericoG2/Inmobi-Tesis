@@ -14,6 +14,9 @@ import {
   registrarComprobantePago,
 } from '../../services/alquileresService'
 import { accionesPeriodo, aumentoPendienteDelPeriodo, nombrePeriodo, resumenPagos } from '../../utils/alquileresUi'
+import { listarHistorialAumentos } from '../../services/aumentosService'
+import { MontoTrazable, TrazaMonto } from '../calculo/TrazaCalculo'
+import { explicarMontoContrato, explicarMontoPeriodo } from '../../utils/trazabilidadCalculo'
 import { hoyIsoLocal } from '../../utils/contratoVigencia'
 import { calloutClass, eyebrow, loadingStateClass } from '../../utils/ui'
 
@@ -24,7 +27,7 @@ function Dato({ label, children }) {
   return (
     <div className="min-w-0 rounded-lg bg-slate-50/80 px-3 py-2.5 ring-1 ring-inset ring-slate-200/70">
       <p className={eyebrow}>{label}</p>
-      <p className="mt-0.5 truncate text-sm font-semibold tabular-nums text-slate-900">{children}</p>
+      <div className="mt-0.5 truncate text-sm font-semibold tabular-nums text-slate-900">{children}</div>
     </div>
   )
 }
@@ -43,6 +46,8 @@ export default function AlquilerDetalleModal({ alquiler, periodoDestacadoId = nu
   const contratoId = alquiler?.id ?? null
   const consulta = useConsulta(contratoId, () => listarPeriodosContrato(contratoId))
   const periodos = consulta.data ?? []
+  const aumentosConsulta = useConsulta(contratoId, () => listarHistorialAumentos(contratoId))
+  const aumentos = aumentosConsulta.data ?? []
   const hoy = hoyIsoLocal()
   const resumen = resumenPagos(periodos, hoy)
 
@@ -153,11 +158,15 @@ export default function AlquilerDetalleModal({ alquiler, periodoDestacadoId = nu
         />
         <ModalBody className="space-y-5">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <Dato label="Monto actual">{formatMonto(alquiler.monto_alquiler)}</Dato>
+            <Dato label="Monto actual">
+              <MontoTrazable contenido={() => <TrazaMonto explicacion={explicarMontoContrato(alquiler, aumentos)} />}>
+                {formatMonto(alquiler.monto_alquiler)}
+              </MontoTrazable>
+            </Dato>
             <Dato label="Pagados">
               {resumen.pagados} de {resumen.total}
             </Dato>
-            <Dato label="Por revisar">{resumen.enRevision}</Dato>
+            <Dato label="Impagos">{resumen.impagos}</Dato>
             <Dato label="Saldo pendiente">{formatMonto(resumen.montoPendiente)}</Dato>
           </div>
 
@@ -176,7 +185,18 @@ export default function AlquilerDetalleModal({ alquiler, periodoDestacadoId = nu
             ) : consulta.error ? (
               <p className={calloutClass('danger')}>No se pudieron cargar los períodos: {consulta.error.message}</p>
             ) : (
-              <PeriodosPagoLista periodos={periodos} renderAcciones={renderAcciones} destacadoId={periodoDestacadoId} />
+              <PeriodosPagoLista
+                periodos={periodos}
+                renderAcciones={renderAcciones}
+                destacadoId={periodoDestacadoId}
+                trazaMonto={(periodo) => () => (
+                  <TrazaMonto
+                    explicacion={explicarMontoPeriodo(periodo, alquiler, aumentos, {
+                      aumentoPendiente: periodo.estado === 'Pendiente' ? aumentoPendienteDelPeriodo(periodo, alquiler) : null,
+                    })}
+                  />
+                )}
+              />
             )}
           </section>
         </ModalBody>

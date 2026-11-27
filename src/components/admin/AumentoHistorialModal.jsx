@@ -6,6 +6,8 @@ import Modal, { ModalBody, ModalFooter, ModalHeader } from '../ui/Modal'
 import Button from '../ui/Button'
 import Badge from '../ui/Badge'
 import { calloutClass, surfaceCard } from '../../utils/ui'
+import { MontoTrazable, TrazaAumento } from '../calculo/TrazaCalculo'
+import { explicarAumento } from '../../utils/trazabilidadCalculo'
 
 const formatMonto = (monto) => {
   if (monto == null) return '—'
@@ -88,9 +90,14 @@ function FilaHistorial({ item, posicion, onVerComprobante, onDeshacer, disabled 
             {formatMonto(item.monto_anterior)}
           </span>
           <IconArrowRight className="h-3.5 w-3.5 text-slate-400" />
-          <span className="tabular-nums font-semibold text-slate-900">
+          <MontoTrazable
+            className="tabular-nums font-semibold text-slate-900"
+            contenido={() => (
+              <TrazaAumento explicacion={explicarAumento(item.detalle_calculo, { montoFinal: item.monto_nuevo, notas: item.notas })} />
+            )}
+          >
             {formatMonto(item.monto_nuevo)}
-          </span>
+          </MontoTrazable>
           {pct && (
             <span className="tabular-nums text-xs font-medium text-emerald-600">(+{pct})</span>
           )}

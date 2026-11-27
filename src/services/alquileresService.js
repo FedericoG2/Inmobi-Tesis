@@ -60,7 +60,7 @@ export async function listarAlquileresDelMes(mes) {
       id, contrato_id, periodo, fecha_vencimiento, monto, estado, fecha_confirmacion,
       comprobantes_pago ( id ),
       contratos (
-        id, estado, motivo_cierre, fecha_inicio, fecha_fin, monto_alquiler, dia_vencimiento, fecha_proximo_aumento,
+        id, estado, motivo_cierre, fecha_inicio, fecha_fin, monto_inicial, monto_alquiler, dia_vencimiento, fecha_proximo_aumento,
         inquilinos ( id, nombre_completo ),
         propiedades ( id, direccion, propietarios ( id, nombre_completo ) )
       )

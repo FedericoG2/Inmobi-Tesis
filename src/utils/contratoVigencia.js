@@ -58,7 +58,7 @@ export function hoyIsoLocal() {
   return `${yy}-${mm}-${dd}`
 }
 
-/** Contrato activo/programado cuya fecha_fin ya pasó (plazo contractual vencido). */
+/** Contrato activo o programado cuya fecha de fin ya pasó: sigue Activo hasta que se finalice a mano. */
 export function esContratoPlazoVencido(contrato, hoy = hoyIsoLocal()) {
   if (!contrato?.fecha_fin) return false
   if (!contratoComprometePropiedad(contrato)) return false
@@ -76,15 +76,15 @@ export const MOTIVOS_CIERRE = {
   Cancelado: 'Cancelado',
 }
 
+/** Estados del diagrama: Programado, Activo, Finalizado, Rescindido y Cancelado. */
 export function etiquetaEstadoContrato(contrato) {
-  if (esContratoPlazoVencido(contrato)) return 'Vencido'
   if (contrato?.estado === 'programado') return 'Programado'
   if (contrato?.estado === 'activo') return 'Activo'
   return MOTIVOS_CIERRE[contrato?.motivo_cierre] ?? 'Finalizado'
 }
 
 export function colorEstadoContrato(contrato) {
-  if (esContratoPlazoVencido(contrato)) return 'red'
+  if (esContratoPlazoVencido(contrato)) return 'amber'
   if (contrato?.estado === 'programado') return 'amber'
   if (contrato?.estado === 'activo') return 'emerald'
   return 'gray'

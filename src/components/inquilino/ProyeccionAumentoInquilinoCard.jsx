@@ -7,6 +7,8 @@ import {
 import { formatMontoInquilino } from '../../utils/proyeccionAumentoInquilino'
 import { IconTrendingUp } from '../icons/Icons'
 import { calloutClass, cn } from '../../utils/ui'
+import { MontoTrazable, TrazaAumento } from '../calculo/TrazaCalculo'
+import { explicarAumento } from '../../utils/trazabilidadCalculo'
 
 function AvisoAumento({ className = '' }) {
   return <div className={calloutClass('warning', className)}>{AVISO_AUMENTO_PORTAL}</div>
@@ -73,9 +75,19 @@ export default function ProyeccionAumentoInquilinoCard({ propuesta, loading, err
           {anterior != null && (
             <span className="text-sm tabular-nums text-slate-500 line-through">{formatMontoInquilino(anterior)}</span>
           )}
-          <span className="text-2xl font-semibold leading-none tabular-nums tracking-tight">
+          <MontoTrazable
+            className="text-2xl font-semibold leading-none tabular-nums tracking-tight"
+            etiqueta="Ver cómo se calculó el aumento"
+            contenido={
+              propuesta.detalle_calculo
+                ? () => (
+                    <TrazaAumento explicacion={explicarAumento(propuesta.detalle_calculo, { montoFinal: nuevo, notas: propuesta.notas })} />
+                  )
+                : null
+            }
+          >
             {formatMontoInquilino(nuevo)}
-          </span>
+          </MontoTrazable>
         </div>
         {variacion != null && (
           <p className="mt-1 text-sm opacity-90">+{Number(variacion).toLocaleString('es-AR')}% respecto al monto anterior</p>

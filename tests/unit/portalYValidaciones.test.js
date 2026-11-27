@@ -51,7 +51,7 @@ describe('Contratos', () => {
   })
 
   test('un contrato activo con la fecha de fin vencida se muestra Vencido; el inactivo, Finalizado', () => {
-    expect(etiquetaEstadoContrato({ estado: 'activo', fecha_fin: '2020-01-01' })).toBe('Vencido')
+    expect(etiquetaEstadoContrato({ estado: 'activo', fecha_fin: '2020-01-01' })).toBe('Activo')
     expect(etiquetaEstadoContrato({ estado: 'inactivo', fecha_fin: '2030-01-01' })).toBe('Finalizado')
     expect(etiquetaEstadoContrato({ estado: 'programado', fecha_fin: '2030-01-01' })).toBe('Programado')
   })
